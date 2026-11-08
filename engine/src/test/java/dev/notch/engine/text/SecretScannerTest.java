@@ -1,0 +1,73 @@
+package dev.notch.engine.text;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class SecretScannerTest {
+
+    private final SecretScanner scanner = new SecretScanner();
+
+    @Test
+    void redactsOpenAiStyleKey() {
+        var r = scanner.scan("use OPENAI_API_KEY=sk-proj-abc123DEF456ghi789JKL now");
+        assertEquals(1, r.findings().size());
+        assertEquals("openai-key", r.findings().get(0).type());
+        assertEquals("use OPENAI_API_KEY=[REDACTED:openai-key] now", r.redacted());
+    }
+
+    @Test
+    void anthropicKeyIsLabelledAsSuch() {
+        var r = scanner.scan("key: sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx");
+        assertEquals("anthropic-key", r.findings().get(0).type());
+    }
+
+    @Test
+    void redactsAwsAccessKey() {
+        var r = scanner.scan("aws_access_key_id = AKIAIOSFODNN7EXAMPLE");
+        assertEquals("aws-access-key", r.findings().get(0).type());
+        assertFalse(r.redacted().contains("AKIA"));
+    }
+
+    @Test
+    void ignoresPrefixInsideOrdinaryWords() {
+        var r = scanner.scan("a task-based approach and a risk-free plan");
+        assertTrue(r.findings().isEmpty());
+        assertEquals("a task-based approach and a risk-free plan", r.redacted());
+    }
+
+    @Test
+    void redactsWholePrivateKeyBlock() {
+        String text = "before\n-----BEGIN RSA PRIVATE KEY-----\nMIIEow\nabc\n-----END RSA PRIVATE KEY-----\nafter";
+        var r = scanner.scan(text);
+        assertEquals("before\n[REDACTED:private-key]\nafter", r.redacted());
+    }
+
+    @Test
+    void publicCertificateIsNotRedacted() {
+        var r = scanner.scan("-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----");
+        assertTrue(r.findings().isEmpty());
+    }
+
+    @Test
+    void emptyTextHasNoFindings() {  // boundary
+        var r = scanner.scan("");
+        assertTrue(r.findings().isEmpty());
+        assertEquals("", r.redacted());
+    }
+
+    @Test
+    void flagsHighEntropyTokenButNotGitHash() {
+        String token = "Zx9Kq2Lm7Np4Rt8Vw1Ys6Bc3Df5Gh0JkQ";
+        String sha = "3f786850e387550fdab836ed7e6dc881de23001b";
+        var r = scanner.scan("token " + token + " commit " + sha);
+        assertEquals(1, r.findings().size());
+        assertEquals("high-entropy-string", r.findings().get(0).type());
+        assertTrue(r.redacted().contains(sha));
+    }
+
+    @Test
+    void shortKeyLikeStringsAreNotRedacted() {
+        assertTrue(scanner.scan("sk-short").findings().isEmpty());
+    }
+}
