@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: notch-api
+  profiles:
+    default: local
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/notch}
+    username: ${DATABASE_USER:notch}
+    password: ${DATABASE_PASSWORD:notch}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+notch:
+  crypto:
+    key: ${NOTCH_CRYPTO_KEY:}
+  limits:
+    imports-per-day: 20
+    questions-per-day: 30
+  cors:
+    allowed-origins: ${NOTCH_CORS_ORIGINS:http://localhost:3000}
+  embedding:
+    dimensions: 1024   # must match vector(1024) in the schema
+  ingest:
+    max-file-bytes: 5242880
+    max-chunk-chars: 1200
+  jobs:
+    poll-delay-ms: 2000

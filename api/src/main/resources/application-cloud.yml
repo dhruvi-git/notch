@@ -1,0 +1,4 @@
+# Production: every value must come from the environment.
+notch:
+  crypto:
+    key: ${NOTCH_CRYPTO_KEY}

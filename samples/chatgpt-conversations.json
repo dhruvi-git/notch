@@ -1,0 +1,252 @@
+[
+  {
+    "id": "c1a7e2f0-billing-db",
+    "conversation_id": "c1a7e2f0-billing-db",
+    "title": "Billing service: choosing a database",
+    "create_time": 1760000000.0,
+    "mapping": {
+      "root-c1a7e2f0-billing-db": {
+        "id": "root-c1a7e2f0-billing-db",
+        "message": null,
+        "parent": null,
+        "children": [
+          "c1a7e2f0-billing-db-m0"
+        ]
+      },
+      "c1a7e2f0-billing-db-m0": {
+        "id": "c1a7e2f0-billing-db-m0",
+        "message": {
+          "id": "c1a7e2f0-billing-db-m0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000000.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "We're building the billing service. Mongo or Postgres? We need invoices joined to customers and line items."
+            ]
+          }
+        },
+        "parent": "root-c1a7e2f0-billing-db",
+        "children": [
+          "c1a7e2f0-billing-db-m1"
+        ]
+      },
+      "c1a7e2f0-billing-db-m1": {
+        "id": "c1a7e2f0-billing-db-m1",
+        "message": {
+          "id": "c1a7e2f0-billing-db-m1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1760000090.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "For relational data like invoices, customers and line items, Postgres fits better. You get joins, transactions and constraints. Mongo would push those joins into application code."
+            ]
+          }
+        },
+        "parent": "c1a7e2f0-billing-db-m0",
+        "children": [
+          "c1a7e2f0-billing-db-m2"
+        ]
+      },
+      "c1a7e2f0-billing-db-m2": {
+        "id": "c1a7e2f0-billing-db-m2",
+        "message": {
+          "id": "c1a7e2f0-billing-db-m2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000180.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments."
+            ]
+          }
+        },
+        "parent": "c1a7e2f0-billing-db-m1",
+        "children": [
+          "c1a7e2f0-billing-db-m3"
+        ]
+      },
+      "c1a7e2f0-billing-db-m3": {
+        "id": "c1a7e2f0-billing-db-m3",
+        "message": {
+          "id": "c1a7e2f0-billing-db-m3",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1760000270.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Good call. I'd also add the pgvector extension now if you plan semantic search later.\n\nNext step is writing the initial migration for customers, invoices and line_items."
+            ]
+          }
+        },
+        "parent": "c1a7e2f0-billing-db-m2",
+        "children": [
+          "c1a7e2f0-billing-db-m4"
+        ]
+      },
+      "c1a7e2f0-billing-db-m4": {
+        "id": "c1a7e2f0-billing-db-m4",
+        "message": {
+          "id": "c1a7e2f0-billing-db-m4",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000360.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Running the app now:\nError: connect ECONNREFUSED 127.0.0.1:5432"
+            ]
+          }
+        },
+        "parent": "c1a7e2f0-billing-db-m3",
+        "children": [
+          "c1a7e2f0-billing-db-m5"
+        ]
+      },
+      "c1a7e2f0-billing-db-m5": {
+        "id": "c1a7e2f0-billing-db-m5",
+        "message": {
+          "id": "c1a7e2f0-billing-db-m5",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1760000450.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "The issue is Postgres isn't running locally. Start it with `docker compose up -d` and check with `docker compose ps`. If it still fails, confirm the port mapping is 5432:5432."
+            ]
+          }
+        },
+        "parent": "c1a7e2f0-billing-db-m4",
+        "children": [
+          "c1a7e2f0-billing-db-m6"
+        ]
+      },
+      "c1a7e2f0-billing-db-m6": {
+        "id": "c1a7e2f0-billing-db-m6",
+        "message": {
+          "id": "c1a7e2f0-billing-db-m6",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760000540.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "That fixed it. Here's my env for reference: DATABASE_URL=postgres://localhost/billing and OPENAI_API_KEY=sk-proj-4fJq8ZtW2mXv9KcR7nB3yLp6"
+            ]
+          }
+        },
+        "parent": "c1a7e2f0-billing-db-m5",
+        "children": []
+      }
+    },
+    "current_node": "c1a7e2f0-billing-db-m6"
+  },
+  {
+    "id": "c2b9d4e1-rate-limits",
+    "conversation_id": "c2b9d4e1-rate-limits",
+    "title": "Rate limiting the public API",
+    "create_time": 1760600000.0,
+    "mapping": {
+      "root-c2b9d4e1-rate-limits": {
+        "id": "root-c2b9d4e1-rate-limits",
+        "message": null,
+        "parent": null,
+        "children": [
+          "c2b9d4e1-rate-limits-m0"
+        ]
+      },
+      "c2b9d4e1-rate-limits-m0": {
+        "id": "c2b9d4e1-rate-limits-m0",
+        "message": {
+          "id": "c2b9d4e1-rate-limits-m0",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760600000.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Our public API is getting hammered. How should we rate limit per user?"
+            ]
+          }
+        },
+        "parent": "root-c2b9d4e1-rate-limits",
+        "children": [
+          "c2b9d4e1-rate-limits-m1"
+        ]
+      },
+      "c2b9d4e1-rate-limits-m1": {
+        "id": "c2b9d4e1-rate-limits-m1",
+        "message": {
+          "id": "c2b9d4e1-rate-limits-m1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1760600090.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "A token bucket per API key works well. Store buckets in Redis so limits hold across instances. Start with 60 requests per minute and a burst of 20."
+            ]
+          }
+        },
+        "parent": "c2b9d4e1-rate-limits-m0",
+        "children": [
+          "c2b9d4e1-rate-limits-m2"
+        ]
+      },
+      "c2b9d4e1-rate-limits-m2": {
+        "id": "c2b9d4e1-rate-limits-m2",
+        "message": {
+          "id": "c2b9d4e1-rate-limits-m2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760600180.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "We decided to use a Redis token bucket rather than an in-memory limiter, since we run three instances behind the load balancer."
+            ]
+          }
+        },
+        "parent": "c2b9d4e1-rate-limits-m1",
+        "children": [
+          "c2b9d4e1-rate-limits-m3"
+        ]
+      },
+      "c2b9d4e1-rate-limits-m3": {
+        "id": "c2b9d4e1-rate-limits-m3",
+        "message": {
+          "id": "c2b9d4e1-rate-limits-m3",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1760600270.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "- [ ] add rate limit headers (X-RateLimit-Remaining) to every response\n- [ ] alert when a key hits the limit 100 times in an hour"
+            ]
+          }
+        },
+        "parent": "c2b9d4e1-rate-limits-m2",
+        "children": []
+      }
+    },
+    "current_node": "c2b9d4e1-rate-limits-m3"
+  }
+]

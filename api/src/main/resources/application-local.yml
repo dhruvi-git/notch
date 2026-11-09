@@ -1,0 +1,4 @@
+# Development defaults only. Never use this key for real data.
+notch:
+  crypto:
+    key: ${NOTCH_CRYPTO_KEY:8E562WKaIVJiiHQHqgUqd/FgPF+BZE/uJoh9z/Xw094=}

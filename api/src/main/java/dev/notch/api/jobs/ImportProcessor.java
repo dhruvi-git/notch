@@ -1,0 +1,136 @@
+package dev.notch.api.jobs;
+
+import dev.notch.api.crypto.ContentCipher;
+import dev.notch.api.ingest.ChunkRepository;
+import dev.notch.api.ingest.ImportRepository;
+import dev.notch.api.ingest.MessageRepository;
+import dev.notch.api.llm.EmbeddingClient;
+import dev.notch.api.llm.ExtractedMemory;
+import dev.notch.api.llm.ExtractionRequest;
+import dev.notch.api.llm.LlmClient;
+import dev.notch.api.llm.LlmConfig;
+import dev.notch.api.memory.MemoryCodec;
+import dev.notch.api.memory.MemoryPayload;
+import dev.notch.api.memory.MemoryRepository;
+import dev.notch.api.project.Project;
+import dev.notch.api.project.ProjectRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * The background half of an import: embed the new chunks, then extract memories from the new
+ * messages, conversation by conversation.
+ *
+ * <p>Private projects are never sent to an external model: they get no embeddings, and their
+ * memories always come from the offline extractor.
+ */
+@Component
+public class ImportProcessor {
+
+    public static final String KIND = "PROCESS_IMPORT";
+    static final int EMBED_BATCH = 64;
+
+    private final ImportRepository imports;
+    private final ProjectRepository projects;
+    private final MessageRepository messages;
+    private final ChunkRepository chunks;
+    private final MemoryRepository memories;
+    private final MemoryCodec codec;
+    private final ContentCipher cipher;
+    private final EmbeddingClient embeddings;
+    private final LlmClient llm;
+    private final LlmClient offline;
+
+    public ImportProcessor(ImportRepository imports, ProjectRepository projects, MessageRepository messages,
+                           ChunkRepository chunks, MemoryRepository memories, MemoryCodec codec,
+                           ContentCipher cipher, EmbeddingClient embeddings, LlmClient llm,
+                           @Qualifier(LlmConfig.OFFLINE) LlmClient offline) {
+        this.imports = imports;
+        this.projects = projects;
+        this.messages = messages;
+        this.chunks = chunks;
+        this.memories = memories;
+        this.codec = codec;
+        this.cipher = cipher;
+        this.embeddings = embeddings;
+        this.llm = llm;
+        this.offline = offline;
+    }
+
+    @Transactional
+    public void process(Job job) {
+        UUID userId = ownerOf(job);
+        Project project = projects.find(job.projectId(), userId)
+                .orElseThrow(() -> new IllegalStateException("project no longer exists"));
+        String aad = userId.toString();
+
+        List<MessageRepository.StoredMessage> stored = messages.forImport(job.importId(), userId);
+        Map<UUID, String> text = new HashMap<>();
+        for (MessageRepository.StoredMessage m : stored) text.put(m.id(), cipher.decrypt(m.body(), aad));
+
+        if (!project.isPrivate()) embedChunks(job.importId(), userId, text);
+        memories.deleteForImport(job.importId(), userId);  // makes retries idempotent
+        int extracted = extractMemories(project, userId, stored, text);
+        imports.markReady(job.importId(), extracted);
+    }
+
+    private void embedChunks(UUID importId, UUID userId, Map<UUID, String> text) {
+        List<ChunkRepository.PendingChunk> pending = chunks.withoutEmbedding(importId, userId);
+        for (int from = 0; from < pending.size(); from += EMBED_BATCH) {
+            List<ChunkRepository.PendingChunk> batch = pending.subList(from, Math.min(pending.size(), from + EMBED_BATCH));
+            List<String> inputs = new ArrayList<>(batch.size());
+            for (ChunkRepository.PendingChunk c : batch) {
+                inputs.add(text.get(c.messageId()).substring(c.start(), c.end()));
+            }
+            List<float[]> vectors = embeddings.embed(inputs);
+            for (int i = 0; i < batch.size(); i++) {
+                float[] v = vectors.get(i);
+                if (v != null) chunks.setEmbedding(batch.get(i).id(), v);
+            }
+        }
+    }
+
+    private int extractMemories(Project project, UUID userId, List<MessageRepository.StoredMessage> stored,
+                                Map<UUID, String> text) {
+        LlmClient extractor = project.isPrivate() ? offline : llm;
+        Map<UUID, List<MessageRepository.StoredMessage>> byConversation = new LinkedHashMap<>();
+        for (MessageRepository.StoredMessage m : stored) {
+            byConversation.computeIfAbsent(m.conversationId(), k -> new ArrayList<>()).add(m);
+        }
+        int count = 0;
+        for (List<MessageRepository.StoredMessage> conv : byConversation.values()) {
+            List<ExtractionRequest.SourceMessage> source = new ArrayList<>(conv.size());
+            for (MessageRepository.StoredMessage m : conv) {
+                source.add(new ExtractionRequest.SourceMessage(m.role(), text.get(m.id())));
+            }
+            ExtractionRequest request = new ExtractionRequest(conv.get(0).conversationTitle(), source);
+            for (ExtractedMemory e : extractor.extractMemories(request)) {
+                if (e.messageIndex() >= conv.size()) continue;  // ignore spans outside this request
+                MessageRepository.StoredMessage src = conv.get(e.messageIndex());
+                int len = text.get(src.id()).length();
+                int start = Math.min(e.start(), len);
+                int end = Math.min(e.end(), len);
+                MemoryPayload payload = new MemoryPayload(e.title(), e.body(), e.rationale(), e.rejectedOptions());
+                Instant createdAt = src.sentAt() != null ? src.sentAt() : Instant.now();
+                memories.insert(UUID.randomUUID(), project.id(), userId, e.kind().name(),
+                        codec.seal(payload, userId), src.id(), start, end, createdAt);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private UUID ownerOf(Job job) {
+        return imports.ownerOf(job.importId())
+                .orElseThrow(() -> new IllegalStateException("import no longer exists"));
+    }
+}

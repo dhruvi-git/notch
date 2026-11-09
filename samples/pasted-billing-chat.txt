@@ -1,0 +1,3 @@
+User: We're building the billing service. Mongo or Postgres? We need invoices joined to customers and line items.
+Assistant: For relational data like invoices, customers and line items, Postgres fits better. You get joins, transactions and constraints. Mongo would push those joins into application code.
+User: Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments.

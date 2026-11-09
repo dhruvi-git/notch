@@ -11,7 +11,7 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 | Path | What it is | Status |
 |---|---|---|
 | `engine/` | Self-implemented algorithms, tests and benchmarks. Plain Java 21, no framework | Done |
-| `api/` | Spring Boot REST API that uses the engine | Next |
+| `api/` | Spring Boot REST API: projects, imports, memories, background jobs | In progress (phase 2) |
 | `web/` | Next.js frontend | After the API |
 | `docs/` | Benchmark results and design notes | Ongoing |
 
@@ -19,6 +19,17 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
 - JDK 21
 - Maven 3.9 or newer
+- Docker Desktop (for the local database)
+
+## Run the API
+
+```bash
+docker compose up -d
+mvn -q install -DskipTests
+mvn -pl api spring-boot:run
+```
+
+See [`api/README.md`](api/README.md) for a walkthrough with the sample data in `samples/`.
 
 ## Run the tests
 
