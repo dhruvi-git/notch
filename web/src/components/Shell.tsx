@@ -13,18 +13,23 @@ type Props = {
   user: User;
   usage: Usage;
   theme: Theme;
+  driftCount: number;
   children: React.ReactNode;
 };
 
 /** The frame around every project page: a rail with the project, its sections and the person. */
-export function Shell({ project, projects, user, usage, theme, children }: Props) {
+export function Shell({ project, projects, user, usage, theme, driftCount, children }: Props) {
   const base = `/p/${project.id}`;
   const nav: NavItem[] = [
     { href: `${base}/recall`, label: "Recall" },
+    { href: `${base}/resume`, label: "Where you stopped" },
     { href: `${base}/ledger`, label: "Ledger" },
+    { href: `${base}/drift`, label: "Drift", badge: driftCount },
+    { href: `${base}/sync`, label: "Sync" },
     { href: `${base}/imports`, label: "Imports" },
     { href: `${base}/conversations`, label: "Conversations" },
   ];
+  const more: NavItem[] = [{ href: `${base}/lab`, label: "Lab" }];
   return (
     <div className={styles.shell}>
       <aside className={styles.rail}>
@@ -34,6 +39,7 @@ export function Shell({ project, projects, user, usage, theme, children }: Props
           {project.isPrivate ? <p className={styles.private}>Private: never sent to an AI model</p> : null}
         </div>
         <NavLinks items={nav} />
+        <NavLinks items={more} label="More" />
         <div className={styles.railBottom}>
           <p className={styles.usage}>
             {plural(usage.remaining.import, "import")} and {plural(usage.remaining.question, "question")} left today

@@ -1,0 +1,168 @@
+.page {
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1.25rem, 4vw, 3.5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.main {
+  max-width: 44rem;
+  padding: 2rem clamp(1.25rem, 4vw, 3.5rem) 4rem;
+}
+
+.back {
+  margin-bottom: 0.75rem;
+  font-size: var(--t-sm);
+}
+
+.section {
+  margin-top: 2.5rem;
+}
+
+.sectionIntro {
+  margin-top: 0.4rem;
+  color: var(--ink-soft);
+  max-width: 58ch;
+}
+
+.account {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  margin-top: 0.9rem;
+}
+
+.handle {
+  font-weight: 600;
+}
+
+.tokens {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.reveal {
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ok);
+  border-radius: 0 var(--r-panel) var(--r-panel) 0;
+  background: var(--surface-raised);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.revealTitle {
+  font-weight: 600;
+}
+
+.revealRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.secret {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: var(--t-xs);
+}
+
+.revealHelp {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.create {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.label {
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.createRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--t-sm);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0.15rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tokenName {
+  font-weight: 600;
+}
+
+.tokenMeta {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--t-sm);
+}
+
+.linkButton,
+.danger {
+  border: 0;
+  background: none;
+  padding: 0.25rem 0;
+  font: inherit;
+  font-size: var(--t-sm);
+  cursor: pointer;
+}
+
+.linkButton {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .createRow,
+  .revealRow,
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

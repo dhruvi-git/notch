@@ -31,7 +31,38 @@ public final class BenchmarkRunner {
     private static final int RUNS = 5;
     private static final long SEED = 2026;
 
+    /** Rows per section, kept for {@code --json} output. */
+    private static final Map<String, List<String>> JSON = new java.util.LinkedHashMap<>();
+
+    private static void record(String section, String format, Object... args) {
+        JSON.computeIfAbsent(section, k -> new ArrayList<>()).add(String.format(Locale.ROOT, format, args));
+    }
+
+    /**
+     * Prints Markdown tables, or with {@code --json} a JSON document for the web app's Lab page:
+     * {@code java -cp engine/target/classes dev.notch.engine.bench.BenchmarkRunner --json > web/src/data/benchmarks.json}
+     */
     public static void main(String[] args) {
+        boolean json = java.util.Arrays.asList(args).contains("--json");
+        java.io.PrintStream out = System.out;
+        if (json) System.setOut(new java.io.PrintStream(java.io.OutputStream.nullOutputStream()));
+        run();
+        System.setOut(out);
+        if (json) {
+            StringBuilder sb = new StringBuilder("{\n");
+            sb.append(String.format(Locale.ROOT, "  \"java\": \"%s\", \"warmup\": %d, \"runs\": %d, \"seed\": %d, \"generatedAt\": \"%s\",%n",
+                    System.getProperty("java.version"), WARMUP, RUNS, SEED, java.time.Instant.now()));
+            int i = 0;
+            for (Map.Entry<String, List<String>> e : JSON.entrySet()) {
+                sb.append("  \"").append(e.getKey()).append("\": [\n    ")
+                        .append(String.join(",\n    ", e.getValue())).append("\n  ]")
+                        .append(++i < JSON.size() ? ",\n" : "\n");
+            }
+            out.print(sb.append("}\n"));
+        }
+    }
+
+    private static void run() {
         System.out.println("# Notch engine benchmarks");
         System.out.printf(Locale.ROOT, "Java %s, %d warm-up + %d timed runs, median reported, seed %d%n%n",
                 System.getProperty("java.version"), WARMUP, RUNS, SEED);
@@ -75,6 +106,7 @@ public final class BenchmarkRunner {
                 return total;
             });
             row(n, build, fast, slow);
+            record("exactSearch", "{\"n\": %d, \"buildMs\": %.2f, \"fastMs\": %.3f, \"slowMs\": %.2f}", n, build, fast, slow);
         }
         System.out.println();
     }
@@ -111,6 +143,8 @@ public final class BenchmarkRunner {
             long chars = keys.keySet().stream().mapToLong(String::length).sum();
             System.out.printf(Locale.ROOT, "| %,d | %.2f | %.2f | %.1fx | %,d vs. %,d |%n",
                     n, fast, slow, slow / fast, tree.nodeCount(), chars);
+            record("autocomplete", "{\"n\": %d, \"fastMs\": %.3f, \"slowMs\": %.2f, \"nodes\": %d, \"chars\": %d}",
+                    n, fast, slow, tree.nodeCount(), chars);
         }
         System.out.println();
     }
@@ -138,6 +172,7 @@ public final class BenchmarkRunner {
                 return sink;
             });
             System.out.printf(Locale.ROOT, "| %,d | %.2f | %.2f | %.1fx |%n", n, fast, slow, slow / fast);
+            record("topK", "{\"n\": %d, \"fastMs\": %.3f, \"slowMs\": %.2f}", n, fast, slow);
         }
         System.out.println();
     }
@@ -172,6 +207,7 @@ public final class BenchmarkRunner {
             double bfsPerInsertUs = bfsMs * 1000;
             System.out.printf(Locale.ROOT, "| %,d | %.3f | %.1f | %,.0fx |%n",
                     n, dsuPerInsertUs, bfsPerInsertUs, bfsPerInsertUs / dsuPerInsertUs);
+            record("threading", "{\"n\": %d, \"fastUs\": %.4f, \"slowUs\": %.2f}", n, dsuPerInsertUs, bfsPerInsertUs);
         }
         System.out.println();
     }
@@ -191,6 +227,9 @@ public final class BenchmarkRunner {
             System.out.printf(Locale.ROOT, "| %,d | %,d | %d | %.3f%% | %.3f%% | %s | %s |%n",
                     n, f.bits(), f.hashes(), f.expectedFpp() * 100, 100.0 * fp / probes,
                     bytes(f.memoryBytes()), bytes(64L * n));
+            record("bloom", "{\"n\": %d, \"bits\": %d, \"hashes\": %d, \"theoreticalFpr\": %.5f, \"measuredFpr\": %.5f, "
+                    + "\"memoryBytes\": %d, \"rawBytes\": %d}", n, f.bits(), f.hashes(), f.expectedFpp(), (double) fp / probes,
+                    f.memoryBytes(), 64L * n);
         }
         System.out.println();
     }

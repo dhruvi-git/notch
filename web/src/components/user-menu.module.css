@@ -33,6 +33,20 @@
   white-space: nowrap;
 }
 
+.settings {
+  margin-left: auto;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.settings:hover {
+  color: var(--ink);
+}
+
+.inline .settings {
+  margin-left: 0.25rem;
+}
+
 .row {
   display: flex;
   align-items: center;

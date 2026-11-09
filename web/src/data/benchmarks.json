@@ -1,0 +1,28 @@
+{
+  "java": "21.0.12.1", "warmup": 2, "runs": 5, "seed": 2026, "generatedAt": "2026-11-09T12:24:02.186350684Z",
+  "exactSearch": [
+    {"n": 1000, "buildMs": 83.44, "fastMs": 0.215, "slowMs": 13.33},
+    {"n": 10000, "buildMs": 682.16, "fastMs": 0.155, "slowMs": 132.42},
+    {"n": 100000, "buildMs": 16962.23, "fastMs": 0.200, "slowMs": 1277.01}
+  ],
+  "autocomplete": [
+    {"n": 1000, "fastMs": 8.572, "slowMs": 32.65, "nodes": 1523, "chars": 35114},
+    {"n": 10000, "fastMs": 30.827, "slowMs": 226.26, "nodes": 15010, "chars": 348459},
+    {"n": 100000, "fastMs": 120.904, "slowMs": 2609.35, "nodes": 141821, "chars": 3528611}
+  ],
+  "topK": [
+    {"n": 1000, "fastMs": 8.534, "slowMs": 22.10},
+    {"n": 10000, "fastMs": 16.726, "slowMs": 83.52},
+    {"n": 100000, "fastMs": 85.609, "slowMs": 1100.93}
+  ],
+  "threading": [
+    {"n": 1000, "fastUs": 0.0766, "slowUs": 806.86},
+    {"n": 10000, "fastUs": 0.0752, "slowUs": 6262.70},
+    {"n": 100000, "fastUs": 0.0314, "slowUs": 17783.78}
+  ],
+  "bloom": [
+    {"n": 1000, "bits": 9586, "hashes": 7, "theoreticalFpr": 0.01003, "measuredFpr": 0.01017, "memoryBytes": 1200, "rawBytes": 64000},
+    {"n": 10000, "bits": 95851, "hashes": 7, "theoreticalFpr": 0.01004, "measuredFpr": 0.01037, "memoryBytes": 11984, "rawBytes": 640000},
+    {"n": 100000, "bits": 958506, "hashes": 7, "theoreticalFpr": 0.01004, "measuredFpr": 0.00983, "memoryBytes": 119816, "rawBytes": 6400000}
+  ]
+}

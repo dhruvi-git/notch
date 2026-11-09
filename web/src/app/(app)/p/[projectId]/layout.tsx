@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Shell } from "@/components/Shell";
 import { ApiError, api } from "@/lib/server-api";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
-import type { Project, Usage, User } from "@/lib/types";
+import type { DriftAlert, Project, Usage, User } from "@/lib/types";
 
 export default async function ProjectLayout({
   children,
@@ -21,14 +21,16 @@ export default async function ProjectLayout({
     if (e instanceof ApiError && (e.status === 404 || e.status === 400)) notFound();
     throw e;
   }
-  const [projects, user, usage] = await Promise.all([
+  const [projects, user, usage, drift] = await Promise.all([
     api<Project[]>("/api/projects"),
     api<User>("/api/me"),
     api<Usage>("/api/usage"),
+    // The badge is a hint; a drift check that fails shouldn't block the page.
+    api<DriftAlert[]>(`/api/projects/${encodeURIComponent(projectId)}/drift`).catch(() => [] as DriftAlert[]),
   ]);
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <Shell project={project} projects={projects} user={user} usage={usage} theme={theme}>
+    <Shell project={project} projects={projects} user={user} usage={usage} theme={theme} driftCount={drift.length}>
       {children}
     </Shell>
   );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { User } from "@/lib/types";
 import type { Theme } from "@/lib/theme";
 import { ThemeToggle } from "./ThemeToggle";
@@ -21,6 +22,9 @@ export function UserMenu({ user, theme, inline = false }: { user: User; theme: T
       <div className={styles.who}>
         <Avatar user={user} />
         <span className={styles.handle}>{user.handle}</span>
+        <Link href="/settings" className={styles.settings}>
+          Settings
+        </Link>
       </div>
       <div className={styles.row}>
         <ThemeToggle initial={theme} />

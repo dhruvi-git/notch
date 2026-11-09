@@ -47,7 +47,8 @@ baselines on hundreds of seeded random inputs.
 
 `bench.BenchmarkRunner` compares each algorithm with its baseline at 1,000, 10,000 and
 100,000 items on seeded synthetic developer-chat data, and prints Markdown tables. Results are
-in [`../docs/benchmarks.md`](../docs/benchmarks.md). Timings at the smallest size are noisy
+in [`../docs/benchmarks.md`](../docs/benchmarks.md). With `--json` it writes the same results
+as JSON, which the web app's Lab page charts (`web/src/data/benchmarks.json`). Timings at the smallest size are noisy
 because the JIT is still warming up on such short workloads.
 
 ## Known limitations

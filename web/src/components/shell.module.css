@@ -21,6 +21,12 @@
   gap: 1rem;
 }
 
+.rail nav + nav {
+  margin-top: -1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
 .railBottom {
   margin-top: auto;
   display: grid;
@@ -178,6 +184,12 @@
     display: flex;
     overflow-x: auto;
     gap: 0.25rem;
+  }
+
+  .rail nav + nav {
+    margin-top: -0.75rem;
+    padding-top: 0;
+    border-top: 0;
   }
 
   .navLink[aria-current="page"] {

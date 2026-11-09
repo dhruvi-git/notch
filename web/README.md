@@ -29,7 +29,7 @@ so far with sample data, keeps everything in memory, and never ships with the ap
 Checks: `npm test` (unit tests for highlighting and answer parsing; Node 22.6 or newer),
 `npm run typecheck` and `npm run build`.
 
-## Screens so far
+## Screens
 
 - **Recall** (the default view): results update as you type; **Ask** writes an answer whose
   every line cites a source, with the quoted span highlighted in context. Matches are
@@ -41,7 +41,25 @@ Checks: `npm test` (unit tests for highlighting and answer parsing; Node 22.6 or
 - **Ledger:** decisions in force with what they ruled out, tasks you can tick off, fixes, and
   replaced decisions. Replacing a decision (with an existing one or a new one) keeps its
   history, shown oldest first. Decisions and tasks can be recorded by hand.
-- **Imports** and **Conversations**, from phase 3a.
+- **Where you stopped:** the last session (what you asked, how the reply began), open tasks in
+  priority order (tick them off here), decisions in force, recent fixes, and a pointer to any
+  drift.
+- **Drift:** each alert shows both sides, with the evidence highlighted. Two disagreeing
+  decisions are settled in one click (keep the newer or the earlier one, which replaces the
+  other); a chat that uses something ruled out can be dismissed as intended. The rail shows how
+  many alerts are open.
+- **Sync:** a context pack (with a length slider) to paste into any chat, and `AGENTS.md` /
+  `CLAUDE.md` previews with copy and download.
+- **Imports** and **Conversations**.
+- **Lab:** this project's index, autocomplete, threads and repeat-check numbers, plus the
+  engine's benchmarks against their baselines at three sizes, drawn from
+  `src/data/benchmarks.json`. Regenerate it after changing the engine:
+  `java -Xmx2500m -cp engine/target/classes dev.notch.engine.bench.BenchmarkRunner --json > web/src/data/benchmarks.json`
+- **Settings:** create and revoke personal tokens for the extensions; a new token is shown
+  once.
+- **Landing page** (`/` when signed out): a question types itself, the answer's source is
+  highlighted with a marker stroke, then a drift warning appears. Reduced motion shows the end
+  state at once.
 
 ## How it talks to the API
 

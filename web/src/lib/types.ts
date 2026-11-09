@@ -122,3 +122,53 @@ export type Memory = {
   conversationTitle: string | null;
   createdAt: string;
 };
+
+export type DriftAlert = {
+  key: string;
+  type: "DECISION_CONFLICT" | "USAGE_DRIFT";
+  severity: "HIGH" | "MEDIUM";
+  decisionId: string;
+  decisionTitle: string;
+  decidedAt: string;
+  conflictingDecisionId: string | null;
+  evidence: {
+    chunkId: string;
+    conversationId: string;
+    conversationTitle: string;
+    sentAt: string;
+    sentence: string;
+    start: number;
+    end: number;
+  } | null;
+  message: string;
+};
+
+export type ResumeView = {
+  lastSession: { conversationId: string; title: string; lastActivity: string; messages: number } | null;
+  whereYouStopped: string[];
+  openTasks: { id: string; title: string; createdAt: string; priority: number }[];
+  decisions: Memory[];
+  fixes: Memory[];
+  driftAlerts: number;
+};
+
+export type ContextPack = { markdown: string; estimatedTokens: number; budget: number };
+
+export type TokenInfo = { id: string; name: string; prefix: string; createdAt: string; lastUsedAt: string | null };
+
+export type NewToken = { id: string; name: string; token: string; prefix: string; createdAt: string };
+
+export type IndexInfo = {
+  version: number;
+  stats: {
+    chunks: number;
+    conversations: number;
+    indexedChars: number;
+    autocompleteKeys: number;
+    threads: number;
+    buildMillis: number;
+    builtAt: string;
+  };
+};
+
+export type Thread = { threadId: string; conversations: { id: string; title: string }[] };
