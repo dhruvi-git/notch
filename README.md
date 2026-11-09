@@ -15,6 +15,8 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 | `web/` | Next.js frontend | Next (phase 3) |
 | `docs/` | Benchmark results and design notes | Ongoing |
 
+**First time?** Follow [`RUNNING.md`](RUNNING.md): setup, tests, and what to do if something fails.
+
 ## Prerequisites
 
 - JDK 21

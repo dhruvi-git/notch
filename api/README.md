@@ -216,6 +216,13 @@ App. Set the homepage to the web app's URL and the authorization callback URL to
 and `GITHUB_CLIENT_SECRET`. Locally, sign-in also works without GitHub through
 `/auth/dev-login`.
 
+## Live tests
+
+Two test classes run against a live API and are skipped otherwise:
+`WalkthroughSmokeTest` runs this README's walkthrough as 13 checked steps, and
+`CrossUserIsolationTest` is described below. See [`../RUNNING.md`](../RUNNING.md) for the
+commands.
+
 ## Proving users can't see each other's data
 
 `CrossUserIsolationTest` runs against a live API. Two test users are created; Alice makes a

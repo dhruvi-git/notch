@@ -102,6 +102,7 @@ public class ImportProcessor {
     private int extractMemories(Project project, UUID userId, List<MessageRepository.StoredMessage> stored,
                                 Map<UUID, String> text) {
         LlmClient extractor = project.isPrivate() ? offline : llm;
+        java.util.Set<String> known = knownMemories(project, userId);
         Map<UUID, List<MessageRepository.StoredMessage>> byConversation = new LinkedHashMap<>();
         for (MessageRepository.StoredMessage m : stored) {
             byConversation.computeIfAbsent(m.conversationId(), k -> new ArrayList<>()).add(m);
@@ -115,6 +116,7 @@ public class ImportProcessor {
             ExtractionRequest request = new ExtractionRequest(conv.get(0).conversationTitle(), source);
             for (ExtractedMemory e : extractor.extractMemories(request)) {
                 if (e.messageIndex() >= conv.size()) continue;  // ignore spans outside this request
+                if (!known.add(memoryKey(e.kind().name(), e.title()))) continue;  // already in the ledger
                 MessageRepository.StoredMessage src = conv.get(e.messageIndex());
                 int len = text.get(src.id()).length();
                 int start = Math.min(e.start(), len);
@@ -127,6 +129,22 @@ public class ImportProcessor {
             }
         }
         return count;
+    }
+
+    /**
+     * Memories the project already has, so the same decision mentioned in several chats (or a
+     * pasted copy of one) is recorded once.
+     */
+    private java.util.Set<String> knownMemories(Project project, UUID userId) {
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        for (MemoryRepository.StoredMemory m : memories.list(project.id(), userId, null, null, 5000)) {
+            keys.add(memoryKey(m.kind(), codec.open(m.payload(), userId).title()));
+        }
+        return keys;
+    }
+
+    static String memoryKey(String kind, String title) {
+        return kind + ":" + title.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").strip();
     }
 
     private UUID ownerOf(Job job) {

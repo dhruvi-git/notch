@@ -38,7 +38,7 @@ public class ApiException extends RuntimeException {
     }
 
     public static ApiException tooLarge(String message) {
-        return new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "file_too_large", message);
+        return new ApiException(HttpStatus.valueOf(413), "file_too_large", message);
     }
 
     public static ApiException limitReached(String message) {
