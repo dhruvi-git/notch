@@ -162,6 +162,14 @@ public final class ProjectIndex {
         return out;
     }
 
+    /** Every chunk containing {@code term} (case-insensitive), via the suffix array. */
+    public List<IndexedChunk> chunksContaining(String term) {
+        if (term == null || term.isBlank() || chunks.isEmpty()) return List.of();
+        List<IndexedChunk> out = new ArrayList<>();
+        for (CorpusIndex.DocMatches m : corpus.search(term, 0)) out.add(byId.get(UUID.fromString(m.docId())));
+        return out;
+    }
+
     /** Chunks holding an active decision, optionally only those since a time. */
     public List<IndexedChunk> decisionChunks(Instant since) {
         List<IndexedChunk> out = new ArrayList<>();

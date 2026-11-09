@@ -17,6 +17,15 @@ public interface LlmClient {
      */
     AnswerDraft answer(AnswerRequest request);
 
+    /**
+     * Final check on a drift candidate found by the rules: does {@code evidence} really go
+     * against {@code decision}? The offline client trusts the rules; a real model can reject
+     * false alarms. Only called for non-private projects.
+     */
+    default boolean confirmsDrift(String decision, String evidence) {
+        return true;
+    }
+
     /** A short name for logs and the UI, such as "offline" or a provider name. */
     String name();
 }

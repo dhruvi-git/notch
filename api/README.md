@@ -62,6 +62,28 @@ curl -s "localhost:8080/api/projects/$P/autocomplete?prefix=econ"
 curl -s localhost:8080/api/projects/$P/threads
 curl -s localhost:8080/api/projects/$P/index
 
+# 10. Import a later chat that drifts from earlier decisions
+curl -s -F file=@samples/analytics-chat.txt localhost:8080/api/projects/$P/imports
+#    After the background job, check for drift:
+curl -s localhost:8080/api/projects/$P/drift
+#    -> HIGH: "This decision chooses JWT, which the ... decision ruled out."
+#    -> MEDIUM: "This conversation starts using MongoDB, but on ... the project chose PostgreSQL instead."
+
+# 11. Resolve the JWT conflict: replace the sessions decision with the new one
+curl -s "localhost:8080/api/projects/$P/memories?kind=decision"     # find both ids
+curl -s -X POST localhost:8080/api/memories/<sessions-decision-id>/supersede \
+  -H 'Content-Type: application/json' -d '{"replacementId":"<jwt-decision-id>"}'
+curl -s localhost:8080/api/memories/<jwt-decision-id>/history     # oldest first
+
+# 12. Dismiss an alert you've decided is fine
+curl -s -X POST localhost:8080/api/projects/$P/drift/<alert-key>/dismiss
+
+# 13. Where you stopped, a context pack, and agent files
+curl -s localhost:8080/api/projects/$P/resume
+curl -s "localhost:8080/api/projects/$P/context-pack?budget=1500"
+curl -s -OJ localhost:8080/api/projects/$P/export/agents-md     # saves AGENTS.md
+curl -s -OJ localhost:8080/api/projects/$P/export/claude-md     # saves CLAUDE.md
+
 
 # Other endpoints
 curl -s localhost:8080/api/projects/$P/imports
@@ -84,6 +106,15 @@ curl -s localhost:8080/api/usage
 | GET | `/api/projects/{id}/autocomplete?prefix=&k=` | `@` suggestions from the radix tree |
 | GET | `/api/projects/{id}/threads` | Conversations linked by shared files or errors (union-find) |
 | GET | `/api/projects/{id}/index` | Index size, build time and version |
+| POST | `/api/projects/{id}/memories` | Add a decision, task or context by hand |
+| PATCH | `/api/memories/{memoryId}` | Mark a task `done` or `active` |
+| POST | `/api/memories/{memoryId}/supersede` | Replace a decision (`replacementId`, or `title` for a new one) |
+| GET | `/api/memories/{memoryId}/history` | A decision's history, oldest first |
+| GET | `/api/projects/{id}/drift` | Drift alerts against active decisions |
+| POST | `/api/projects/{id}/drift/{alertKey}/dismiss` | Hide an alert |
+| GET | `/api/projects/{id}/resume` | Where you stopped: last session, top tasks, decisions, fixes |
+| GET | `/api/projects/{id}/context-pack?budget=` | Markdown briefing for a new chat, within a token budget |
+| GET | `/api/projects/{id}/export/agents-md`, `/export/claude-md` | Agent instruction files as downloads |
 | GET | `/api/usage` | Remaining daily allowance |
 
 Errors use the RFC 9457 problem format with a stable `code`, for example:
@@ -126,6 +157,28 @@ merged and ranked by the engine's `HybridRanker`. `ask` keeps the best chunks th
 not point at a supplied chunk. The offline model answers by quoting source sentences, so every
 line it returns is grounded; decision questions are answered only with decision sentences.
 Questions with no matching sources do not use up the allowance.
+
+## How the decision features work
+
+**Capture.** Decisions extracted from imports (or added by hand) form a ledger. Replacing a
+decision marks it `SUPERSEDED` and links it to its replacement, so `history` shows how the
+plan changed. Replacement is checked: same project, an active decision, and no loops.
+
+**Guard.** `TechCatalog` maps tool names and aliases ("mongo", "mongoose") to one tool and a
+category; `DecisionFacts` reads what a decision chose and rejected. Drift detection then
+compares newer decisions with older ones (choosing a rejected tool, dropping a chosen one, or
+picking a different tool of the same kind), and searches later conversations for rejected
+tools with the suffix array. A sentence counts as drift only when it starts using the tool
+("npm install mongoose") rather than dismissing it ("instead of MongoDB"). Drift inside the
+same thread as the decision is rated HIGH. For non-private projects the language model gets a
+final say on each candidate. Alerts are computed on demand; only dismissals are stored.
+
+**Sync.** The context pack and the `AGENTS.md` / `CLAUDE.md` exports are written by
+`ContextPackBuilder`: decisions first (newest first, with what they rejected), then the top
+open tasks (ranked by randomized selection on recency and last-session relevance), where you
+stopped, and known fixes. Sections are added strictly in that order until the token budget
+runs out; agent files are also capped at 150 lines and tell the agent to raise conflicts
+before writing code.
 
 ## Configuration
 

@@ -1,0 +1,3 @@
+User: I'm starting the analytics service for the billing project. It just stores raw events.
+Assistant: Sounds good. For raw events you could set up MongoDB: run npm install mongoose and connect to MongoDB Atlas with your connection string.
+User: Great, let's do that. We decided to use JWT for the analytics API tokens.
