@@ -9,8 +9,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Offline memory extraction from cue phrases. Used in tests and development, and always for
- * private projects, whose text must never reach a language model.
+ * Offline memory extraction from cue phrases, used by {@link OfflineLlmClient}: in tests and
+ * development, and always for private projects, whose text must never reach a language model.
  *
  * <ul>
  *   <li><b>Decisions:</b> sentences such as "let's go with Postgres because …"; "because" gives
@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * </ul>
  * It favours precision: a missed memory costs less than a wrong one in the decision ledger.
  */
-public final class HeuristicMemoryExtractor implements LlmClient {
+public final class HeuristicMemoryExtractor {
 
     static final int MAX_PER_CONVERSATION = 50;
     static final int MAX_TITLE = 140;
@@ -52,7 +52,6 @@ public final class HeuristicMemoryExtractor implements LlmClient {
 
     private static final Pattern SENTENCE_END = Pattern.compile("(?<=[.!?])\\s+|\\n+");
 
-    @Override
     public List<ExtractedMemory> extractMemories(ExtractionRequest request) {
         List<ExtractedMemory> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -151,8 +150,4 @@ public final class HeuristicMemoryExtractor implements LlmClient {
         return t.length() <= MAX_TITLE ? t : t.substring(0, MAX_TITLE - 1) + "…";
     }
 
-    @Override
-    public String name() {
-        return "offline";
-    }
 }

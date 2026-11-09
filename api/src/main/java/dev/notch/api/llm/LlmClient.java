@@ -11,6 +11,12 @@ public interface LlmClient {
     /** Finds decisions, tasks, fixes and context in one conversation. */
     List<ExtractedMemory> extractMemories(ExtractionRequest request);
 
+    /**
+     * Answers a question using only the numbered contexts, citing them as [n]. Implementations
+     * must not cite anything outside the request; the caller drops citations that do.
+     */
+    AnswerDraft answer(AnswerRequest request);
+
     /** A short name for logs and the UI, such as "offline" or a provider name. */
     String name();
 }

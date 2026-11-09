@@ -42,6 +42,14 @@ public class ProjectRepository {
                 .optional();
     }
 
+    /** For background work outside a request; never exposed through the API. */
+    public Optional<Project> findAnyOwner(UUID id) {
+        return jdbc.sql("SELECT * FROM projects WHERE id = :id")
+                .param("id", id)
+                .query(ROW)
+                .optional();
+    }
+
     public List<Project> list(UUID userId) {
         return jdbc.sql("SELECT * FROM projects WHERE user_id = :userId ORDER BY created_at DESC")
                 .param("userId", userId)

@@ -11,7 +11,7 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 | Path | What it is | Status |
 |---|---|---|
 | `engine/` | Self-implemented algorithms, tests and benchmarks. Plain Java 21, no framework | Done |
-| `api/` | Spring Boot REST API: projects, imports, memories, background jobs | In progress (phase 2) |
+| `api/` | Spring Boot REST API: imports, memories, hybrid search, cited answers | In progress (phase 2) |
 | `web/` | Next.js frontend | After the API |
 | `docs/` | Benchmark results and design notes | Ongoing |
 

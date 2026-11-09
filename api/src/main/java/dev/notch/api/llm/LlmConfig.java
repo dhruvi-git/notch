@@ -12,18 +12,18 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class LlmConfig {
 
-    public static final String OFFLINE = "offlineExtractor";
+    public static final String OFFLINE = "offlineLlmClient";
 
     @Bean
     @Primary
     public LlmClient llmClient() {
-        return new HeuristicMemoryExtractor();
+        return new OfflineLlmClient();
     }
 
     /** Always available, and always used for private projects. */
     @Bean(OFFLINE)
-    public LlmClient offlineExtractor() {
-        return new HeuristicMemoryExtractor();
+    public LlmClient offlineLlmClient() {
+        return new OfflineLlmClient();
     }
 
     @Bean

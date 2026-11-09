@@ -66,6 +66,28 @@ public class ChunkRepository {
                 .list();
     }
 
+    /**
+     * The {@code limit} chunks nearest to {@code vector} by cosine distance (pgvector's HNSW
+     * index), with similarity = 1 - distance.
+     */
+    public java.util.Map<UUID, Double> nearest(UUID projectId, UUID userId, float[] vector, int limit) {
+        java.util.Map<UUID, Double> out = new java.util.LinkedHashMap<>();
+        jdbc.sql("""
+                SELECT id, 1 - (embedding <=> CAST(:v AS vector)) AS similarity
+                FROM chunks
+                WHERE project_id = :p AND user_id = :u AND embedding IS NOT NULL
+                ORDER BY embedding <=> CAST(:v AS vector)
+                LIMIT :limit""")
+                .param("v", Db.vector(vector))
+                .param("p", projectId)
+                .param("u", userId)
+                .param("limit", limit)
+                .query((rs, n) -> java.util.Map.entry(Db.uuid(rs, "id"), rs.getDouble("similarity")))
+                .list()
+                .forEach(e -> out.put(e.getKey(), e.getValue()));
+        return out;
+    }
+
     public void setEmbedding(UUID chunkId, float[] vector) {
         jdbc.sql("UPDATE chunks SET embedding = CAST(:v AS vector) WHERE id = :id")
                 .param("v", Db.vector(vector))

@@ -1,6 +1,7 @@
 package dev.notch.api.jobs;
 
 import dev.notch.api.ingest.ImportRepository;
+import dev.notch.api.search.IndexRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,11 +20,14 @@ public class JobWorker {
     private final JobRepository jobs;
     private final ImportProcessor importProcessor;
     private final ImportRepository imports;
+    private final IndexRegistry indexes;
 
-    public JobWorker(JobRepository jobs, ImportProcessor importProcessor, ImportRepository imports) {
+    public JobWorker(JobRepository jobs, ImportProcessor importProcessor, ImportRepository imports,
+                     IndexRegistry indexes) {
         this.jobs = jobs;
         this.importProcessor = importProcessor;
         this.imports = imports;
+        this.indexes = indexes;
     }
 
     @Scheduled(fixedDelayString = "${notch.jobs.poll-delay-ms:2000}")
@@ -44,6 +48,7 @@ public class JobWorker {
                 default -> throw new IllegalStateException("unknown job kind " + job.kind());
             }
             jobs.complete(job.id());
+            indexes.rebuildAsync(job.projectId());  // new chunks and decisions become searchable
             log.info("Job {} ({}) done in {} ms", job.id(), job.kind(), (System.nanoTime() - started) / 1_000_000);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName() + ": " + e.getMessage();

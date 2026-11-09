@@ -47,6 +47,22 @@ curl -s "localhost:8080/api/projects/$P/memories?kind=decision"
 curl -s "localhost:8080/api/projects/$P/memories?kind=task"
 curl -s "localhost:8080/api/projects/$P/memories?kind=fix"
 
+# 7. Search: exact error codes, stems ("caching" finds "cache") and "why this result" scores
+curl -s "localhost:8080/api/projects/$P/search?q=ECONNREFUSED"
+curl -s "localhost:8080/api/projects/$P/search?q=how+do+we+rate+limit"
+
+# 8. Ask for a cited answer (uses one of 30 daily questions)
+curl -s -X POST localhost:8080/api/projects/$P/ask \
+  -H 'Content-Type: application/json' -d '{"question":"What did we decide about the database?"}'
+#    -> "Let's go with Postgres instead of MongoDB because we need joins ... [1]"
+#       with citation 1 pointing at the exact sentence in the ChatGPT conversation.
+
+# 9. Autocomplete, threads and index statistics
+curl -s "localhost:8080/api/projects/$P/autocomplete?prefix=econ"
+curl -s localhost:8080/api/projects/$P/threads
+curl -s localhost:8080/api/projects/$P/index
+
+
 # Other endpoints
 curl -s localhost:8080/api/projects/$P/imports
 curl -s localhost:8080/api/projects/$P/conversations
@@ -63,6 +79,11 @@ curl -s localhost:8080/api/usage
 | GET | `/api/projects/{id}/imports[/{importId}]` | Import reports and status |
 | GET | `/api/projects/{id}/conversations` | Imported conversations with message counts |
 | GET | `/api/projects/{id}/memories` | Memories; filters `kind`, `status`, `limit` |
+| GET | `/api/projects/{id}/search?q=&k=&since=` | Hybrid search with highlights and per-signal scores (`why`) |
+| POST | `/api/projects/{id}/ask` | Cited answer (`{"question": "..."}`); uses the daily allowance |
+| GET | `/api/projects/{id}/autocomplete?prefix=&k=` | `@` suggestions from the radix tree |
+| GET | `/api/projects/{id}/threads` | Conversations linked by shared files or errors (union-find) |
+| GET | `/api/projects/{id}/index` | Index size, build time and version |
 | GET | `/api/usage` | Remaining daily allowance |
 
 Errors use the RFC 9457 problem format with a stable `code`, for example:
@@ -90,6 +111,22 @@ Steps 1–5 run in one transaction, so a failed import leaves nothing behind and
 up the daily allowance. Private projects are never embedded, and their memories always come
 from the offline extractor.
 
+## How search and answers work
+
+Each project has an in-memory index built from its decrypted chunks: a suffix array for exact
+matching, a radix tree of code-shaped keys for autocomplete, and a union-find over shared
+files and errors for threads. The first search builds it; after each import the background
+job rebuilds it while searches keep using the old one, then swaps it in.
+
+A query is parsed into exact terms (stems for ordinary words, identifiers kept whole), quoted
+phrases, soft expansions ("database" also looks for "postgres"), a decision flag ("what did
+we decide") and a time window ("last week"). Exact and semantic (pgvector) candidates are
+merged and ranked by the engine's `HybridRanker`. `ask` keeps the best chunks that fit a
+3,000-token budget, asks the model to answer only from them, and drops any citation that does
+not point at a supplied chunk. The offline model answers by quoting source sentences, so every
+line it returns is grounded; decision questions are answered only with decision sentences.
+Questions with no matching sources do not use up the allowance.
+
 ## Configuration
 
 | Variable | Default (local profile) | Notes |
@@ -102,8 +139,11 @@ from the offline extractor.
 
 ## Current limits
 
-- The language model and embeddings are offline stand-ins (`HeuristicMemoryExtractor`,
-  `HashingEmbeddingClient`). Real providers plug in through `LlmConfig`.
+- The language model and embeddings are offline stand-ins (`OfflineLlmClient`,
+  `HashingEmbeddingClient`). Real providers plug in through `LlmConfig`. Offline semantic
+  search only matches shared words, which is why the query expansion exists.
+- Indexes live in each API instance's memory. With several instances, each builds its own;
+  that is fine at this scale.
 - Conversation titles are secret-scanned but stored in plain text; message bodies and memory
   payloads are encrypted.
 - Only the local profile has a user. GitHub sign-in arrives in phase 2f.
