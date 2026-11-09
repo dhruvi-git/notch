@@ -20,7 +20,7 @@ public class DevUserSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         jdbc.sql("INSERT INTO users (id, handle) VALUES (:id, 'dev') ON CONFLICT (id) DO NOTHING")
-                .param("id", DevCurrentUser.DEV_USER_ID)
+                .param("id", DevUser.ID)
                 .update();
     }
 }

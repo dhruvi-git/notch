@@ -2,3 +2,6 @@
 notch:
   crypto:
     key: ${NOTCH_CRYPTO_KEY}
+  auth:
+    state-secret: ${NOTCH_AUTH_SECRET}
+    dev-fallback: false

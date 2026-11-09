@@ -39,3 +39,11 @@ notch:
     max-chunk-chars: 1200
   jobs:
     poll-delay-ms: 2000
+  auth:
+    state-secret: ${NOTCH_AUTH_SECRET:}
+    session-days: 30
+    dev-fallback: false   # true only in the local profile
+    github:
+      client-id: ${GITHUB_CLIENT_ID:}
+      client-secret: ${GITHUB_CLIENT_SECRET:}
+      callback-url: ${GITHUB_CALLBACK_URL:http://localhost:8080/auth/github/callback}

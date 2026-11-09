@@ -13,8 +13,9 @@ mvn -q install -DskipTests           # builds engine and api
 mvn -pl api spring-boot:run          # starts on http://localhost:8080 with the "local" profile
 ```
 
-The `local` profile uses a seeded developer account and a development encryption key, so no
-environment variables are needed. Check it is up: `curl localhost:8080/actuator/health`.
+The `local` profile needs no environment variables: it uses a development encryption key, and
+requests without a token act as a seeded developer account, so the `curl` commands below work
+as written. Check it is up: `curl localhost:8080/actuator/health`.
 
 ## Walkthrough with the sample data
 
@@ -115,6 +116,15 @@ curl -s localhost:8080/api/usage
 | GET | `/api/projects/{id}/resume` | Where you stopped: last session, top tasks, decisions, fixes |
 | GET | `/api/projects/{id}/context-pack?budget=` | Markdown briefing for a new chat, within a token budget |
 | GET | `/api/projects/{id}/export/agents-md`, `/export/claude-md` | Agent instruction files as downloads |
+| GET | `/auth/config` | Which sign-in options this server offers (public) |
+| GET | `/auth/github/start?redirect=` | Starts GitHub sign-in (public) |
+| GET | `/auth/github/callback` | GitHub returns here; redirects to the web app with a one-time code (public) |
+| POST | `/auth/exchange` | Trades the one-time code for a session token (public) |
+| POST | `/auth/dev-login` | Local profile only: a session token for a test user, `{"handle": "alice"}` |
+| POST | `/api/logout` | Revokes the current session token |
+| GET | `/api/me` | The signed-in user |
+| GET, POST | `/api/tokens` | List or create personal tokens for the extensions (shown once) |
+| DELETE | `/api/tokens/{tokenId}` | Revoke a personal token |
 | GET | `/api/usage` | Remaining daily allowance |
 
 Errors use the RFC 9457 problem format with a stable `code`, for example:
@@ -180,6 +190,47 @@ stopped, and known fixes. Sections are added strictly in that order until the to
 runs out; agent files are also capped at 150 lines and tell the agent to raise conflicts
 before writing code.
 
+## Sign-in and tokens
+
+Every `/api/**` request carries `Authorization: Bearer <token>`. The web app and the API are on
+different domains, so the API issues its own tokens instead of relying on cookies, which
+browsers increasingly block across sites.
+
+1. The web app sends the browser to `/auth/github/start?redirect=<web callback>`. The redirect
+   must be one of the allowed origins (no open redirects).
+2. The API redirects to GitHub with a signed, expiring `state` (HMAC-SHA256), asking only for
+   `read:user`.
+3. GitHub returns to `/auth/github/callback`. The API verifies the state, reads the GitHub
+   user, creates or updates the account, and redirects to the web app with a **one-time code**
+   (valid 60 seconds, usable once).
+4. The web app posts the code to `/auth/exchange` and gets a 30-day session token. The token
+   itself never appears in a URL, so it can't leak through history or server logs.
+
+Personal tokens (`ntch_pat_…`) for the Chrome and VS Code extensions are created in the app,
+shown once, and can be revoked. Only SHA-256 hashes of tokens are stored. `AuthFilter`
+rejects missing, malformed, expired and revoked tokens with a 401 before any controller runs.
+
+**Setting up GitHub sign-in:** GitHub → Settings → Developer settings → OAuth Apps → New OAuth
+App. Set the homepage to the web app's URL and the authorization callback URL to
+`<api-url>/auth/github/callback`, then put the client id and secret in `GITHUB_CLIENT_ID`
+and `GITHUB_CLIENT_SECRET`. Locally, sign-in also works without GitHub through
+`/auth/dev-login`.
+
+## Proving users can't see each other's data
+
+`CrossUserIsolationTest` runs against a live API. Two test users are created; Alice makes a
+project, imports a file, records a decision and creates a token. Bob then tries every endpoint
+against Alice's ids (reading, searching, asking, importing, editing memories, revoking her
+token) and must get 404 every time: never 403, which would confirm the id exists. It also
+checks that malformed, unknown and revoked tokens get 401.
+
+```bash
+mvn -pl api spring-boot:run                                          # terminal 1
+NOTCH_API_URL=http://localhost:8080 mvn -pl api test -Dtest=CrossUserIsolationTest   # terminal 2
+```
+
+Without `NOTCH_API_URL` the test is skipped, so `mvn test` never needs a running server.
+
 ## Configuration
 
 | Variable | Default (local profile) | Notes |
@@ -188,7 +239,10 @@ before writing code.
 | `DATABASE_USER`, `DATABASE_PASSWORD` | `notch` / `notch` | |
 | `NOTCH_CRYPTO_KEY` | development key | Required in `cloud`. `openssl rand -base64 32` |
 | `NOTCH_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated |
-| `SPRING_PROFILES_ACTIVE` | `local` | `cloud` rejects all requests until sign-in exists (phase 2f) |
+| `NOTCH_AUTH_SECRET` | development secret | Required in `cloud`; 32+ characters, signs the OAuth state |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | unset | GitHub sign-in is disabled until both are set |
+| `GITHUB_CALLBACK_URL` | `http://localhost:8080/auth/github/callback` | Must match the OAuth app |
+| `SPRING_PROFILES_ACTIVE` | `local` | `cloud` requires a token on every `/api` request |
 
 ## Current limits
 
@@ -199,4 +253,5 @@ before writing code.
   that is fine at this scale.
 - Conversation titles are secret-scanned but stored in plain text; message bodies and memory
   payloads are encrypted.
-- Only the local profile has a user. GitHub sign-in arrives in phase 2f.
+- Authentication is a small explicit servlet filter rather than Spring Security; it covers
+  bearer tokens only, which is all this API needs.

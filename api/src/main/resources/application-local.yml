@@ -2,3 +2,8 @@
 notch:
   crypto:
     key: ${NOTCH_CRYPTO_KEY:8E562WKaIVJiiHQHqgUqd/FgPF+BZE/uJoh9z/Xw094=}
+  auth:
+    # Requests without a token act as the seeded developer account; POST /auth/dev-login gives
+    # tokens for other test users. Never enable outside local development.
+    dev-fallback: true
+    state-secret: ${NOTCH_AUTH_SECRET:local-development-state-secret-not-for-production}
