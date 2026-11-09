@@ -1,0 +1,115 @@
+.page {
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1.25rem, 4vw, 3.5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.main {
+  max-width: 44rem;
+  padding: 3rem clamp(1.25rem, 4vw, 3.5rem) 4rem;
+}
+
+.intro {
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+  max-width: 52ch;
+}
+
+.form {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 2rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface-raised);
+}
+
+.formLabel {
+  font-weight: 600;
+  font-size: var(--t-sm);
+}
+
+.formRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.check {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.check input {
+  margin-top: 0.25rem;
+  accent-color: var(--accent);
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--t-sm);
+}
+
+.list {
+  list-style: none;
+  margin: 2rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0.25rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.row:hover .name {
+  color: var(--accent);
+}
+
+.name {
+  font-size: var(--t-lg);
+  font-weight: 600;
+}
+
+.meta {
+  display: flex;
+  gap: 0.75rem;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.private {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .formRow {
+    flex-direction: column;
+  }
+
+  .row {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}

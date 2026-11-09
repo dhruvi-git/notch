@@ -8,3 +8,5 @@ out/
 .env
 node_modules/
 .next/
+tsconfig.tsbuildinfo
+*.tsbuildinfo

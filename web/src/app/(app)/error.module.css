@@ -1,0 +1,7 @@
+.wrap {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  max-width: 36rem;
+  padding: 4rem clamp(1.25rem, 5vw, 4rem);
+}

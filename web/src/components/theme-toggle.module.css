@@ -1,0 +1,27 @@
+.toggle {
+  display: inline-flex;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface-sunken);
+}
+
+.option {
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.option[data-active="true"] {
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

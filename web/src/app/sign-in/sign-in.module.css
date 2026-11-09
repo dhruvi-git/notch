@@ -1,0 +1,136 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 30rem) minmax(0, 28rem);
+  justify-content: center;
+  align-items: center;
+  gap: clamp(2rem, 7vw, 7rem);
+  padding: 3rem clamp(1.25rem, 5vw, 4rem);
+}
+
+.panel {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--t-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.wordmark svg {
+  fill: var(--ink);
+}
+
+.title {
+  font-size: var(--t-3xl);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  max-width: 18ch;
+}
+
+.lede {
+  color: var(--ink-soft);
+  font-size: var(--t-lg);
+  line-height: 1.5;
+  max-width: 34ch;
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-raised);
+  border-radius: 0 var(--r-control) var(--r-control) 0;
+  font-size: var(--t-sm);
+}
+
+.actions {
+  display: grid;
+  gap: 1.25rem;
+  justify-items: start;
+  margin-top: 0.5rem;
+}
+
+.devForm {
+  display: grid;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 24rem;
+}
+
+.devLabel {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.devRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* The one memorable element: decisions quoted with a highlighter, as Notch records them. */
+.specimen {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.entry {
+  margin: 0;
+  padding: 1.5rem 1.5rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface-raised);
+}
+
+.entry blockquote {
+  margin: 0;
+  font-size: var(--t-lg);
+  line-height: 1.6;
+}
+
+.entry figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin-top: 1rem;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.drift {
+  margin-left: clamp(0rem, 3vw, 2.5rem);
+  border-style: dashed;
+}
+
+.cite {
+  margin-left: 0.15em;
+  font-size: 0.65em;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.status {
+  font-weight: 600;
+  color: var(--ok);
+}
+
+.statusWarn {
+  font-weight: 600;
+  color: var(--warn);
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: minmax(0, 32rem);
+    align-content: start;
+    padding-top: 3rem;
+  }
+
+  .specimen {
+    order: 2;
+  }
+}

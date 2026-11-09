@@ -66,6 +66,19 @@ $env:NOTCH_API_URL="http://localhost:8080"; mvn -pl api test "-Dtest=Walkthrough
 
 Both create fresh test users, so you can run them as often as you like.
 
+## 6. Start the web app
+
+Needs Node.js 20.9 or newer. With the API still running:
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Open http://localhost:3000 and use **Sign in** under "Local development". Import the files
+in `samples/` to see the flow end to end.
+
 ## If something fails
 
 | Symptom | Likely cause | Fix |
@@ -78,6 +91,7 @@ Both create fresh test users, so you can run them as often as you like.
 | Flyway `checksum mismatch` | A migration changed after it ran | Local only: `docker compose down -v` (deletes local data), then start again |
 | Live tests say `dev-login needs ... local profile` | API started with another profile | Start without `SPRING_PROFILES_ACTIVE`, or set it to `local` |
 | Live tests are all skipped | `NOTCH_API_URL` not set in that terminal | Set it as shown above |
+| Web app says the server isn't reachable | API not running, or on another port | Start the API, or set `NOTCH_API_URL` in `web/.env.local` |
 
 ## What to send back if something breaks
 

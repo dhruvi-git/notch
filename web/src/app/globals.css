@@ -1,0 +1,257 @@
+/*
+ * Notch design tokens.
+ * Light and dark are equal themes. Yellow (--mark) is reserved for highlighting quoted
+ * source text, the way a highlighter is used; violet (--accent) only marks things you can act on.
+ */
+
+:root {
+  color-scheme: light;
+  --surface: #edeff5;          /* fog */
+  --surface-raised: #f7f8fb;
+  --surface-sunken: #e2e5ee;
+  --ink: #272c42;              /* graphite */
+  --ink-soft: #565c7a;         /* secondary text, AA on fog */
+  --ink-faint: #868ca6;        /* slate: borders, icons, placeholder */
+  --line: #d3d7e3;
+  --line-strong: #b9bed0;
+  --accent: #4b52d1;           /* signal violet, darkened for text contrast on light */
+  --accent-hover: #3d43b8;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2e3fb;
+  --mark: #f2e25c;             /* marker yellow: quoted sources only */
+  --mark-ink: #272c42;
+  --ok: #2f7d5b;
+  --warn: #a35a12;
+  --danger: #b4322f;
+  --danger-soft: #f6e1e0;
+
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Fragment Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Type scale: ratio 1.2 from a 16px base. */
+  --t-xs: 0.8125rem;   /* 13 */
+  --t-sm: 0.875rem;    /* 14 */
+  --t-md: 1rem;        /* 16 */
+  --t-lg: 1.1875rem;   /* 19 */
+  --t-xl: 1.4375rem;   /* 23 */
+  --t-2xl: 1.75rem;    /* 28 */
+  --t-3xl: 2.125rem;   /* 34 */
+
+  --r-control: 6px;
+  --r-panel: 10px;
+  --measure: 72ch;
+  --rail: 15rem;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #171b30;          /* night indigo */
+  --surface-raised: #1e2340;
+  --surface-sunken: #12152a;
+  --ink: #e6e8f2;
+  --ink-soft: #a6abc6;
+  --ink-faint: #6f7596;
+  --line: #2c3254;
+  --line-strong: #3c4370;
+  --accent: #8f95f7;
+  --accent-hover: #a6abfa;
+  --accent-ink: #12152a;
+  --accent-soft: #2a2f5c;
+  --mark: #f2e25c;
+  --mark-ink: #171b30;
+  --ok: #6cc59b;
+  --warn: #e3a35e;
+  --danger: #f08a85;
+  --danger-soft: #3a2232;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface: #171b30;
+    --surface-raised: #1e2340;
+    --surface-sunken: #12152a;
+    --ink: #e6e8f2;
+    --ink-soft: #a6abc6;
+    --ink-faint: #6f7596;
+    --line: #2c3254;
+    --line-strong: #3c4370;
+    --accent: #8f95f7;
+    --accent-hover: #a6abfa;
+    --accent-ink: #12152a;
+    --accent-soft: #2a2f5c;
+    --mark: #f2e25c;
+    --mark-ink: #171b30;
+    --ok: #6cc59b;
+    --warn: #e3a35e;
+    --danger: #f08a85;
+    --danger-soft: #3a2232;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-md);
+  line-height: 1.55;
+  font-feature-settings: "kern", "liga", "tnum" 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--t-2xl);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+h2 {
+  font-size: var(--t-lg);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+code, kbd, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+mark {
+  background: var(--mark);
+  color: var(--mark-ink);
+  border-radius: 2px;
+  padding: 0 0.12em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* Buttons: one primary per view; everything else is quiet. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: var(--accent-ink);
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.btn-quiet:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.field {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-md);
+}
+
+.field::placeholder {
+  color: var(--ink-faint);
+}
+
+.field:focus-visible {
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

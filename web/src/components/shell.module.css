@@ -1,0 +1,209 @@
+.shell {
+  display: grid;
+  grid-template-columns: var(--rail) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  padding: 1.25rem 1rem 1rem;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.railTop {
+  display: grid;
+  gap: 1rem;
+}
+
+.railBottom {
+  margin-top: auto;
+  display: grid;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.private {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.usage {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--r-control);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.navLink:hover {
+  color: var(--ink);
+  background: var(--surface-sunken);
+}
+
+.navLink[aria-current="page"] {
+  color: var(--ink);
+  background: var(--surface-raised);
+  box-shadow: inset 2px 0 0 var(--accent);
+  font-weight: 600;
+}
+
+.badge {
+  min-width: 1.4rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Project switcher */
+.switcher {
+  position: relative;
+}
+
+.switcherButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface-raised);
+  font-weight: 600;
+  font-size: var(--t-sm);
+  cursor: pointer;
+  list-style: none;
+}
+
+.switcherButton::-webkit-details-marker {
+  display: none;
+}
+
+.switcherName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcherMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 0.35rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-panel);
+  background: var(--surface-raised);
+  box-shadow: 0 8px 24px rgb(23 27 48 / 0.12);
+}
+
+.switcherMenu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.switcherMenu a {
+  display: block;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--t-sm);
+}
+
+.switcherMenu a:hover {
+  background: var(--surface-sunken);
+}
+
+.switcherMenu a[aria-current="true"] {
+  font-weight: 600;
+}
+
+.switcherAll {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft) !important;
+}
+
+.main {
+  min-width: 0;
+  padding: 2.5rem clamp(1.25rem, 4vw, 3.5rem) 4rem;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: static;
+    height: auto;
+    gap: 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.25rem;
+  }
+
+  .navLink[aria-current="page"] {
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  .railTop {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .private {
+    grid-column: 1 / -1;
+  }
+
+  .railBottom {
+    margin-top: 0;
+    padding-top: 0.75rem;
+  }
+
+  /* The import panel shows what's left; on a phone the rail stays short. */
+  .usage {
+    display: none;
+  }
+
+  .main {
+    padding-top: 1.5rem;
+  }
+}
