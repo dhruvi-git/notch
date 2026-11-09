@@ -26,7 +26,22 @@ so far with sample data, keeps everything in memory, and never ships with the ap
 |---|---|---|
 | `NOTCH_API_URL` | `http://localhost:8080` | Read on the server only |
 
-Checks: `npm run typecheck` and `npm run build`.
+Checks: `npm test` (unit tests for highlighting and answer parsing; Node 22.6 or newer),
+`npm run typecheck` and `npm run build`.
+
+## Screens so far
+
+- **Recall** (the default view): results update as you type; **Ask** writes an answer whose
+  every line cites a source, with the quoted span highlighted in context. Matches are
+  highlighted as whole words, the search explains how it read the query (prefixes for stems,
+  tool names for expansions, time windows), and each result can show "why this result": the
+  four ranking signals from the engine's hybrid ranker. `@` suggests files, errors and chat
+  titles from the radix tree; arrow keys, Enter and Esc work as expected. The query stays in
+  the address bar, so searches can be shared.
+- **Ledger:** decisions in force with what they ruled out, tasks you can tick off, fixes, and
+  replaced decisions. Replacing a decision (with an existing one or a new one) keeps its
+  history, shown oldest first. Decisions and tasks can be recorded by hand.
+- **Imports** and **Conversations**, from phase 3a.
 
 ## How it talks to the API
 
@@ -74,4 +89,5 @@ src/app/            routes: sign-in, auth handlers, API proxy, projects, project
 src/components/     Shell (rail), Brand, ProjectSwitcher, NavLinks, UserMenu, ThemeToggle
 src/lib/            API clients, types mirroring the Java records, formatting helpers
 scripts/            mock API for interface work
+tests/              unit tests for text helpers (node:test)
 ```

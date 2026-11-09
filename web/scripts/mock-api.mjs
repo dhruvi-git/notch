@@ -44,6 +44,157 @@ function seed(user) {
   );
 }
 
+
+// Search fixtures, taken from the sample conversations in /samples.
+const CHUNKS = [
+  { conv: "Billing service: choosing a database", role: "user", days: 33, decision: false,
+    text: "We're building the billing service. Mongo or Postgres? We need invoices joined to customers and line items." },
+  { conv: "Billing service: choosing a database", role: "assistant", days: 33, decision: false,
+    text: "For relational data like invoices, customers and line items, Postgres fits better. You get joins, transactions and constraints. Mongo would push those joins into application code." },
+  { conv: "Billing service: choosing a database", role: "user", days: 33, decision: true,
+    text: "Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments." },
+  { conv: "Billing service: choosing a database", role: "user", days: 33, decision: false,
+    text: "Running the app now:\nError: connect ECONNREFUSED 127.0.0.1:5432" },
+  { conv: "Billing service: choosing a database", role: "assistant", days: 33, decision: false,
+    text: "The issue is Postgres isn't running locally. Start it with `docker compose up -d` and check with `docker compose ps`. If it still fails, confirm the port mapping is 5432:5432." },
+  { conv: "Rate limiting the public API", role: "assistant", days: 26, decision: false,
+    text: "A token bucket per API key works well. Store buckets in Redis so limits hold across instances. Start with 60 requests per minute and a burst of 20." },
+  { conv: "Rate limiting the public API", role: "user", days: 26, decision: true,
+    text: "We decided to use a Redis token bucket rather than an in-memory limiter, since we run three instances behind the load balancer." },
+  { conv: "Auth refactor: sessions vs JWT", role: "assistant", days: 1, decision: false,
+    text: "With one first-party frontend, server-side sessions are simpler and safer: you can revoke them instantly and keep tokens out of JavaScript. JWTs shine when many services verify tokens independently." },
+  { conv: "Auth refactor: sessions vs JWT", role: "user", days: 1, decision: true,
+    text: "We chose server-side sessions instead of JWT because we need instant logout and only have one frontend." },
+  { conv: "Auth refactor: sessions vs JWT", role: "assistant", days: 1, decision: false,
+    text: "The problem is the session is undefined on the first render, before the fetch resolves. Guard it with optional chaining: session?.user, and render a loading state until the session request finishes." },
+].map((c, i) => ({ ...c, id: `chunk-${i}`, sentAt: daysAgo(c.days) }));
+
+const KEYS = ["ECONNREFUSED", "TypeError", "session?.user", "docker compose up -d", "src/db/pool.ts", "src/auth/session.ts",
+  "Billing service: choosing a database", "Rate limiting the public API", "Auth refactor: sessions vs JWT", "X-RateLimit-Remaining"];
+
+const STOP = new Set("a an the and or of to in on at for with by from about is are was were be do does did we our i you it this that what which how should would could can will use any".split(" "));
+const DECIDE = /^(decide|decided|decision|decisions|chose|choose|pick|picked|settle|settled|agreed)$/;
+const EXPAND = { database: ["postgre", "mysql", "mongo", "sqlite"], cach: ["redis"], auth: ["jwt", "session", "login"] };
+
+function parseQuery(q) {
+  const words = q.toLowerCase().split(/[^\p{L}\p{N}_./:?-]+/u).map((w) => w.replace(/^[.:/?-]+|[.:/?-]+$/g, "")).filter(Boolean);
+  const decisionIntent = words.some((w) => DECIDE.test(w));
+  const terms = [];
+  for (const w of words) {
+    if (DECIDE.test(w) || STOP.has(w) || w.length < 3) continue;
+    let t = w;
+    if (t.length >= 6) for (const suf of ["ing", "ed", "s"]) if (t.endsWith(suf) && t.length - suf.length >= 4) { t = t.slice(0, -suf.length); break; }
+    if (!terms.includes(t)) terms.push(t);
+  }
+  const expansions = terms.flatMap((t) => EXPAND[t] ?? []).filter((e) => !terms.includes(e));
+  return { terms, expansions, decisionIntent };
+}
+
+function spansOf(text, patterns) {
+  const lower = text.toLowerCase(), out = [];
+  for (const p of patterns) { let i = lower.indexOf(p); while (i !== -1) { out.push([i, i + p.length]); i = lower.indexOf(p, i + 1); } }
+  return out;
+}
+
+function search(q) {
+  const started = Date.now();
+  const { terms, expansions, decisionIntent } = parseQuery(q);
+  const all = [...terms, ...expansions];
+  const scored = [];
+  for (const c of CHUNKS) {
+    const spans = spansOf(c.text, all);
+    const exactRaw = spansOf(c.text, terms).length + 0.5 * spansOf(c.text, expansions).length;
+    const include = spans.length > 0 || (decisionIntent && terms.length === 0 && c.decision);
+    if (!include) continue;
+    scored.push({ c, spans, exactRaw });
+  }
+  const maxExact = Math.max(1, ...scored.map((s) => s.exactRaw));
+  const w = decisionIntent ? { exact: 0.3, semantic: 0.3, recency: 0.1, decision: 0.3 } : { exact: 0.4, semantic: 0.35, recency: 0.1, decision: 0.15 };
+  const hits = scored.map(({ c, spans, exactRaw }) => {
+    const why = {
+      exact: w.exact * (exactRaw / maxExact),
+      semantic: w.semantic * Math.min(1, 0.25 + 0.15 * spans.length),
+      recency: w.recency * Math.pow(0.5, c.days / 14),
+      decision: c.decision ? w.decision : 0,
+    };
+    const score = why.exact + why.semantic + why.recency + why.decision;
+    return { source: { chunkId: c.id, messageId: c.id + "-m", conversationId: c.conv, conversationTitle: c.conv, role: c.role, sentAt: c.sentAt },
+      text: c.text, highlights: spans, score, why, decision: c.decision, threadId: c.conv };
+  }).sort((a, b) => b.score - a.score).slice(0, 10);
+  return { query: q, terms, phrases: [], expansions, decisionIntent, since: null, hits,
+    exactCandidates: scored.length, semanticCandidates: Math.min(5, CHUNKS.length), indexVersion: 3, tookMillis: Math.max(1, Date.now() - started) + 3 };
+}
+
+function ask(q) {
+  const res = search(q);
+  const contexts = res.hits.slice(0, 6);
+  const patterns = [...res.terms, ...res.expansions];
+  const cue = /decided|go with|chose|we'll use|settled/i;
+  const picked = [];
+  contexts.forEach((h, ci) => {
+    for (const m of h.text.matchAll(/[^.!?\n]+[.!?]?/g)) {
+      const sentence = m[0].trim();
+      if (!sentence || sentence.endsWith("?")) continue;
+      const lower = sentence.toLowerCase();
+      const hitsTerms = patterns.some((p) => lower.includes(p));
+      if (res.decisionIntent ? cue.test(sentence) && (hitsTerms || patterns.length === 0) : hitsTerms) {
+        const start = h.text.indexOf(sentence);
+        picked.push({ ci, sentence, start, end: start + sentence.length });
+      }
+    }
+  });
+  const chosen = picked.slice(0, 4);
+  if (chosen.length === 0) {
+    return { answer: "I couldn't find anything in this project that answers that. Try other words, or import the conversation where it was discussed.",
+      grounded: false, citations: [], model: "offline", contextChunks: contexts.length, remainingQuestions: 0 };
+  }
+  const numbers = new Map();
+  const lines = [res.decisionIntent ? "Here's what this project decided:" : "Here's what I found in this project:"];
+  const citations = [];
+  for (const p of chosen) {
+    if (!numbers.has(p.ci)) numbers.set(p.ci, numbers.size + 1);
+    const n = numbers.get(p.ci), h = contexts[p.ci];
+    lines.push(`- ${p.sentence} [${n}]`);
+    citations.push({ n, source: h.source, text: h.text, start: p.start, end: p.end, quote: p.sentence });
+  }
+  return { answer: lines.join("\n"), grounded: true, citations, model: "offline", contextChunks: contexts.length, remainingQuestions: 0 };
+}
+
+const MEMORIES = [
+  { kind: "DECISION", title: "Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments.",
+    rationale: "we need joins and real transactions for payments", rejectedOptions: ["MongoDB"], conv: "Billing service: choosing a database", days: 33 },
+  { kind: "DECISION", title: "We decided to use a Redis token bucket rather than an in-memory limiter, since we run three instances behind the load balancer.",
+    rationale: "we run three instances behind the load balancer", rejectedOptions: ["an in-memory limiter"], conv: "Rate limiting the public API", days: 26 },
+  { kind: "DECISION", title: "We'll use Stripe webhooks for payment status, since polling the Stripe API would hit their rate limits.",
+    rationale: "polling the Stripe API would hit their rate limits", rejectedOptions: [], conv: "Billing service notes", days: 18 },
+  { kind: "DECISION", title: "We chose server-side sessions instead of JWT because we need instant logout and only have one frontend.",
+    rationale: "we need instant logout and only have one frontend", rejectedOptions: ["JWT"], conv: "Auth refactor: sessions vs JWT", days: 1 },
+  { kind: "TASK", title: "add rate limit headers (X-RateLimit-Remaining) to every response", conv: "Rate limiting the public API", days: 26 },
+  { kind: "TASK", title: "alert when a key hits the limit 100 times in an hour", conv: "Rate limiting the public API", days: 26 },
+  { kind: "TASK", title: "Next step is writing the initial migration for customers, invoices and line_items.", conv: "Billing service: choosing a database", days: 33 },
+  { kind: "TASK", title: "Still need to add CSRF protection to the session cookie.", conv: "Auth refactor: sessions vs JWT", days: 1 },
+  { kind: "FIX", title: "Fix: Error: connect ECONNREFUSED 127.0.0.1:5432",
+    body: "The issue is Postgres isn't running locally. Start it with `docker compose up -d` and check with `docker compose ps`.", conv: "Billing service: choosing a database", days: 33 },
+  { kind: "FIX", title: "Fix: TypeError: Cannot read properties of undefined (reading 'user')",
+    body: "The problem is the session is undefined on the first render, before the fetch resolves. Guard it with optional chaining: session?.user.", conv: "Auth refactor: sessions vs JWT", days: 1 },
+];
+const memories = new Map();   // projectId -> Memory[]
+function memoriesFor(projectId) {
+  if (!memories.has(projectId)) {
+    memories.set(projectId, MEMORIES.map((m, i) => ({ id: randomUUID(), kind: m.kind, status: "ACTIVE", title: m.title, body: m.body ?? null,
+      rationale: m.rationale ?? null, rejectedOptions: m.rejectedOptions ?? [], supersededBy: null, sourceMessageId: `msg-${i}`,
+      conversationId: m.conv, conversationTitle: m.conv, createdAt: daysAgo(m.days) })));
+  }
+  return memories.get(projectId);
+}
+function findMemory(userId, id) {
+  for (const [projectId, list] of memories) {
+    const p = projects.find((x) => x.id === projectId);
+    if (p && p.ownerId === userId) { const m = list.find((x) => x.id === id); if (m) return { m, list }; }
+  }
+  return null;
+}
+
 function send(res, status, body) {
   res.writeHead(status, { "content-type": status >= 400 ? "application/problem+json" : "application/json" });
   res.end(body === undefined ? "" : JSON.stringify(body));
@@ -104,6 +255,40 @@ createServer(async (req, res) => {
     return send(res, 201, out);
   }
 
+
+  let mm = m(/^\/api\/memories\/([^/]+)(\/history|\/supersede)?$/);
+  if (mm) {
+    const found = findMemory(user.id, mm[1]);
+    if (!found) return problem(res, 404, "not_found", "Memory was not found.");
+    const { m: mem, list } = found;
+    if (!mm[2] && req.method === "PATCH") {
+      const body = JSON.parse((await readBody(req)).toString() || "{}");
+      if (mem.kind === "DECISION") return problem(res, 400, "use_supersede", "To retire a decision, mark it as replaced by a newer one.");
+      mem.status = String(body.status).toUpperCase() === "DONE" ? "DONE" : "ACTIVE";
+      return send(res, 200, mem);
+    }
+    if (mm[2] === "/history") {
+      const chain = [mem];
+      let prev = list.find((x) => x.supersededBy === chain[0].id);
+      while (prev) { chain.unshift(prev); prev = list.find((x) => x.supersededBy === prev.id); }
+      let next = mem.supersededBy && list.find((x) => x.id === mem.supersededBy);
+      while (next) { chain.push(next); next = next.supersededBy && list.find((x) => x.id === next.supersededBy); }
+      return send(res, 200, chain);
+    }
+    if (mm[2] === "/supersede" && req.method === "POST") {
+      const body = JSON.parse((await readBody(req)).toString() || "{}");
+      if (mem.status !== "ACTIVE") return problem(res, 409, "already_replaced", "This decision has already been replaced.");
+      let replacement = body.replacementId && list.find((x) => x.id === body.replacementId);
+      if (!replacement) {
+        if (!body.title?.trim()) return problem(res, 400, "missing_replacement", "Give a replacementId, or the title of the new decision.");
+        replacement = { id: randomUUID(), kind: "DECISION", status: "ACTIVE", title: body.title.trim(), body: null, rationale: body.rationale || null,
+          rejectedOptions: body.rejectedOptions ?? [], supersededBy: null, sourceMessageId: null, conversationId: null, conversationTitle: null, createdAt: now() };
+        list.unshift(replacement);
+      }
+      mem.status = "SUPERSEDED"; mem.supersededBy = replacement.id;
+      return send(res, 200, replacement);
+    }
+  }
   let match = m(/^\/api\/projects\/([^/]+)(\/.*)?$/);
   if (!match) return problem(res, 404, "not_found", "No such endpoint.");
   const project = projects.find((p) => p.id === match[1]);
@@ -111,6 +296,35 @@ createServer(async (req, res) => {
   const rest = match[2] ?? "";
 
   if (rest === "") { const { ownerId, ...out } = project; return send(res, 200, out); }
+
+  if (rest === "/search") return send(res, 200, search(url.searchParams.get("q") ?? ""));
+  if (rest === "/autocomplete") {
+    const prefix = (url.searchParams.get("prefix") ?? "").toLowerCase();
+    return send(res, 200, KEYS.filter((k) => k.toLowerCase().startsWith(prefix)).slice(0, 8).map((key, i) => ({ key, weight: 10 - i })));
+  }
+  if (rest === "/ask" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)).toString() || "{}");
+    const u = usage.get(user.id);
+    const out = ask(body.question ?? "");
+    if (out.grounded) u.question = Math.max(0, u.question - 1);
+    out.remainingQuestions = u.question;
+    await new Promise((r) => setTimeout(r, 700));
+    return send(res, 200, out);
+  }
+  if (rest === "/memories" && req.method === "GET") {
+    const kind = url.searchParams.get("kind")?.toUpperCase(), status = url.searchParams.get("status")?.toUpperCase();
+    return send(res, 200, memoriesFor(project.id).filter((x) => (!kind || x.kind === kind) && (!status || x.status === status))
+      .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  }
+  if (rest === "/memories" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)).toString() || "{}");
+    if (!body.title?.trim()) return problem(res, 400, "validation", "Write the decision or task first.");
+    const mem = { id: randomUUID(), kind: String(body.kind).toUpperCase(), status: "ACTIVE", title: body.title.trim(), body: body.body || null,
+      rationale: body.rationale || null, rejectedOptions: body.rejectedOptions ?? [], supersededBy: null, sourceMessageId: null,
+      conversationId: null, conversationTitle: null, createdAt: now() };
+    memoriesFor(project.id).unshift(mem);
+    return send(res, 201, mem);
+  }
   if (rest === "/conversations") {
     return send(res, 200, conversations.filter((c) => c.projectId === project.id).map(({ projectId, ...c }) => c));
   }

@@ -30,3 +30,9 @@ export const SOURCE_LABEL: Record<string, string> = {
   markdown: "Markdown",
   text: "Text",
 };
+
+export const ROLE_LABEL: Record<string, string> = {
+  user: "You",
+  assistant: "Assistant",
+  note: "Note",
+};

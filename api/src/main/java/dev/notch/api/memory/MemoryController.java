@@ -21,7 +21,7 @@ public class MemoryController {
     public record MemoryResponse(UUID id, String kind, String status, String title, String body,
                                  String rationale, List<String> rejectedOptions, UUID supersededBy,
                                  UUID sourceMessageId, Integer sourceStart, Integer sourceEnd,
-                                 Instant createdAt) {
+                                 UUID conversationId, String conversationTitle, Instant createdAt) {
     }
 
     private static final Set<String> STATUSES = Set.of("ACTIVE", "SUPERSEDED", "DONE");
@@ -54,7 +54,7 @@ public class MemoryController {
             MemoryPayload p = codec.open(m.payload(), userId);
             return new MemoryResponse(m.id(), m.kind(), m.status(), p.title(), p.body(), p.rationale(),
                     p.rejectedOptions(), m.supersededBy(), m.sourceMessageId(), m.sourceStart(),
-                    m.sourceEnd(), m.createdAt());
+                    m.sourceEnd(), m.conversationId(), m.conversationTitle(), m.createdAt());
         }).toList();
     }
 

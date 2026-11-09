@@ -13,19 +13,20 @@ public class MemoryRepository {
 
     public record StoredMemory(UUID id, UUID projectId, String kind, String status, byte[] payload,
                                UUID supersededBy, UUID sourceMessageId, Integer sourceStart, Integer sourceEnd,
-                               UUID conversationId, Instant createdAt) {
+                               UUID conversationId, String conversationTitle, Instant createdAt) {
     }
 
     private static final String COLUMNS = """
             mem.id, mem.project_id, mem.kind, mem.status, mem.payload, mem.superseded_by,
-            mem.source_message_id, mem.source_start, mem.source_end, msg.conversation_id, mem.created_at
+            mem.source_message_id, mem.source_start, mem.source_end, msg.conversation_id,
+            conv.title AS conversation_title, mem.created_at
             """;
 
     private static final org.springframework.jdbc.core.RowMapper<StoredMemory> ROW = (rs, n) -> new StoredMemory(
             Db.uuid(rs, "id"), Db.uuid(rs, "project_id"), rs.getString("kind"), rs.getString("status"),
             rs.getBytes("payload"), Db.uuid(rs, "superseded_by"), Db.uuid(rs, "source_message_id"),
             (Integer) rs.getObject("source_start"), (Integer) rs.getObject("source_end"),
-            Db.uuid(rs, "conversation_id"), Db.instant(rs, "created_at"));
+            Db.uuid(rs, "conversation_id"), rs.getString("conversation_title"), Db.instant(rs, "created_at"));
 
     private final JdbcClient jdbc;
 
@@ -65,6 +66,7 @@ public class MemoryRepository {
     public List<StoredMemory> list(UUID projectId, UUID userId, String kind, String status, int limit) {
         return jdbc.sql("SELECT " + COLUMNS + """
                 FROM memories mem LEFT JOIN messages msg ON msg.id = mem.source_message_id
+                LEFT JOIN conversations conv ON conv.id = msg.conversation_id
                 WHERE mem.project_id = :p AND mem.user_id = :u
                   AND (CAST(:kind AS text) IS NULL OR mem.kind = :kind)
                   AND (CAST(:status AS text) IS NULL OR mem.status = :status)
@@ -82,6 +84,7 @@ public class MemoryRepository {
     public java.util.Optional<StoredMemory> find(UUID id, UUID userId) {
         return jdbc.sql("SELECT " + COLUMNS + """
                 FROM memories mem LEFT JOIN messages msg ON msg.id = mem.source_message_id
+                LEFT JOIN conversations conv ON conv.id = msg.conversation_id
                 WHERE mem.id = :id AND mem.user_id = :u""")
                 .param("id", id)
                 .param("u", userId)
@@ -93,6 +96,7 @@ public class MemoryRepository {
     public java.util.Optional<StoredMemory> predecessor(UUID id, UUID userId) {
         return jdbc.sql("SELECT " + COLUMNS + """
                 FROM memories mem LEFT JOIN messages msg ON msg.id = mem.source_message_id
+                LEFT JOIN conversations conv ON conv.id = msg.conversation_id
                 WHERE mem.superseded_by = :id AND mem.user_id = :u
                 ORDER BY mem.created_at DESC LIMIT 1""")
                 .param("id", id)

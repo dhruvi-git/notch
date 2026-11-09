@@ -20,6 +20,8 @@ type Props = {
 export function Shell({ project, projects, user, usage, theme, children }: Props) {
   const base = `/p/${project.id}`;
   const nav: NavItem[] = [
+    { href: `${base}/recall`, label: "Recall" },
+    { href: `${base}/ledger`, label: "Ledger" },
     { href: `${base}/imports`, label: "Imports" },
     { href: `${base}/conversations`, label: "Conversations" },
   ];

@@ -55,3 +55,70 @@ export type Session = { token: string; expiresAt: string; user: User };
 
 /** RFC 9457 problem response with the API's stable error code. */
 export type Problem = { status: number; title?: string; detail?: string; code?: string };
+
+/** Where a search hit or citation came from. */
+export type SourceRef = {
+  chunkId: string;
+  messageId: string;
+  conversationId: string;
+  conversationTitle: string;
+  role: string;
+  sentAt: string;
+};
+
+export type Why = { exact: number; semantic: number; recency: number; decision: number };
+
+export type SearchHit = {
+  source: SourceRef;
+  text: string;
+  highlights: [number, number][];
+  score: number;
+  why: Why;
+  decision: boolean;
+  threadId: string;
+};
+
+export type SearchResponse = {
+  query: string;
+  terms: string[];
+  phrases: string[];
+  expansions: string[];
+  decisionIntent: boolean;
+  since: string | null;
+  hits: SearchHit[];
+  exactCandidates: number;
+  semanticCandidates: number;
+  indexVersion: number;
+  tookMillis: number;
+};
+
+export type Citation = { n: number; source: SourceRef; text: string; start: number; end: number; quote: string };
+
+export type AskResponse = {
+  answer: string;
+  grounded: boolean;
+  citations: Citation[];
+  model: string;
+  contextChunks: number;
+  remainingQuestions: number;
+};
+
+export type Suggestion = { key: string; weight: number };
+
+export type MemoryKind = "DECISION" | "TASK" | "FIX" | "CONTEXT";
+export type MemoryStatus = "ACTIVE" | "SUPERSEDED" | "DONE";
+
+export type Memory = {
+  id: string;
+  kind: MemoryKind;
+  status: MemoryStatus;
+  title: string;
+  body: string | null;
+  rationale: string | null;
+  rejectedOptions: string[];
+  supersededBy: string | null;
+  sourceMessageId: string | null;
+  conversationId: string | null;
+  conversationTitle: string | null;
+  createdAt: string;
+};
