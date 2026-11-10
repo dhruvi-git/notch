@@ -156,7 +156,8 @@ const EMPTY: Record<Tab, string> = {
 function Source({ m }: { m: Memory }) {
   return (
     <p className={styles.source}>
-      {m.conversationTitle ? <>From &ldquo;{m.conversationTitle}&rdquo;, </> : <>Recorded by hand, </>}
+      {m.conversationTitle ? <>From &ldquo;{m.conversationTitle}&rdquo;, </>
+        : m.body === "Decided in Compare." ? <>Decided in Compare, </> : <>Recorded by hand, </>}
       {shortDate(m.createdAt)}
     </p>
   );

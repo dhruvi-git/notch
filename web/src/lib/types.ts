@@ -172,3 +172,44 @@ export type IndexInfo = {
 };
 
 export type Thread = { threadId: string; conversations: { id: string; title: string }[] };
+
+export type CompareOption = { id: string; name: string; note: string | null };
+export type CompareCriterion = { id: string; name: string; weight: number };
+export type ComparisonMatrix = {
+  question: string;
+  options: CompareOption[];
+  criteria: CompareCriterion[];
+  scores: Record<string, Record<string, number>>;
+};
+
+export type ComparisonAnalysis = {
+  standings: { optionId: string; name: string; percent: number; rank: number }[];
+  winnerIds: string[];
+  robustness: { optionId: string; name: string; share: number }[];
+  samples: number;
+  decisive: { criterionId: string; name: string; points: number }[];
+  unscored: number;
+  problems: string[];
+};
+
+export type ComparisonView = {
+  id: string;
+  projectId: string;
+  status: "OPEN" | "DECIDED";
+  comparison: ComparisonMatrix;
+  analysis: ComparisonAnalysis;
+  decisionId: string | null;
+  chosen: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ComparisonSummary = {
+  id: string;
+  question: string;
+  status: "OPEN" | "DECIDED";
+  options: string[];
+  leader: string | null;
+  chosen: string | null;
+  updatedAt: string;
+};

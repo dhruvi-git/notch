@@ -107,6 +107,9 @@ curl -s localhost:8080/api/usage
 | GET | `/api/projects/{id}/autocomplete?prefix=&k=` | `@` suggestions from the radix tree |
 | GET | `/api/projects/{id}/threads` | Conversations linked by shared files or errors (union-find) |
 | GET | `/api/projects/{id}/index` | Index size, build time and version |
+| GET, POST | `/api/projects/{id}/comparisons` | List or start comparisons (`{"question", "options": [...]}`) |
+| GET, PUT, DELETE | `/api/comparisons/{id}` | Read, autosave (returns a fresh analysis) or delete a comparison |
+| POST | `/api/comparisons/{id}/decide` | Record the chosen option as a decision; the others become "ruled out" |
 | POST | `/api/projects/{id}/memories` | Add a decision, task or context by hand |
 | PATCH | `/api/memories/{memoryId}` | Mark a task `done` or `active` |
 | POST | `/api/memories/{memoryId}/supersede` | Replace a decision (`replacementId`, or `title` for a new one) |
@@ -237,6 +240,18 @@ NOTCH_API_URL=http://localhost:8080 mvn -pl api test -Dtest=CrossUserIsolationTe
 ```
 
 Without `NOTCH_API_URL` the test is skipped, so `mvn test` never needs a running server.
+
+## How Compare works
+
+`ComparisonAnalyzer` scores a decision matrix: each option's weighted sum as a share of the
+best possible, ranks with shared places for ties, and the criteria that create the leader's
+lead over the runner-up. Because weights are opinions, it also runs a **Monte Carlo
+robustness check**: 2,000 re-scorings with each weight multiplied by an independent random
+factor in [0.5, 1.5], reporting the share of runs each option wins (ties split). The generator
+is seeded from the matrix, so the same matrix always shows the same numbers. Cost is
+O(samples × criteria × options). Matrices are stored encrypted, like memories. Deciding writes
+a decision whose rejected options are the other choices, which is what the guard checks code
+against.
 
 ## Configuration
 

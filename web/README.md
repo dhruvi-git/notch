@@ -38,6 +38,12 @@ Checks: `npm test` (unit tests for highlighting and answer parsing; Node 22.6 or
   four ranking signals from the engine's hybrid ranker. `@` suggests files, errors and chat
   titles from the radix tree; arrow keys, Enter and Esc work as expected. The query stays in
   the address bar, so searches can be shared.
+- **Compare:** the ideation workbench. Options as columns, weighted criteria as rows, each
+  cell scored 1 to 5, autosaved. The Java analyzer returns the weighted standings, what decides
+  the lead, and how robust the winner is: a Monte Carlo run re-scores the matrix 2,000 times
+  with every weight randomly varied between half and one-and-a-half times its value.
+  "Record decision" puts the winner in the Ledger with the other options ruled out, so the
+  guard and drift detection protect the choice from then on.
 - **Ledger:** decisions in force with what they ruled out, tasks you can tick off, fixes, and
   replaced decisions. Replacing a decision (with an existing one or a new one) keeps its
   history, shown oldest first. Decisions and tasks can be recorded by hand.

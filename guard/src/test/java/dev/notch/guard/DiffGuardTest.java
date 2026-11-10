@@ -90,6 +90,18 @@ class DiffGuardTest {
     }
 
     @Test
+    void optionsRuledOutInACompareDecisionAreGuarded() {
+        Decision fromCompare = new Decision("d9", "For \u201cWhere should raw analytics events live?\u201d, we chose Postgres.",
+                List.of("Redis Streams", "Kafka"), DECIDED);
+        List<GuardFinding> f = guard.check(List.of(fromCompare),
+                List.of(DiffParser.fromContent("package.json", "\"kafkajs\": \"^2.2.4\",", true)));
+        assertEquals(1, f.size());
+        assertEquals("Kafka", f.get(0).tech());
+        assertEquals(GuardFinding.Severity.HIGH, f.get(0).severity());
+        assertTrue(f.get(0).message().contains("chose PostgreSQL"));
+    }
+
+    @Test
     void highFindingsComeFirst() {
         List<GuardFinding> f = guard.check(List.of(POSTGRES), List.of(
                 DiffParser.fromContent("z.ts", "await saveToMongo(x)", true),

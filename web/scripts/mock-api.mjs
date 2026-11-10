@@ -250,6 +250,86 @@ function contextPack(project, format, budget) {
   return lines.join("\n") + "\n";
 }
 
+
+// Ideation workbench: same rules as the Java ComparisonAnalyzer.
+const comparisons = new Map();  // id -> { id, projectId, ownerId, status, comparison, decisionId, chosen, createdAt, updatedAt }
+const DEFAULT_CRITERIA = [
+  { id: "c1", name: "Fits the problem", weight: 5 }, { id: "c2", name: "Effort to build and run", weight: 3 },
+  { id: "c3", name: "Team already knows it", weight: 3 }, { id: "c4", name: "Cost", weight: 2 }];
+
+function seeded(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return () => { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+}
+
+function validateComparison(c) {
+  const p = [];
+  if (!c.question?.trim()) p.push("Write the question you're deciding.");
+  if (c.options.length < 2) p.push("Add at least two options to compare.");
+  if (c.criteria.length === 0) p.push("Add at least one criterion to judge the options by.");
+  const names = new Set();
+  for (const o of c.options) {
+    if (!o.name?.trim()) p.push("Every option needs a name.");
+    else if (names.has(o.name.trim().toLowerCase())) p.push(`Two options are both called "${o.name.trim()}".`);
+    else names.add(o.name.trim().toLowerCase());
+  }
+  const crit = new Set();
+  for (const k of c.criteria) {
+    if (!k.name?.trim()) p.push("Every criterion needs a name.");
+    else if (crit.has(k.name.trim().toLowerCase())) p.push(`Two criteria are both called "${k.name.trim()}".`);
+    else crit.add(k.name.trim().toLowerCase());
+  }
+  return [...new Set(p)];
+}
+
+function analyzeComparison(c) {
+  const problems = validateComparison(c);
+  let unscored = 0;
+  for (const k of c.criteria) for (const o of c.options) if (c.scores?.[k.id]?.[o.id] == null) unscored++;
+  if (problems.length) return { standings: [], winnerIds: [], robustness: [], samples: 0, decisive: [], unscored, problems };
+  const totals = (w) => c.options.map((o) => c.criteria.reduce((sum, k, i) => sum + w[i] * (c.scores?.[k.id]?.[o.id] ?? 0), 0));
+  const base = c.criteria.map((k) => k.weight);
+  const t = totals(base), best = base.reduce((a, b) => a + b * 5, 0);
+  const order = c.options.map((_, i) => i).sort((a, b) => t[b] - t[a] || c.options[a].name.localeCompare(c.options[b].name));
+  let rank = 0, prev = NaN;
+  const standings = order.map((i, pos) => { if (t[i] !== prev) rank = pos + 1; prev = t[i];
+    return { optionId: c.options[i].id, name: c.options[i].name, percent: Math.round(1000 * t[i] / best) / 10, rank }; });
+  const winnerIds = standings.filter((s) => s.rank === 1).map((s) => s.optionId);
+  const rnd = seeded(JSON.stringify([c.options.map((o) => o.id), c.criteria, c.scores]));
+  const wins = c.options.map(() => 0), N = 2000;
+  for (let n = 0; n < N; n++) {
+    const tt = totals(base.map((w) => w * (0.5 + rnd())));
+    const top = Math.max(...tt), leaders = tt.filter((v) => v >= top - 1e-9).length;
+    tt.forEach((v, i) => { if (v >= top - 1e-9) wins[i] += 1 / leaders; });
+  }
+  const robustness = c.options.map((o, i) => ({ optionId: o.id, name: o.name, share: Math.round(1000 * wins[i] / N) / 1000 }))
+    .sort((a, b) => b.share - a.share || a.name.localeCompare(b.name));
+  const lead = c.options[order[0]].id, next = c.options[order[1]].id;
+  const decisive = c.criteria.map((k) => ({ criterionId: k.id, name: k.name,
+    points: k.weight * ((c.scores?.[k.id]?.[lead] ?? 0) - (c.scores?.[k.id]?.[next] ?? 0)) }))
+    .filter((d) => d.points > 0).sort((a, b) => b.points - a.points);
+  return { standings, winnerIds, robustness, samples: N, decisive, unscored, problems: [] };
+}
+
+function comparisonView(x) {
+  const { ownerId, ...rest } = x;
+  return { ...rest, analysis: analyzeComparison(x.comparison) };
+}
+
+function seedComparisons(project, ownerId) {
+  if ([...comparisons.values()].some((x) => x.projectId === project.id)) return;
+  const id = randomUUID();
+  comparisons.set(id, { id, projectId: project.id, ownerId, status: "OPEN", decisionId: null, chosen: null,
+    createdAt: daysAgo(0.3), updatedAt: daysAgo(0.1), comparison: {
+      question: "Where should raw analytics events live?",
+      options: [{ id: "o1", name: "Postgres", note: "Already running for billing" }, { id: "o2", name: "Redis Streams", note: null },
+        { id: "o3", name: "Kafka", note: null }],
+      criteria: [{ id: "c1", name: "Fits append-only events", weight: 4 }, { id: "c2", name: "Effort to run", weight: 5 },
+        { id: "c3", name: "Team already knows it", weight: 3 }, { id: "c4", name: "Cost", weight: 2 }],
+      scores: { c1: { o1: 3, o2: 4, o3: 5 }, c2: { o1: 5, o2: 4, o3: 1 }, c3: { o1: 5, o2: 3, o3: 2 }, c4: { o1: 5, o2: 4, o3: 2 } } } });
+}
+
 function send(res, status, body) {
   res.writeHead(status, { "content-type": status >= 400 ? "application/problem+json" : "application/json" });
   res.end(body === undefined ? "" : JSON.stringify(body));
@@ -363,6 +443,34 @@ createServer(async (req, res) => {
       return send(res, 200, replacement);
     }
   }
+
+  const cm = m(/^\/api\/comparisons\/([^/]+)(\/decide)?$/);
+  if (cm) {
+    const x = comparisons.get(cm[1]);
+    if (!x || x.ownerId !== user.id) return problem(res, 404, "not_found", "Comparison was not found.");
+    if (!cm[2] && req.method === "GET") return send(res, 200, comparisonView(x));
+    if (!cm[2] && req.method === "DELETE") { comparisons.delete(x.id); return send(res, 204); }
+    if (!cm[2] && req.method === "PUT") {
+      if (x.status !== "OPEN") return problem(res, 409, "already_decided", "This comparison is decided. Start a new one to revisit the choice.");
+      x.comparison = JSON.parse((await readBody(req)).toString()); x.updatedAt = now();
+      return send(res, 200, comparisonView(x));
+    }
+    if (cm[2] && req.method === "POST") {
+      const body = JSON.parse((await readBody(req)).toString() || "{}");
+      if (x.status !== "OPEN") return problem(res, 409, "already_decided", "This comparison is already decided.");
+      const problems = validateComparison(x.comparison);
+      if (problems.length) return problem(res, 400, "invalid_comparison", problems[0]);
+      const chosen = x.comparison.options.find((o) => o.id === body.optionId);
+      if (!chosen) return problem(res, 400, "unknown_option", "Choose one of the options in this comparison.");
+      const decision = { id: randomUUID(), kind: "DECISION", status: "ACTIVE",
+        title: body.title?.trim() || `For \u201c${x.comparison.question}\u201d, we chose ${chosen.name}.`, body: "Decided in Compare.",
+        rationale: body.rationale || null, rejectedOptions: x.comparison.options.filter((o) => o !== chosen).map((o) => o.name),
+        supersededBy: null, sourceMessageId: null, conversationId: null, conversationTitle: null, createdAt: now() };
+      memoriesFor(x.projectId).unshift(decision);
+      x.status = "DECIDED"; x.decisionId = decision.id; x.chosen = chosen.name; x.updatedAt = now();
+      return send(res, 200, { comparison: comparisonView(x), decision });
+    }
+  }
   let match = m(/^\/api\/projects\/([^/]+)(\/.*)?$/);
   if (!match) return problem(res, 404, "not_found", "No such endpoint.");
   const project = projects.find((p) => p.id === match[1]);
@@ -372,6 +480,25 @@ createServer(async (req, res) => {
   if (rest === "") { const { ownerId, ...out } = project; return send(res, 200, out); }
 
 
+
+  if (rest === "/comparisons" && req.method === "GET") {
+    seedComparisons(project, user.id);
+    return send(res, 200, [...comparisons.values()].filter((x) => x.projectId === project.id)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((x) => {
+        const a = analyzeComparison(x.comparison);
+        return { id: x.id, question: x.comparison.question, status: x.status, options: x.comparison.options.map((o) => o.name),
+          leader: a.winnerIds.length === 1 ? a.standings[0].name : null, chosen: x.chosen, updatedAt: x.updatedAt };
+      }));
+  }
+  if (rest === "/comparisons" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)).toString() || "{}");
+    if (!body.question?.trim()) return problem(res, 400, "validation", "Write the question you're deciding.");
+    const id = randomUUID();
+    const options = (body.options ?? []).filter((n) => n?.trim()).map((n, i) => ({ id: `o${i + 1}`, name: n.trim(), note: null }));
+    comparisons.set(id, { id, projectId: project.id, ownerId: user.id, status: "OPEN", decisionId: null, chosen: null,
+      createdAt: now(), updatedAt: now(), comparison: { question: body.question.trim(), options, criteria: DEFAULT_CRITERIA, scores: {} } });
+    return send(res, 201, comparisonView(comparisons.get(id)));
+  }
   if (rest === "/drift") return send(res, 200, driftFor(project));
   const dm = rest.match(/^\/drift\/([0-9a-f]{24})\/dismiss$/);
   if (dm && req.method === "POST") { dismissed.add(project.id + ":" + dm[1]); return send(res, 204); }

@@ -1,0 +1,145 @@
+.page {
+  max-width: 56rem;
+}
+
+.stage {
+  display: grid;
+  gap: 1.1rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border-radius: var(--r-hero);
+}
+
+.stageTitle {
+  color: var(--mark);
+  font-size: clamp(2rem, 4vw, 2.9rem);
+}
+
+.stageLede {
+  color: var(--ink-soft);
+  max-width: 56ch;
+}
+
+.newForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.newLabel {
+  display: grid;
+  gap: 0.35rem;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* Fields on the purple stage stay white, like the Recall search bar. */
+.newInput {
+  min-height: 3.2rem;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: #ffffff;
+  color: #2f253a;
+  font: inherit;
+  font-size: var(--t-md);
+}
+
+.newInput::placeholder {
+  color: #9a93a6;
+}
+
+.newInput:focus-visible {
+  outline: 3px solid var(--mark);
+  outline-offset: 2px;
+}
+
+.newActions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.newActions :global(.btn) {
+  min-height: 3rem;
+  font-weight: 800;
+}
+
+.newError {
+  color: var(--mark);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.listSection {
+  margin-top: 2.5rem;
+}
+
+.list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.25rem 1.5rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-panel);
+  background: var(--surface-raised);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 120ms ease;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.cardQuestion {
+  font-family: var(--font-display);
+  font-size: var(--t-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.cardOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.option {
+  padding: 0.2rem 0.75rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.option[data-chosen="true"] {
+  background: var(--mark);
+  color: var(--mark-ink);
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+@media (max-width: 640px) {
+  .newForm {
+    grid-template-columns: 1fr;
+  }
+}
