@@ -4,7 +4,7 @@ import { sessionToken } from "@/lib/server-api";
 import { Landing } from "./_landing/Landing";
 
 export const metadata: Metadata = {
-  title: { absolute: "Notch: the decision record for AI-assisted projects" },
+  title: { absolute: "Notch: the project brain every coding agent plugs into" },
 };
 
 export default async function Home() {

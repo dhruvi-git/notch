@@ -56,7 +56,7 @@ export function Drift({ projectId, initial, titles }: Props) {
 
 function Severity({ alert }: { alert: DriftAlert }) {
   return (
-    <span className={styles.severity} data-severity={alert.severity}>
+    <span className={alert.severity === "HIGH" ? "chip chip-danger" : "chip chip-warn"}>
       {alert.severity === "HIGH" ? "High" : "Medium"}
     </span>
   );

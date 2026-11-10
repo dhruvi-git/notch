@@ -19,8 +19,8 @@
 .initial {
   display: inline-grid;
   place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--mark);
+  color: var(--mark-ink);
   font-size: var(--t-sm);
   font-weight: 700;
 }

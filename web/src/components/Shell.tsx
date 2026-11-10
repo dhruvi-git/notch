@@ -32,7 +32,7 @@ export function Shell({ project, projects, user, usage, theme, driftCount, child
   const more: NavItem[] = [{ href: `${base}/lab`, label: "Lab" }];
   return (
     <div className={styles.shell}>
-      <aside className={styles.rail}>
+      <aside className={`${styles.rail} on-brand`}>
         <div className={styles.railTop}>
           <Brand />
           <ProjectSwitcher current={project} projects={projects} />

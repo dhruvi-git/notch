@@ -16,7 +16,7 @@ export default async function Settings() {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <header className={`${styles.header} on-brand`}>
         <Brand />
         <UserMenu user={user} theme={theme} inline />
       </header>

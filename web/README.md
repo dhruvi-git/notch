@@ -77,28 +77,31 @@ it.
 
 ## Design
 
-The product's promise is that every claim shows its source, so the one strong visual element
-is the highlighter: quoted source text is marked in yellow with a citation number. Everything
-else stays quiet.
+Bold deep purple and signature yellow, from the project's reference boards. Purple is the brand
+surface (the rail and the hero stages); vivid purple marks what you can act on; yellow is the
+highlighter on quoted sources and marks where you are. Reading areas stay calm and white so
+long quotes and data are comfortable for hours.
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--surface` | `#edeff5` fog | `#171b30` night indigo | Page |
-| `--ink` | `#272c42` graphite | `#e6e8f2` | Text |
-| `--ink-soft` | `#565c7a` | `#a6abc6` | Secondary text (AA contrast) |
-| `--accent` | `#4b52d1` | `#8f95f7` | Only things you can act on |
-| `--mark` | `#f2e25c` | `#f2e25c` | Only highlighted source text |
+| `--brand` | `#330069` | `#2d0a63` | Rail, Recall stage, landing hero, page headers |
+| `--accent` | `#902afe` | `#b98cff` | Actions, links, chips, focus |
+| `--mark` | `#fedc2a` | `#fedc2a` | Highlighted sources, current section, primary action on purple |
+| `--surface` | `#fbf8ff` | `#160d24` | Page |
+| `--ink` | `#2f253a` | `#f3eefa` | Text (13.8:1 on the page) |
 
-- **Type:** Schibsted Grotesk for everything; Fragment Mono only where the content is code
-  (file names, commands, error text). Both are self-hosted from npm. The scale is a 1.2 ratio
-  from 16px.
-- **Layout:** a narrow rail (project, sections, account) and a left-aligned content column
-  kept near 70 characters for reading. Lists use dividers rather than a card per row; panels
-  are reserved for things you act on.
-- **Themes:** light and dark are equal, follow the system by default, and can be fixed in the
-  rail. The choice is stored in a cookie and applied on the server, so pages never flash.
-- **Quality floor:** visible keyboard focus, reduced motion respected, `aria-current` on the
-  active section, live regions for upload progress, and layouts that hold down to 360px.
+- **Scoped tokens:** `.on-brand` redefines the same variables for purple stages, so the logo,
+  menus, toggles and links placed on purple recolour themselves without per-component rules.
+  Menus that float over purple use the `--pop-*` tokens.
+- **Type:** Bricolage Grotesque 800 for headlines, set large and tight; Schibsted Grotesk for
+  everything you read; Fragment Mono only for code, with ligatures off so code shows exactly
+  what's in the file.
+- **Shape:** radius follows hierarchy: 28px stages, 18px cards, 12px fields, pills for buttons,
+  chips and tabs. Shadows only on things that float (the answer card, menus, the demo).
+- **The memorable element:** Recall opens on a purple stage with a yellow headline and a white
+  pill search bar; answers float below with their sources highlighted.
+- **Quality floor:** every colour pair checked for WCAG AA contrast, visible keyboard focus,
+  reduced motion respected, layouts down to 360px, light and dark as equal themes.
 
 ## Structure
 

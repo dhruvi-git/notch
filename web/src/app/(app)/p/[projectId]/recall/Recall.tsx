@@ -162,7 +162,10 @@ export function Recall({ projectId, initialQuery, questionsLeft: initialLeft, ha
 
   return (
     <div className={styles.page}>
-      <h1 className="sr-only">Recall</h1>
+      <section className={`${styles.stage} on-brand`} aria-labelledby="recall-title">
+        <h1 id="recall-title" className={styles.stageTitle}>
+          Ask this project anything
+        </h1>
       <div className={styles.searchBlock}>
         <div className={styles.searchRow}>
           <div className={styles.inputWrap}>
@@ -212,7 +215,7 @@ export function Recall({ projectId, initialQuery, questionsLeft: initialLeft, ha
           </div>
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-yellow"
             onClick={ask}
             disabled={asking || query.trim().length < 2 || outOfQuestions}
           >
@@ -225,6 +228,7 @@ export function Recall({ projectId, initialQuery, questionsLeft: initialLeft, ha
           Type <kbd>@</kbd> for files, errors and chats.
         </p>
       </div>
+      </section>
 
       <div aria-live="polite" className={styles.live}>
         {error ? (

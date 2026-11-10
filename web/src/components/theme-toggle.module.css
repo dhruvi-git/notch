@@ -3,22 +3,22 @@
   margin: 0;
   padding: 2px;
   border: 1px solid var(--line);
-  border-radius: var(--r-control);
+  border-radius: var(--r-pill);
   background: var(--surface-sunken);
 }
 
 .option {
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--r-pill);
   font-size: var(--t-xs);
   color: var(--ink-soft);
   cursor: pointer;
 }
 
 .option[data-active="true"] {
-  background: var(--surface-raised);
-  color: var(--ink);
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
 }
 
 .option:has(input:focus-visible) {

@@ -2,36 +2,33 @@
   display: grid;
   grid-template-columns: var(--rail) minmax(0, 1fr);
   min-height: 100vh;
+  /* The rail column is purple all the way down, even past the sticky rail itself. */
+  background: linear-gradient(to right, var(--brand) var(--rail), transparent var(--rail));
 }
 
+/* The rail is a deep-purple stage (see .on-brand): its tokens recolour everything inside. */
 .rail {
   position: sticky;
   top: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  padding: 1.25rem 1rem 1rem;
-  border-right: 1px solid var(--line);
-  background: var(--surface);
+  gap: 1.5rem;
+  padding: 1.4rem 0.9rem 1rem;
+  overflow-y: auto;
 }
 
 .railTop {
   display: grid;
   gap: 1rem;
-}
-
-.rail nav + nav {
-  margin-top: -1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--line);
+  padding: 0 0.35rem;
 }
 
 .railBottom {
   margin-top: auto;
   display: grid;
-  gap: 1rem;
-  padding-top: 1rem;
+  gap: 0.9rem;
+  padding: 1rem 0.35rem 0;
   border-top: 1px solid var(--line);
 }
 
@@ -45,47 +42,52 @@
   color: var(--ink-soft);
 }
 
+.rail nav + nav {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
 .nav {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .navLink {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.45rem 0.6rem;
-  border-radius: var(--r-control);
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--r-pill);
   color: var(--ink-soft);
   text-decoration: none;
   font-size: var(--t-sm);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .navLink:hover {
   color: var(--ink);
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
 }
 
+/* Where you are: the signature yellow. */
 .navLink[aria-current="page"] {
-  color: var(--ink);
-  background: var(--surface-raised);
-  box-shadow: inset 2px 0 0 var(--accent);
-  font-weight: 600;
+  color: var(--mark-ink);
+  background: var(--mark);
 }
 
 .badge {
-  min-width: 1.4rem;
-  padding: 0 0.35rem;
-  border-radius: 999px;
-  background: var(--danger-soft);
-  color: var(--danger);
+  min-width: 1.45rem;
+  padding: 0 0.4rem;
+  border-radius: var(--r-pill);
+  background: #ff5c7a;
+  color: #ffffff;
   font-size: var(--t-xs);
-  font-weight: 700;
+  font-weight: 800;
   text-align: center;
+  line-height: 1.45rem;
 }
 
 /* Project switcher */
@@ -98,14 +100,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--line);
+  padding: 0.6rem 0.85rem;
   border-radius: var(--r-control);
   background: var(--surface-raised);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--t-sm);
   cursor: pointer;
   list-style: none;
+}
+
+.switcherButton:hover {
+  background: rgb(255 255 255 / 0.16);
 }
 
 .switcherButton::-webkit-details-marker {
@@ -118,17 +123,18 @@
   white-space: nowrap;
 }
 
+/* Menus float over the purple, so they use the page's own colours. */
 .switcherMenu {
   position: absolute;
   z-index: 20;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
-  padding: 0.35rem;
-  border: 1px solid var(--line-strong);
+  padding: 0.4rem;
   border-radius: var(--r-panel);
-  background: var(--surface-raised);
-  box-shadow: 0 8px 24px rgb(23 27 48 / 0.12);
+  background: var(--pop-bg);
+  color: var(--pop-ink);
+  box-shadow: var(--shadow-float);
 }
 
 .switcherMenu ul {
@@ -141,59 +147,59 @@
 
 .switcherMenu a {
   display: block;
-  padding: 0.4rem 0.5rem;
-  border-radius: 4px;
-  color: var(--ink);
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  color: var(--pop-ink);
   text-decoration: none;
   font-size: var(--t-sm);
 }
 
 .switcherMenu a:hover {
-  background: var(--surface-sunken);
+  background: var(--pop-hover);
 }
 
 .switcherMenu a[aria-current="true"] {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .switcherAll {
-  margin-top: 0.25rem;
-  border-top: 1px solid var(--line);
-  color: var(--ink-soft) !important;
+  margin-top: 0.3rem;
+  color: var(--pop-soft) !important;
 }
 
 .main {
   min-width: 0;
-  padding: 2.5rem clamp(1.25rem, 4vw, 3.5rem) 4rem;
+  padding: 2.75rem clamp(1.25rem, 4vw, 3.5rem) 4rem;
 }
 
 @media (max-width: 760px) {
   .shell {
     grid-template-columns: 1fr;
+    background: none;
   }
 
+  /* On a phone the rail is a header: brand and project, then one scrolling row of sections. */
   .rail {
     position: static;
     height: auto;
-    gap: 1rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+    flex-flow: row wrap;
+    gap: 0.9rem 0.3rem;
+    padding: 1rem 0.9rem 0.9rem;
+    border-radius: 0 0 var(--r-hero) var(--r-hero);
   }
 
-  .nav {
-    display: flex;
-    overflow-x: auto;
-    gap: 0.25rem;
+  .railTop,
+  .railBottom {
+    flex: 1 1 100%;
   }
 
-  .rail nav + nav {
-    margin-top: -0.75rem;
-    padding-top: 0;
-    border-top: 0;
+  .rail > nav:first-of-type {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
-  .navLink[aria-current="page"] {
-    box-shadow: inset 0 -2px 0 var(--accent);
+  .rail > nav + nav {
+    flex: none;
   }
 
   .railTop {
@@ -205,17 +211,32 @@
     grid-column: 1 / -1;
   }
 
+  .nav {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.3rem;
+    padding-bottom: 2px;
+  }
+
+  .navLink {
+    white-space: nowrap;
+  }
+
+  .rail nav + nav {
+    padding-top: 0;
+    border-top: 0;
+  }
+
   .railBottom {
     margin-top: 0;
     padding-top: 0.75rem;
   }
 
-  /* The import panel shows what's left; on a phone the rail stays short. */
   .usage {
     display: none;
   }
 
   .main {
-    padding-top: 1.5rem;
+    padding-top: 1.75rem;
   }
 }

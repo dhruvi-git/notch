@@ -28,15 +28,10 @@
 }
 
 .item {
-  padding: 1.25rem 1.4rem 1.3rem;
+  padding: 1.4rem 1.6rem 1.5rem;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--warn);
-  border-radius: 0 var(--r-panel) var(--r-panel) 0;
+  border-radius: var(--r-panel);
   background: var(--surface-raised);
-}
-
-.item[data-severity="HIGH"] {
-  border-left-color: var(--danger);
 }
 
 .itemHead {
@@ -56,13 +51,20 @@
 }
 
 .itemTitle {
-  font-size: var(--t-lg);
+  font-size: var(--t-xl);
+  letter-spacing: -0.02em;
 }
 
 .pair {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.75rem;
   margin: 1rem 0 0;
+}
+
+.pair > div {
+  padding: 0.85rem 1rem;
+  border-radius: var(--r-control);
+  background: var(--surface-sunken);
 }
 
 .pair dt {

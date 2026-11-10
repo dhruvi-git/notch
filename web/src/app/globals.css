@@ -4,89 +4,151 @@
  * source text, the way a highlighter is used; violet (--accent) only marks things you can act on.
  */
 
+/*
+ * Notch design tokens: deep purple and signature yellow.
+ * Purple is the brand surface (the rail and hero stages); vivid purple marks what you can act
+ * on; yellow is the highlighter on quoted sources and the active place in the app.
+ * Light and dark are equal themes.
+ */
+
 :root {
   color-scheme: light;
-  --surface: #edeff5;          /* fog */
-  --surface-raised: #f7f8fb;
-  --surface-sunken: #e2e5ee;
-  --ink: #272c42;              /* graphite */
-  --ink-soft: #565c7a;         /* secondary text, AA on fog */
-  --ink-faint: #868ca6;        /* slate: borders, icons, placeholder */
-  --line: #d3d7e3;
-  --line-strong: #b9bed0;
-  --accent: #4b52d1;           /* signal violet, darkened for text contrast on light */
-  --accent-hover: #3d43b8;
+  --surface: #fbf8ff;          /* page: a breath of lavender */
+  --surface-raised: #ffffff;   /* cards */
+  --surface-sunken: #f2eafd;   /* wells, tracks */
+  --ink: #2f253a;              /* graphite */
+  --ink-soft: #5d5a60;
+  --ink-faint: #9a93a6;
+  --line: #ece5f5;
+  --line-strong: #d9cceb;
+  --accent: #902afe;           /* vivid purple: actions, links, focus */
+  --accent-hover: #7a1fe0;
   --accent-ink: #ffffff;
-  --accent-soft: #e2e3fb;
-  --mark: #f2e25c;             /* marker yellow: quoted sources only */
-  --mark-ink: #272c42;
-  --ok: #2f7d5b;
-  --warn: #a35a12;
-  --danger: #b4322f;
-  --danger-soft: #f6e1e0;
+  --accent-soft: #efe2ff;
+  --brand: #330069;            /* deep purple: rail and hero stages */
+  --brand-raised: #451089;
+  --brand-ink: #ffffff;
+  --brand-soft: #d9c2ff;
+  --mark: #fedc2a;             /* signature yellow */
+  --mark-ink: #2f253a;
+  --mark-wash: #fff7c7;
+  --ok: #1e7a50;
+  --ok-soft: #e3f6ec;
+  --warn: #9a5b00;
+  --warn-soft: #fff3c9;
+  --danger: #c42b4b;
+  --danger-soft: #fde7ec;
+  --pop-bg: #ffffff;           /* menus that float over purple keep these */
+  --pop-ink: #2f253a;
+  --pop-soft: #5d5a60;
+  --pop-hover: #f2eafd;
+  --shadow-float: 0 1px 2px rgb(51 0 105 / 0.06), 0 14px 36px rgb(51 0 105 / 0.12);
 
+  --font-display: "Bricolage Grotesque", "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Fragment Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
-  /* Type scale: ratio 1.2 from a 16px base. */
+  /* Type scale: ratio 1.25 from a 16px base, with a large display step. */
   --t-xs: 0.8125rem;   /* 13 */
   --t-sm: 0.875rem;    /* 14 */
   --t-md: 1rem;        /* 16 */
-  --t-lg: 1.1875rem;   /* 19 */
-  --t-xl: 1.4375rem;   /* 23 */
-  --t-2xl: 1.75rem;    /* 28 */
-  --t-3xl: 2.125rem;   /* 34 */
+  --t-lg: 1.25rem;     /* 20 */
+  --t-xl: 1.5625rem;   /* 25 */
+  --t-2xl: 1.953rem;   /* 31 */
+  --t-3xl: 2.441rem;   /* 39 */
+  --t-display: clamp(2.6rem, 5.2vw, 4.2rem);
 
-  --r-control: 6px;
-  --r-panel: 10px;
+  /* Radius follows hierarchy: stages > cards > fields; controls are pills. */
+  --r-control: 12px;
+  --r-panel: 18px;
+  --r-hero: 28px;
+  --r-pill: 999px;
   --measure: 72ch;
-  --rail: 15rem;
+  --rail: 15.5rem;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface: #171b30;          /* night indigo */
-  --surface-raised: #1e2340;
-  --surface-sunken: #12152a;
-  --ink: #e6e8f2;
-  --ink-soft: #a6abc6;
-  --ink-faint: #6f7596;
-  --line: #2c3254;
-  --line-strong: #3c4370;
-  --accent: #8f95f7;
-  --accent-hover: #a6abfa;
-  --accent-ink: #12152a;
-  --accent-soft: #2a2f5c;
-  --mark: #f2e25c;
-  --mark-ink: #171b30;
-  --ok: #6cc59b;
-  --warn: #e3a35e;
-  --danger: #f08a85;
-  --danger-soft: #3a2232;
+  --surface: #160d24;
+  --surface-raised: #20142f;
+  --surface-sunken: #2a1b3e;
+  --ink: #f3eefa;
+  --ink-soft: #b9aecb;
+  --ink-faint: #7d7290;
+  --line: #2e2142;
+  --line-strong: #44325e;
+  --accent: #b98cff;
+  --accent-hover: #cba8ff;
+  --accent-ink: #1b1029;
+  --accent-soft: #33205a;
+  --brand: #2d0a63;
+  --brand-raised: #3d1585;
+  --brand-soft: #cdb4f7;
+  --mark-wash: #3a3214;
+  --ok: #6fd3a3;
+  --ok-soft: #173628;
+  --warn: #f5c451;
+  --warn-soft: #3a2e10;
+  --danger: #ff7a93;
+  --danger-soft: #3a1626;
+  --pop-bg: #261838;
+  --pop-ink: #f3eefa;
+  --pop-soft: #b9aecb;
+  --pop-hover: #33205a;
+  --shadow-float: 0 1px 2px rgb(0 0 0 / 0.3), 0 14px 36px rgb(0 0 0 / 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --surface: #171b30;
-    --surface-raised: #1e2340;
-    --surface-sunken: #12152a;
-    --ink: #e6e8f2;
-    --ink-soft: #a6abc6;
-    --ink-faint: #6f7596;
-    --line: #2c3254;
-    --line-strong: #3c4370;
-    --accent: #8f95f7;
-    --accent-hover: #a6abfa;
-    --accent-ink: #12152a;
-    --accent-soft: #2a2f5c;
-    --mark: #f2e25c;
-    --mark-ink: #171b30;
-    --ok: #6cc59b;
-    --warn: #e3a35e;
-    --danger: #f08a85;
-    --danger-soft: #3a2232;
+    --surface: #160d24;
+    --surface-raised: #20142f;
+    --surface-sunken: #2a1b3e;
+    --ink: #f3eefa;
+    --ink-soft: #b9aecb;
+    --ink-faint: #7d7290;
+    --line: #2e2142;
+    --line-strong: #44325e;
+    --accent: #b98cff;
+    --accent-hover: #cba8ff;
+    --accent-ink: #1b1029;
+    --accent-soft: #33205a;
+    --brand: #2d0a63;
+    --brand-raised: #3d1585;
+    --brand-soft: #cdb4f7;
+    --mark-wash: #3a3214;
+    --ok: #6fd3a3;
+    --ok-soft: #173628;
+    --warn: #f5c451;
+    --warn-soft: #3a2e10;
+    --danger: #ff7a93;
+    --danger-soft: #3a1626;
+    --pop-bg: #261838;
+    --pop-ink: #f3eefa;
+    --pop-soft: #b9aecb;
+    --pop-hover: #33205a;
+    --shadow-float: 0 1px 2px rgb(0 0 0 / 0.3), 0 14px 36px rgb(0 0 0 / 0.35);
   }
+}
+
+/*
+ * On a purple stage, the same tokens take their on-purple values, so anything placed there
+ * (logo, menus, toggles, links) recolours itself.
+ */
+.on-brand {
+  --ink: var(--brand-ink);
+  --ink-soft: var(--brand-soft);
+  --ink-faint: rgb(255 255 255 / 0.55);
+  --line: rgb(255 255 255 / 0.14);
+  --line-strong: rgb(255 255 255 / 0.28);
+  --surface-raised: rgb(255 255 255 / 0.1);
+  --surface-sunken: rgb(255 255 255 / 0.08);
+  --accent: var(--mark);
+  --accent-hover: #ffe766;
+  --accent-ink: var(--mark-ink);
+  --accent-soft: rgb(254 220 42 / 0.18);
+  background: var(--brand);
+  color: var(--brand-ink);
 }
 
 *,
@@ -117,16 +179,19 @@ h1, h2, h3, p {
 }
 
 h1 {
-  font-size: var(--t-2xl);
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-family: var(--font-display);
+  font-size: var(--t-3xl);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 h2 {
+  font-family: var(--font-display);
   font-size: var(--t-lg);
-  line-height: 1.3;
-  font-weight: 600;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 a {
@@ -150,7 +215,7 @@ code, kbd, pre, .mono {
 mark {
   background: var(--mark);
   color: var(--mark-ink);
-  border-radius: 2px;
+  border-radius: 3px;
   padding: 0 0.12em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -166,15 +231,16 @@ mark {
   background: var(--accent-soft);
 }
 
-/* Buttons: one primary per view; everything else is quiet. */
+/* Buttons are pills: one primary per view; yellow is the primary on purple stages. */
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  min-height: 2.5rem;
-  padding: 0 1rem;
-  border: 1px solid transparent;
-  border-radius: var(--r-control);
+  min-height: 2.6rem;
+  padding: 0 1.25rem;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-pill);
   font: inherit;
   font-size: var(--t-sm);
   font-weight: 600;
@@ -196,14 +262,59 @@ mark {
 }
 
 .btn-quiet {
-  background: transparent;
+  background: var(--surface-raised);
   color: var(--ink);
   border-color: var(--line-strong);
 }
 
 .btn-quiet:hover:not(:disabled) {
-  background: var(--surface-sunken);
+  border-color: var(--accent);
   color: var(--ink);
+}
+
+.btn-yellow {
+  background: var(--mark);
+  color: var(--mark-ink);
+}
+
+.btn-yellow:hover:not(:disabled) {
+  background: #ffe766;
+  color: var(--mark-ink);
+}
+
+/* A pill chip, for statuses and tags. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.6rem;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.chip-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.chip-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.chip-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.chip-yellow {
+  background: var(--mark);
+  color: var(--mark-ink);
 }
 
 .btn:disabled {
@@ -213,9 +324,9 @@ mark {
 
 .field {
   width: 100%;
-  min-height: 2.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--line-strong);
+  min-height: 2.75rem;
+  padding: 0.55rem 0.9rem;
+  border: 1.5px solid var(--line-strong);
   border-radius: var(--r-control);
   background: var(--surface-raised);
   color: var(--ink);

@@ -6,9 +6,10 @@ import styles from "./landing.module.css";
 export function Landing() {
   return (
     <div className={styles.page}>
+      <div className={`${styles.top} on-brand`}>
       <header className={styles.nav}>
         <span className={styles.wordmark}>
-          <NotchMark size={22} />
+          <NotchMark size={24} />
           notch
         </span>
         <Link href="/sign-in" className="btn btn-quiet">
@@ -16,16 +17,15 @@ export function Landing() {
         </Link>
       </header>
 
-      <main>
         <section className={styles.hero}>
           <div className={styles.heroText}>
             <h1 className={styles.title}>Every decision your project made, with the chat that made it.</h1>
             <p className={styles.lede}>
-              Notch reads your ChatGPT and Claude conversations, keeps a ledger of what you decided and why, writes it
-              into your coding agent&rsquo;s instructions, and tells you when new work goes against it.
+              Notch keeps a ledger of what your project decided and why, from your chats and coding sessions. Every
+              coding agent can read it, and commits or edits that go against it are stopped before they land.
             </p>
             <div className={styles.ctas}>
-              <Link href="/sign-in" className="btn btn-primary">
+              <Link href="/sign-in" className="btn btn-yellow">
                 Start with one chat export
               </Link>
               <a href="#how" className={styles.textLink}>
@@ -35,6 +35,9 @@ export function Landing() {
           </div>
           <HeroDemo />
         </section>
+      </div>
+
+      <main>
 
         <section id="how" className={styles.how} aria-labelledby="how-title">
           <h2 id="how-title" className={styles.sectionTitle}>
@@ -59,8 +62,8 @@ export function Landing() {
             <div>
               <h3>Sync</h3>
               <p>
-                Your coding agent starts every session from zero. Notch writes the decisions in force into{" "}
-                <code>AGENTS.md</code> or <code>CLAUDE.md</code>, or a short briefing to paste into any chat.
+                Your coding agent starts every session from zero. Notch gives Claude Code, Codex and Cursor your
+                decisions over MCP, and writes them into <code>AGENTS.md</code> or <code>CLAUDE.md</code>.
               </p>
             </div>
             <pre className={styles.code}>{`# AGENTS.md
@@ -79,17 +82,20 @@ Follow them unless the user says otherwise.
             <div>
               <h3>Guard</h3>
               <p>
-                When a later chat starts using something a decision ruled out, or two decisions disagree, Notch shows
-                both sides and lets you settle it in one step.
+                A commit or an agent&rsquo;s edit that brings back something you ruled out is stopped before it lands,
+                with the decision it breaks. Conflicts in chats are settled in one step.
               </p>
             </div>
-            <div className={styles.artifact} data-tone="warn">
-              <p className={styles.artifactStrong}>A chat uses something a decision ruled out</p>
-              <p>
-                <mark>For raw events you could set up MongoDB</mark>, but on 5 October the project chose PostgreSQL
-                instead.
-              </p>
-            </div>
+            <pre className={`${styles.code} ${styles.terminal}`}>{`$ git commit -m "Store raw events"
+
+Notch: 1 change goes against the project's decisions
+
+  HIGH   package.json:5
+         "mongoose": "^8.4.0"
+         Adds MongoDB (mongoose), but on 5 Oct the project
+         chose PostgreSQL and ruled it out.
+
+Commit stopped.`}</pre>
           </div>
         </section>
 
@@ -104,7 +110,7 @@ Follow them unless the user says otherwise.
           </p>
         </section>
 
-        <section className={styles.closing}>
+        <section className={`${styles.closing}`}>
           <p className={styles.closingLine}>Start with the chat where you made your last big decision.</p>
           <Link href="/sign-in" className="btn btn-primary">
             Sign in with GitHub
@@ -117,7 +123,7 @@ Follow them unless the user says otherwise.
           <NotchMark size={16} />
           notch
         </span>
-        <span>The decision record for AI-assisted projects.</span>
+        <span>The project brain every coding agent plugs into.</span>
       </footer>
     </div>
   );

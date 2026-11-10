@@ -41,7 +41,7 @@ export default async function Imports({ params }: { params: Promise<{ projectId:
                     </span>
                   </div>
                   <p className={styles.headline}>
-                    <span className={styles.status} data-status={r.status}>
+                    <span className={r.status === "READY" ? "chip chip-ok" : r.status === "FAILED" ? "chip chip-danger" : "chip"}>
                       {r.status === "READY" ? "Done" : r.status === "PROCESSING" ? "Processing" : "Failed"}
                     </span>
                     {headline}

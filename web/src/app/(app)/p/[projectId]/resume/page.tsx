@@ -35,7 +35,7 @@ export default async function ResumePage({ params }: { params: Promise<{ project
   return (
     <div className={styles.page}>
       <h1>Where you stopped</h1>
-      <section className={styles.session} aria-label="Last session">
+      <section className={`${styles.session} on-brand`} aria-label="Last session">
         <p className={styles.sessionMeta}>
           {relativeTime(r.lastSession.lastActivity)}, in &ldquo;{r.lastSession.title}&rdquo;
           <span className="muted">, {plural(r.lastSession.messages, "message")}</span>
