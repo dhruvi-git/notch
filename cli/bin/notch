@@ -1,0 +1,8 @@
+#!/bin/sh
+# Launches the Notch CLI. Put this folder on your PATH, or copy this script next to notch.jar.
+DIR=$(cd "$(dirname "$0")" && pwd)
+for JAR in "$DIR/notch.jar" "$DIR/../target/notch.jar" "${NOTCH_JAR:-}"; do
+  [ -n "$JAR" ] && [ -f "$JAR" ] && exec java -jar "$JAR" "$@"
+done
+echo "notch: couldn't find notch.jar. Build it with: mvn -pl cli -am package" >&2
+exit 3

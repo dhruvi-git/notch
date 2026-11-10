@@ -12,7 +12,9 @@
 
   <modules>
     <module>engine</module>
+    <module>guard</module>
     <module>api</module>
+    <module>cli</module>
   </modules>
 
   <properties>

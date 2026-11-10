@@ -1,0 +1,47 @@
+
+$ notch login --token ntch_ses_…
+Signed in as aarav at http://localhost:8080.
+
+$ notch link 87b68626-f0c7-4fde-8312-312947bcb698
+Linked demo-repo to project 87b68626-f0c7-4fde-8312-312947bcb698. The .notch file is safe to commit.
+
+$ notch status
+API:        http://localhost:8080
+Signed in:  yes, token ntch_ses_…
+Repository: /tmp/demo-repo
+Project:    87b68626-f0c7-4fde-8312-312947bcb698
+Name:       Billing service
+Decisions:  4 in force
+
+$ notch hook git
+Installed the pre-commit guard at .git/hooks/pre-commit.
+
+$ git commit -m "Store raw events"
+
+Notch: 2 changes go against the project's decisions
+
+  HIGH   package.json:5
+         "mongoose": "^8.4.0"
+         Adds MongoDB (mongoose), but on 8 Oct 2026 the project chose PostgreSQL and ruled it out: “Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments.”
+
+  HIGH   src/events.ts:1
+         import mongoose from 'mongoose';
+         Adds MongoDB (mongoose), but on 8 Oct 2026 the project chose PostgreSQL and ruled it out: “Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments.”
+
+Commit stopped. If the decision has changed, replace it in Notch first.
+To commit anyway: git commit --no-verify
+(git commit exit code: 1)
+
+--- Claude Code tries to write src/events.ts (PreToolUse hook) ---
+Notch blocked this edit: it goes against decisions recorded for this project.
+- src/events.ts:1: Adds MongoDB, but on 8 Oct 2026 the project chose PostgreSQL and ruled it out: “Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments.”
+Don't work around this. Tell the user which decision this conflicts with and ask whether they want to keep the decision or change it in Notch. Then continue with what they choose.
+(hook exit code: 2 -> 2 means Claude Code blocks the edit and reads the reason)
+
+--- An agent talks to `notch mcp` ---
+initialize -> {'name': 'notch', 'version': '0.1.0'} | protocol 2025-06-18
+tool reply 2 -> Decisions in force. Follow these unless the user says otherwise:
+    - Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments. (decided 8 Oct 2026; ruled out: MongoDB)
+tool reply 3 -> This change goes against project decisions. Don't write it as is; tell the user and ask how to proceed.
+    - [HIGH] requirements.txt:2: Adds MongoDB (pymongo), but on 8 Oct 2026 the project chose PostgreSQL and ruled it out: “Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments.”
+tool reply 4 -> Recorded decision c507a5cd-1b14-4507-be6b-d96c3361dbfb. Notch will now check future changes against it.

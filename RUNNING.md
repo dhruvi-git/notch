@@ -79,6 +79,16 @@ npm run dev
 Open http://localhost:3000 and use **Sign in** under "Local development". Import the files
 in `samples/` to see the flow end to end.
 
+## 7. Try the guard and the MCP server
+
+```bash
+mvn -q -pl cli -am package
+export PATH="$PWD/cli/bin:$PATH"
+```
+
+Create a personal token in the web app (Settings), then follow [`cli/README.md`](cli/README.md):
+`notch login`, `notch link`, `notch hook git`, and try committing a `mongoose` dependency.
+
 ## If something fails
 
 | Symptom | Likely cause | Fix |

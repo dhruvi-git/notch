@@ -1,4 +1,4 @@
-package dev.notch.api.decisions.core;
+package dev.notch.guard;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,24 +22,24 @@ public final class TechCatalog {
     private static final Pattern ALIAS_PATTERN;
 
     static {
-        add("database", "PostgreSQL", "postgresql", "postgres", "pg", "psql");
-        add("database", "MongoDB", "mongodb", "mongo", "mongoose");
-        add("database", "MySQL", "mysql", "mariadb");
-        add("database", "SQLite", "sqlite");
+        add("database", "PostgreSQL", "postgresql", "postgres", "pg", "psql", "psycopg2", "psycopg", "pg-promise", "postgres.js");
+        add("database", "MongoDB", "mongodb", "mongo", "mongoose", "pymongo", "mongodb-driver-sync", "spring-boot-starter-data-mongodb", "motor");
+        add("database", "MySQL", "mysql", "mariadb", "mysql2", "pymysql", "mysql-connector-java", "mysql-connector-j");
+        add("database", "SQLite", "sqlite", "sqlite3", "better-sqlite3");
         add("database", "DynamoDB", "dynamodb", "dynamo");
         add("database", "Firebase", "firebase", "firestore");
         add("database", "Supabase", "supabase");
-        add("cache", "Redis", "redis", "ioredis");
+        add("cache", "Redis", "redis", "ioredis", "jedis", "lettuce-core");
         add("cache", "Memcached", "memcached", "memcache");
-        add("auth", "JWT", "jwt", "jwts", "json web token", "json web tokens");
-        add("auth", "Server-side sessions", "server-side sessions", "server side sessions", "sessions", "session cookies");
+        add("auth", "JWT", "jwt", "jwts", "json web token", "json web tokens", "jsonwebtoken", "jjwt", "pyjwt");
+        add("auth", "Server-side sessions", "server-side sessions", "server side sessions", "sessions", "session cookies", "express-session");
         add("auth", "OAuth", "oauth", "oauth2");
         add("auth", "Auth0", "auth0");
         add("auth", "Clerk", "clerk");
-        add("queue", "Kafka", "kafka");
+        add("queue", "Kafka", "kafka", "kafkajs");
         add("queue", "RabbitMQ", "rabbitmq");
         add("queue", "SQS", "sqs");
-        add("api", "GraphQL", "graphql", "apollo");
+        add("api", "GraphQL", "graphql", "apollo", "apollo-server", "graphql-yoga");
         add("api", "REST", "rest api", "rest");
         add("api", "gRPC", "grpc");
         add("frontend", "React", "react");
@@ -90,6 +90,13 @@ public final class TechCatalog {
             Tech t = BY_ALIAS.get(m.group().toLowerCase(Locale.ROOT));
             if (t != null && !out.contains(t)) out.add(t);
         }
+        return out;
+    }
+
+    /** Every known tool in a category, such as all databases. */
+    public static List<Tech> inCategory(String category) {
+        List<Tech> out = new ArrayList<>();
+        for (Tech t : BY_ALIAS.values()) if (t.category().equals(category) && !out.contains(t)) out.add(t);
         return out;
     }
 

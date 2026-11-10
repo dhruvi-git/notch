@@ -1,8 +1,9 @@
 # Notch
 
-Notch is the decision record for AI-assisted projects. It captures decisions from any chat,
-syncs them into the files coding agents read (`CLAUDE.md`, `AGENTS.md`, Cursor rules), and
-flags new work that contradicts them.
+Notch is the project brain every coding agent plugs into. `git blame` tells you who changed a
+line; Notch tells you why. It keeps a ledger of your project's decisions from your chats and
+coding sessions, gives every agent that ledger over MCP, and stops commits and agent edits
+that go against it.
 
 CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
@@ -11,6 +12,8 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 | Path | What it is | Status |
 |---|---|---|
 | `engine/` | Self-implemented algorithms, tests and benchmarks. Plain Java 21, no framework | Done |
+| `guard/` | Understands decisions and checks code changes against them. Shared by the API and CLI | Done |
+| `cli/` | `notch`: pre-commit, Claude Code and pull-request guards, plus an MCP server for coding agents | Done |
 | `api/` | Spring Boot REST API: GitHub sign-in, imports, hybrid search, cited answers, decision ledger, drift alerts, agent files | Done (phase 2) |
 | `web/` | Next.js web app: landing, Recall, Where you stopped, Ledger, Drift, Sync, Imports, Lab, Settings | Done (phase 3) |
 | `docs/` | Benchmark results and design notes | Ongoing |

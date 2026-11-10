@@ -1,5 +1,8 @@
 package dev.notch.api.decisions.core;
 
+import dev.notch.guard.TechCatalog;
+import dev.notch.guard.DecisionFacts;
+
 import dev.notch.api.search.core.IndexedChunk;
 import dev.notch.api.search.core.ProjectIndex;
 import dev.notch.engine.text.Kmp;

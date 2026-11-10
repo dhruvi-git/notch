@@ -1,4 +1,4 @@
-package dev.notch.api.decisions.core;
+package dev.notch.guard;
 
 import org.junit.jupiter.api.Test;
 
