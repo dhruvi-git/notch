@@ -134,11 +134,39 @@ class MainTest {
         assertTrue(out.toString(StandardCharsets.UTF_8).isBlank());
     }
 
+    /**
+     * The shell git runs hooks with: {@code sh} on PATH, or on Windows the one that ships with Git
+     * for Windows (found from {@code git --exec-path}). Null if there's none.
+     */
+    private static String gitShell() {
+        try {
+            if (new ProcessBuilder("sh", "-c", "exit 0").start().waitFor() == 0) return "sh";
+        } catch (Exception notOnPath) {
+            // Windows: fall through to Git's own sh
+        }
+        try {
+            Process p = new ProcessBuilder("git", "--exec-path").start();
+            String exec = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
+            // <Git>/mingw64/libexec/git-core -> <Git>/bin/sh.exe
+            Path git = Path.of(exec).getParent().getParent().getParent();
+            for (Path sh : List.of(git.resolve("bin/sh.exe"), git.resolve("usr/bin/sh.exe"))) {
+                if (Files.isRegularFile(sh)) return sh.toString();
+            }
+        } catch (Exception ignored) {
+            // no git either
+        }
+        return null;
+    }
+
     @Test
     void gitHookSkipsInsteadOfBlockingWhenNotchIsMissing() throws Exception {
+        String sh = gitShell();
+        org.junit.jupiter.api.Assumptions.assumeTrue(sh != null, "no sh to run the hook with");
         Path script = tmp.resolve("pre-commit");
         Files.writeString(script, Main.gitHookScript(null));
-        Process p = new ProcessBuilder("sh", script.toString()).redirectErrorStream(true).start();
+        ProcessBuilder pb = new ProcessBuilder(sh, script.toString()).redirectErrorStream(true);
+        pb.environment().put("PATH", Path.of(sh).isAbsolute() ? Path.of(sh).getParent().toString() : "/usr/bin:/bin");
+        Process p = pb.start();
         String output = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         assertEquals(0, p.waitFor(), output);
         assertTrue(output.contains("decision check was skipped"), output);
