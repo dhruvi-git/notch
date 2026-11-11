@@ -13,6 +13,7 @@
   <modules>
     <module>engine</module>
     <module>guard</module>
+    <module>explain</module>
     <module>api</module>
     <module>cli</module>
   </modules>
