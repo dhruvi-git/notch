@@ -67,6 +67,7 @@ class CrossUserIsolationTest {
         for (String path : List.of(p, p + "/imports", p + "/imports/" + importId, p + "/conversations",
                 p + "/memories", p + "/search?q=postgres", p + "/autocomplete?prefix=a", p + "/threads",
                 p + "/index", p + "/drift", p + "/resume", p + "/context-pack", p + "/export/agents-md",
+                p + "/code-map", p + "/code-map/files", p + "/code-map/file?path=src%2Fdb.ts", p + "/comparisons",
                 p + "/export/claude-md")) {
             Res r = get(path, bob);
             assertEquals(404, r.status(), "GET " + path + " leaked: " + r.body());

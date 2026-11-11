@@ -23,6 +23,9 @@ public interface NotchBackend {
 
     String projectName() throws NotchException;
 
+    /** What a file does, how it fits and why it's like this, from the project's code map. */
+    String explainFile(String path) throws NotchException;
+
     final class NotchException extends Exception {
         public NotchException(String message) {
             super(message);

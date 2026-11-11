@@ -29,6 +29,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.NOT_FOUND, "not_found", what + " was not found.");
     }
 
+    /** Not found, with a specific code the client can act on (such as "no_code_map"). */
+    public static ApiException notFoundWith(String code, String message) {
+        return new ApiException(HttpStatus.NOT_FOUND, code, message);
+    }
+
     public static ApiException badRequest(String code, String message) {
         return new ApiException(HttpStatus.BAD_REQUEST, code, message);
     }

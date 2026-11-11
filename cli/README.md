@@ -87,6 +87,20 @@ When something goes against a decision, Notch prints a `permissionDecision: "den
 decision: Claude Code cancels the call and shows Claude the reason, so it raises the conflict
 with you instead of working around it.
 
+## Explain: map your codebase
+
+```bash
+notch map              # map this repository and upload the map
+notch map --dry-run    # just show the summary
+notch map --out map.json
+```
+
+The map is built **on your machine** from the files git tracks (so `.gitignore` is respected):
+each file's role, summary, exports, endpoints, imports and the tools it uses, plus what to
+read first, entry points and files that look unused. Only the map is uploaded: paths, names
+and summaries, never code. Files that look like they hold secrets are listed by path; the
+values are never read into the map.
+
 ## MCP server
 
 ```bash
@@ -95,7 +109,7 @@ notch setup cursor     # writes .cursor/mcp.json
 notch setup codex      # prints the ~/.codex/config.toml entry
 ```
 
-The agent starts `notch mcp` itself and gets seven tools:
+The agent starts `notch mcp` itself and gets eight tools:
 
 | Tool | What the agent uses it for |
 |---|---|
@@ -105,6 +119,7 @@ The agent starts `notch mcp` itself and gets seven tools:
 | `notch_where_we_stopped` | The last session, open tasks and drift alerts |
 | `notch_record_decision` | Record a decision the user just made, with why and what was ruled out |
 | `notch_replace_decision` | Replace a decision in force, once the user confirms; the old one stays in history |
+| `notch_explain_file` | What a file does, how it fits, what a change could affect, and the decisions and chats behind it |
 | `notch_add_task` | Record follow-up work |
 
 The server speaks MCP's newline-delimited JSON-RPC over stdio. Recording decisions from inside

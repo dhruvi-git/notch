@@ -203,6 +203,24 @@ class MainTest {
     }
 
     @Test
+    void mapReadsTrackedFilesOnlyAndCanSaveWithoutUploading() throws Exception {
+        Files.createDirectories(repo.resolve("src"));
+        Files.writeString(repo.resolve("src/db.ts"), "/** Shared pool. */\nimport { Pool } from 'pg';\nexport const pool = new Pool();");
+        Files.writeString(repo.resolve("src/app.ts"), "import { pool } from './db';\nexport const app = pool;");
+        Files.writeString(repo.resolve(".gitignore"), "secret-notes.ts\n");
+        Files.writeString(repo.resolve("secret-notes.ts"), "export const x = 1;");
+        Git.run(repo, "add", "src", ".gitignore");
+        assertEquals(Main.OK, run("", "map", "--out", "map.json"));
+        String text = out.toString(StandardCharsets.UTF_8);
+        assertTrue(text.contains("Mapped 3 files"), text);
+        assertTrue(text.contains("src/db.ts"), "db.ts is where to start: " + text);
+        Map<String, Object> m = Json.obj(Json.parse(Files.readString(repo.resolve("map.json"))));
+        List<String> paths = Json.arr(m.get("files")).stream().map(f -> (String) Json.obj(f).get("path")).toList();
+        assertEquals(List.of(".gitignore", "src/app.ts", "src/db.ts"), paths);
+        assertFalse(Files.readString(repo.resolve("map.json")).contains("new Pool()"), "no code in the map");
+    }
+
+    @Test
     void existingGitHookIsNotOverwrittenWithoutForce() throws Exception {
         Path hook = repo.resolve(".git/hooks/pre-commit");
         Files.createDirectories(hook.getParent());

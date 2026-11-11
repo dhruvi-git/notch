@@ -41,6 +41,11 @@
       <artifactId>notch-guard</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>dev.notch</groupId>
+      <artifactId>notch-explain</artifactId>
+      <version>${project.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>

@@ -107,6 +107,11 @@ curl -s localhost:8090/api/usage
 | GET | `/api/projects/{id}/autocomplete?prefix=&k=` | `@` suggestions from the radix tree |
 | GET | `/api/projects/{id}/threads` | Conversations linked by shared files or errors (union-find) |
 | GET | `/api/projects/{id}/index` | Index size, build time and version |
+| POST | `/api/projects/{id}/code-maps` | Upload a map from `notch map` (`{"label", "map"}`) |
+| POST | `/api/projects/{id}/code-maps/zip` | Upload a zipped codebase (25 MB); it's mapped and the code is discarded |
+| GET | `/api/projects/{id}/code-map` | Overview: stats, modules, areas, start here, entry points, possibly unused, conflicts, tools |
+| GET | `/api/projects/{id}/code-map/files` | Every file with its role and summary |
+| GET | `/api/projects/{id}/code-map/file?path=` | One file: what, how (imports, used by, affected) and why (decisions, chats) |
 | GET, POST | `/api/projects/{id}/comparisons` | List or start comparisons (`{"question", "options": [...]}`) |
 | GET, PUT, DELETE | `/api/comparisons/{id}` | Read, autosave (returns a fresh analysis) or delete a comparison |
 | POST | `/api/comparisons/{id}/decide` | Record the chosen option as a decision; the others become "ruled out" |
@@ -240,6 +245,23 @@ NOTCH_API_URL=http://localhost:8090 mvn -pl api test -Dtest=CrossUserIsolationTe
 ```
 
 Without `NOTCH_API_URL` the test is skipped, so `mvn test` never needs a running server.
+
+## How Explain works
+
+The `explain` module builds a map from source files: language, role (page, API route,
+controller, component, test, config...), a summary from the file's own doc comment or from
+what it is, exports, endpoints (Next.js routes, Spring, Express, FastAPI, Flask), imports
+resolved to files (relative and `@/` paths, Python packages, Java classes, Go modules), and
+outside packages matched to known tools. Java same-package uses are found with KMP; areas
+with union-find; the ten files to read first with randomized selection; unused files with a
+breadth-first walk from everything a framework or person runs directly.
+
+Maps come from `notch map` (built locally; only the map is sent) or a zip (mapped here, code
+discarded). They're stored encrypted, five per project. The **why** is joined in when a file
+is viewed: decisions whose chosen or ruled-out tools the file imports (a file importing a
+ruled-out tool is a conflict), and conversation passages that mention the file's path, its
+name, or one of its folders (folders are looked up in the radix tree of keys first, so only
+mentioned folders are searched).
 
 ## How Compare works
 

@@ -134,6 +134,12 @@ public final class McpServer {
                         "ruled_out", Map.of("type", "array", "items", Map.of("type", "string"),
                                 "description", "Options now ruled out.")),
                 List.of("decision_id", "new_decision")));
+        t.add(tool("notch_explain_file",
+                "Explain a file in this codebase: what it does, what it depends on and what depends on it, what a change "
+                        + "could affect, and why it's like this (the decisions and conversations behind it). Use before "
+                        + "changing code you didn't write.",
+                Map.of("path", prop("string", "The file's path from the repository root, such as src/db/pool.ts.")),
+                List.of("path")));
         t.add(tool("notch_add_task",
                 "Add an open task to the project, such as follow-up work agreed with the user.",
                 Map.of("task", prop("string", "The task in one sentence.")), List.of("task")));
@@ -151,6 +157,7 @@ public final class McpServer {
                 case "notch_where_we_stopped" -> backend.whereWeStopped();
                 case "notch_record_decision" -> recordDecision(args);
                 case "notch_add_task" -> "Added task " + backend.record("TASK", require(args, "task"), null, List.of()) + ".";
+                case "notch_explain_file" -> backend.explainFile(require(args, "path").replace('\\', '/'));
                 case "notch_replace_decision" -> "Replaced the decision. The new one is " + backend.replace(require(args, "decision_id"),
                         require(args, "new_decision"), Json.str(args, "why"), listArg(args, "ruled_out"))
                         + ", and Notch now checks changes against it.";

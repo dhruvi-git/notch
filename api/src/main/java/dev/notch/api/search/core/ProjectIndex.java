@@ -162,6 +162,11 @@ public final class ProjectIndex {
         return out;
     }
 
+    /** Whether a code-shaped key (a path, an error, an identifier) appears anywhere, via the radix tree. */
+    public boolean hasKey(String key) {
+        return key != null && keys.contains(key.toLowerCase(Locale.ROOT));
+    }
+
     /** Every chunk containing {@code term} (case-insensitive), via the suffix array. */
     public List<IndexedChunk> chunksContaining(String term) {
         if (term == null || term.isBlank() || chunks.isEmpty()) return List.of();

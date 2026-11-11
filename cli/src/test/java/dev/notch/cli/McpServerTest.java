@@ -43,10 +43,11 @@ class McpServerTest {
     }
 
     @Test
-    void listsTheSevenTools() {
+    void listsTheEightTools() {
         List<Object> tools = Json.arr(Json.obj(reply("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}").get("result")).get("tools"));
         assertEquals(List.of("notch_decisions", "notch_check_change", "notch_search", "notch_where_we_stopped",
-                "notch_record_decision", "notch_replace_decision", "notch_add_task"), tools.stream().map(t -> Json.obj(t).get("name")).toList());
+                "notch_record_decision", "notch_replace_decision", "notch_explain_file", "notch_add_task"),
+                tools.stream().map(t -> Json.obj(t).get("name")).toList());
         for (Object t : tools) assertEquals("object", Json.obj(Json.obj(t).get("inputSchema")).get("type"));
     }
 
@@ -72,6 +73,25 @@ class McpServerTest {
         assertTrue(toolText("notch_decisions", "{\"topic\":\"database\"}").contains("Postgres"));
         assertTrue(toolText("notch_decisions", "{\"topic\":\"databases\"}").contains("Postgres"));
         assertTrue(toolText("notch_decisions", "{\"topic\":\"mongo\"}").contains("Postgres"));
+    }
+
+    @Test
+    void explainFileNormalisesWindowsPaths() {
+        assertTrue(toolText("notch_explain_file", "{\"path\":\"src\\\\db\\\\pool.ts\"}").startsWith("src/db/pool.ts\nWhat it does"));
+    }
+
+    @Test
+    void fileViewsAreDescribedForAgents() {
+        String view = "{\"file\":{\"path\":\"src/events.ts\",\"summary\":\"Stores raw events.\",\"role\":\"CODE\",\"route\":null,"
+                + "\"endpoints\":[],\"imports\":[\"src/db.ts\"],\"importedBy\":[\"src/app.ts\",\"src/worker.ts\"],\"tools\":[\"MongoDB\"]},"
+                + "\"affected\":[\"src/app.ts\",\"src/worker.ts\",\"src/main.ts\"],"
+                + "\"decisions\":[{\"kind\":\"GOES_AGAINST\",\"tool\":\"MongoDB\",\"decisionTitle\":\"Let's go with Postgres instead of MongoDB.\"}],"
+                + "\"mentions\":[{\"conversationTitle\":\"Analytics\",\"sentAt\":\"2026-11-09T10:00:00Z\",\"text\":\"store events in src/events.ts\"}]}";
+        String text = ApiClient.describe(Json.obj(Json.parse(view)));
+        assertTrue(text.contains("What it does: Stores raw events."), text);
+        assertTrue(text.contains("used by 2 (src/app.ts, src/worker.ts); changing it could affect 3 files."), text);
+        assertTrue(text.contains("GOES AGAINST: uses MongoDB per"), text);
+        assertTrue(text.contains("\u201cAnalytics\u201d (2026-11-09): store events in src/events.ts"), text);
     }
 
     @Test

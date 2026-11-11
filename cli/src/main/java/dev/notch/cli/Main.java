@@ -1,5 +1,9 @@
 package dev.notch.cli;
 
+import dev.notch.explain.CodeMap;
+import dev.notch.explain.CodeMapBuilder;
+import dev.notch.explain.CodeMapJson;
+import dev.notch.explain.SourceFile;
 import dev.notch.guard.Decision;
 import dev.notch.guard.DiffGuard;
 import dev.notch.guard.DiffParser;
@@ -83,6 +87,7 @@ public final class Main {
             case "check" -> check(a, config, root, stdin);
             case "hook" -> hook(a, root);
             case "setup" -> setup(a, root);
+            case "map" -> map(a, config, root);
             case "mcp" -> {
                 err.println("notch: MCP server ready on stdio" + (config.project == null ? " (no project linked yet)" : ""));
                 new McpServer(new ApiClient(config, false), out, err).serve(stdin);
@@ -303,6 +308,62 @@ public final class Main {
         return ERROR;
     }
 
+    // ------------------------------------------------------------------ map
+
+    /**
+     * Maps the codebase on this machine and uploads only the map: paths, imports, names and
+     * summaries. The code itself never leaves the computer.
+     */
+    private int map(Args a, Config config, Path root) throws IOException {
+        if (root == null) {
+            err.println("Run notch map inside a git repository.");
+            return ERROR;
+        }
+        long start = System.nanoTime();
+        List<SourceFile> files = new ArrayList<>();
+        for (String rel : Git.projectFiles(root)) {
+            Path p = root.resolve(rel);
+            try {
+                if (!Files.isRegularFile(p) || Files.size(p) > CodeMapBuilder.MAX_FILE_BYTES) continue;
+                files.add(new SourceFile(rel, Files.readString(p, StandardCharsets.UTF_8)));
+            } catch (IOException | java.io.UncheckedIOException notText) {
+                // binary or unreadable: not part of the map
+            }
+        }
+        CodeMap m = new CodeMapBuilder().build(files);
+        double seconds = (System.nanoTime() - start) / 1e9;
+        CodeMap.Stats s = m.stats();
+        out.printf("Mapped %,d files (%,d code files, %,d lines) in %.1f s.%n", s.files(), s.codeFiles(), s.lines(), seconds);
+        if (!m.startHere().isEmpty()) {
+            out.println("\nStart here, the code most of the rest depends on:");
+            for (String p : m.startHere().subList(0, Math.min(5, m.startHere().size()))) {
+                CodeMap.FileInfo f = m.file(p);
+                out.printf("  %-56s used by %d%n", p, f.importedBy().size());
+            }
+        }
+        out.printf("%nEntry points: %d.  Possibly unused: %d.%n", m.entryPoints().size(), m.possiblyUnused().size());
+        if (!s.filesWithSecrets().isEmpty()) {
+            out.println("\nThese files look like they hold secrets (the map records only their paths, never the values):");
+            s.filesWithSecrets().forEach(p -> out.println("  " + p));
+        }
+        String json = CodeMapJson.write(m);
+        if (a.flag("out") != null) {
+            Files.writeString(cwd.resolve(a.flag("out")), json, StandardCharsets.UTF_8);
+            out.println("\nWrote the map to " + a.flag("out") + ".");
+        }
+        if (a.has("dry-run") || a.flag("out") != null) return OK;
+        String label = a.flag("label") != null ? a.flag("label") : root.getFileName().toString();
+        try {
+            new ApiClient(config, false).uploadMap(label, json);
+        } catch (NotchBackend.NotchException e) {
+            err.println("notch: " + e.getMessage());
+            return ERROR;
+        }
+        out.println("\nUploaded the map to Notch as \u201c" + label + "\u201d. Only paths, imports, names and summaries were sent; no code.");
+        out.println("Open Explain in the project to browse it.");
+        return OK;
+    }
+
     // ------------------------------------------------------------------ hooks and setup
 
     private int hook(Args a, Path root) throws IOException {
@@ -520,7 +581,7 @@ public final class Main {
         }
 
         private static boolean takesValue(String name) {
-            return List.of("token", "api", "project", "base", "diff", "format").contains(name);
+            return List.of("token", "api", "project", "base", "diff", "format", "label", "out").contains(name);
         }
 
         String flag(String name) {
@@ -558,6 +619,10 @@ public final class Main {
               notch hook git                              stop commits that go against a decision
               notch hook claude                           stop Claude Code edits that go against a decision
               notch hook github                           check pull requests in GitHub Actions
+
+            Explain
+              notch map                                   map this codebase locally and upload the map (no code is sent)
+                  --dry-run (just show the summary)   --out map.json (save instead of uploading)   --label <name>
 
             Agents
               notch setup claude|cursor|codex             give an agent Notch's decisions and history over MCP

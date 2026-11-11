@@ -28,6 +28,15 @@ final class Git {
         return p.isAbsolute() ? p : root.resolve(p);
     }
 
+    /** Tracked files plus new ones that aren't ignored: what .gitignore says belongs to the project. */
+    static List<String> projectFiles(Path root) throws IOException {
+        List<String> out = new ArrayList<>();
+        for (String p : run(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0")) {
+            if (!p.isBlank()) out.add(p);
+        }
+        return out;
+    }
+
     static String stagedDiff(Path root) throws IOException {
         return run(root, "diff", "--cached", "--unified=0", "--no-color", "--no-ext-diff");
     }

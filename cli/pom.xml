@@ -21,7 +21,7 @@
   <dependencies>
     <dependency>
       <groupId>dev.notch</groupId>
-      <artifactId>notch-guard</artifactId>
+      <artifactId>notch-explain</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

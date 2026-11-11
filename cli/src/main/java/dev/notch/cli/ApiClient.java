@@ -148,6 +148,77 @@ public final class ApiClient implements NotchBackend {
         return Json.str(m, "id");
     }
 
+    /** Uploads a code map (JSON as written by CodeMapJson). */
+    public String uploadMap(String label, String mapJson) throws NotchException {
+        requireProject();
+        String body = "{\"label\":" + Json.write(label) + ",\"map\":" + mapJson + "}";
+        return Json.str(Json.obj(Json.parse(send("POST", "/api/projects/" + enc(config.project) + "/code-maps", body))), "id");
+    }
+
+    @Override
+    public String explainFile(String path) throws NotchException {
+        requireProject();
+        Map<String, Object> v;
+        try {
+            v = Json.obj(Json.parse(get("/api/projects/" + enc(config.project) + "/code-map/file?path=" + enc(path))));
+        } catch (NotchException e) {
+            if (e.getMessage().contains("404") || e.getMessage().contains("wasn't found")) {
+                throw new NotchException("Notch has no map entry for " + path + ". Run notch map to update the code map, then ask again.");
+            }
+            throw e;
+        }
+        return describe(v);
+    }
+
+    /** Turns a file view into plain text an agent can read. */
+    static String describe(Map<String, Object> v) {
+        Map<String, Object> f = Json.obj(v.get("file"));
+        StringBuilder sb = new StringBuilder();
+        sb.append(Json.str(f, "path")).append('\n');
+        String summary = Json.str(f, "summary");
+        if (summary != null && !summary.isBlank()) sb.append("What it does: ").append(summary).append('\n');
+        sb.append("Role: ").append(Json.str(f, "role").toLowerCase(java.util.Locale.ROOT).replace('_', ' '));
+        if (f.get("route") != null) sb.append(", route ").append(Json.str(f, "route"));
+        sb.append('\n');
+        List<Object> endpoints = Json.arr(f.get("endpoints"));
+        if (!endpoints.isEmpty()) sb.append("Endpoints: ").append(join(endpoints)).append('\n');
+        List<Object> imports = Json.arr(f.get("imports"));
+        List<Object> importedBy = Json.arr(f.get("importedBy"));
+        List<Object> affected = Json.arr(v.get("affected"));
+        sb.append("How it fits: imports ").append(imports.size()).append(" project files")
+                .append(imports.isEmpty() ? "" : " (" + join(imports.subList(0, Math.min(5, imports.size()))) + ")")
+                .append("; used by ").append(importedBy.size())
+                .append(importedBy.isEmpty() ? "" : " (" + join(importedBy.subList(0, Math.min(5, importedBy.size()))) + ")")
+                .append("; changing it could affect ").append(affected.size()).append(" files.\n");
+        List<Object> tools = Json.arr(f.get("tools"));
+        if (!tools.isEmpty()) sb.append("Uses: ").append(join(tools)).append('\n');
+        List<Object> decisions = Json.arr(v.get("decisions"));
+        if (!decisions.isEmpty()) {
+            sb.append("Why, from decisions:\n");
+            for (Object o : decisions) {
+                Map<String, Object> d = Json.obj(o);
+                boolean against = "GOES_AGAINST".equals(d.get("kind"));
+                sb.append("- ").append(against ? "GOES AGAINST: uses " : "Follows: uses ").append(Json.str(d, "tool"))
+                        .append(" per \u201c").append(Json.str(d, "decisionTitle")).append("\u201d\n");
+            }
+        }
+        List<Object> mentions = Json.arr(v.get("mentions"));
+        if (!mentions.isEmpty()) {
+            sb.append("Why, from conversations:\n");
+            for (Object o : mentions.subList(0, Math.min(4, mentions.size()))) {
+                Map<String, Object> m = Json.obj(o);
+                sb.append("- \u201c").append(Json.str(m, "conversationTitle")).append("\u201d (").append(day(Json.str(m, "sentAt")))
+                        .append("): ").append(Json.str(m, "text").replace('\n', ' ')).append('\n');
+            }
+        }
+        if (decisions.isEmpty() && mentions.isEmpty()) sb.append("No decisions or conversations in Notch mention this file yet.\n");
+        return sb.toString().strip();
+    }
+
+    private static String join(List<Object> items) {
+        return String.join(", ", items.stream().map(String::valueOf).toList());
+    }
+
     @Override
     public String projectName() throws NotchException {
         requireProject();

@@ -46,6 +46,11 @@ class FakeBackend implements NotchBackend {
     }
 
     @Override
+    public String explainFile(String path) {
+        return path + "\nWhat it does: Shared Postgres pool.";
+    }
+
+    @Override
     public String projectName() {
         return "Billing service";
     }

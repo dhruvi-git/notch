@@ -13,6 +13,7 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 |---|---|---|
 | `engine/` | Self-implemented algorithms, tests and benchmarks. Plain Java 21, no framework | Done |
 | `guard/` | Understands decisions and checks code changes against them. Shared by the API and CLI | Done |
+| `explain/` | Maps a codebase: roles, summaries, imports, modules, entry points, what to read first, unused files. Shared by the API and CLI | Done |
 | `cli/` | `notch`: pre-commit, Claude Code and pull-request guards, plus an MCP server for coding agents | Done |
 | `api/` | Spring Boot REST API: GitHub sign-in, imports, hybrid search, cited answers, decision ledger, drift alerts, agent files | Done (phase 2) |
 | `web/` | Next.js web app: landing, Recall, Where you stopped, Ledger, Drift, Sync, Imports, Lab, Settings | Done (phase 3) |

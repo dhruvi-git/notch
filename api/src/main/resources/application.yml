@@ -9,8 +9,9 @@ spring:
     password: ${DATABASE_PASSWORD:notch}
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      # Code zips for Explain can be up to 25 MB; chat imports keep their own 5 MB limit (ImportService).
+      max-file-size: 25MB
+      max-request-size: 26MB
   mvc:
     problemdetails:
       enabled: true
