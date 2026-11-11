@@ -79,6 +79,12 @@ public class DecisionService {
      */
     @Transactional
     public MemoryView supersede(UUID memoryId, UUID replacementId, String title, String rationale, List<String> rejected) {
+        return supersede(memoryId, replacementId, title, null, rationale, rejected);
+    }
+
+    @Transactional
+    public MemoryView supersede(UUID memoryId, UUID replacementId, String title, String body, String rationale,
+                                List<String> rejected) {
         MemoryRepository.StoredMemory original = require(memoryId);
         if (!original.kind().equals(MemoryKind.DECISION.name())) {
             throw ApiException.badRequest("not_a_decision", "Only decisions can be replaced.");
@@ -107,14 +113,14 @@ public class DecisionService {
                 throw ApiException.badRequest("missing_replacement", "Give a replacementId, or the title of the new decision.");
             }
             replacement = UUID.randomUUID();
-            MemoryPayload payload = new MemoryPayload(title.strip(), null, blankToNull(rationale), clean(rejected));
+            MemoryPayload payload = new MemoryPayload(title.strip(), blankToNull(body), blankToNull(rationale), clean(rejected));
             memories.insertManual(replacement, original.projectId(), userId, MemoryKind.DECISION.name(),
                     codec.seal(payload, userId), Instant.now());
         }
         if (!memories.supersede(original.id(), replacement, userId)) {
             throw ApiException.conflict("already_replaced", "This decision was replaced by someone else just now.");
         }
-        indexes.rebuildAsync(original.projectId());  // decision flags on chunks changed
+        indexes.contentChanged(original.projectId());  // decision flags on chunks changed
         return view(replacement);
     }
 

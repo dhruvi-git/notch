@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { call, ClientApiError, postJson } from "@/lib/client-api";
 import { plural } from "@/lib/format";
@@ -22,7 +21,6 @@ function mentionAt(value: string, caret: number): { start: number; prefix: strin
 }
 
 export function Recall({ projectId, initialQuery, questionsLeft: initialLeft, hasContent }: Props) {
-  const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
   const [query, setQuery] = useState(initialQuery);
@@ -126,8 +124,9 @@ export function Recall({ projectId, initialQuery, questionsLeft: initialLeft, ha
     try {
       const a = await postJson<AskResponse>(`/projects/${projectId}/ask`, { question: q });
       setAnswer(a);
+      // The count beside Ask updates here; the rail catches up on the next page change. Refreshing
+      // the route now would remount this panel and throw the answer away.
       setQuestionsLeft(a.remainingQuestions);
-      router.refresh();  // updates the allowance in the rail
     } catch (err) {
       setError(err instanceof ClientApiError ? err.message : "The answer didn't come back. Try again.");
     } finally {

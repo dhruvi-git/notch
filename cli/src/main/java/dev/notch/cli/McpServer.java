@@ -1,6 +1,8 @@
 package dev.notch.cli;
 
 import dev.notch.guard.Decision;
+import dev.notch.guard.DecisionFacts;
+import dev.notch.guard.TechCatalog;
 import dev.notch.guard.DiffGuard;
 import dev.notch.guard.DiffParser;
 import dev.notch.guard.GuardFinding;
@@ -122,6 +124,15 @@ public final class McpServer {
                         "ruled_out", Map.of("type", "array", "items", Map.of("type", "string"),
                                 "description", "Options that were considered and rejected.")),
                 List.of("decision")));
+        t.add(tool("notch_replace_decision",
+                "Replace a decision in force with a new one. The old decision stays in the project's history as replaced. "
+                        + "Only use this after the user has explicitly confirmed they want to change the decision.",
+                Map.of("decision_id", prop("string", "The id of the decision to replace, from notch_decisions."),
+                        "new_decision", prop("string", "The new decision in one sentence."),
+                        "why", prop("string", "Why the decision changed."),
+                        "ruled_out", Map.of("type", "array", "items", Map.of("type", "string"),
+                                "description", "Options now ruled out.")),
+                List.of("decision_id", "new_decision")));
         t.add(tool("notch_add_task",
                 "Add an open task to the project, such as follow-up work agreed with the user.",
                 Map.of("task", prop("string", "The task in one sentence.")), List.of("task")));
@@ -139,6 +150,9 @@ public final class McpServer {
                 case "notch_where_we_stopped" -> backend.whereWeStopped();
                 case "notch_record_decision" -> recordDecision(args);
                 case "notch_add_task" -> "Added task " + backend.record("TASK", require(args, "task"), null, List.of()) + ".";
+                case "notch_replace_decision" -> "Replaced the decision. The new one is " + backend.replace(require(args, "decision_id"),
+                        require(args, "new_decision"), Json.str(args, "why"), listArg(args, "ruled_out"))
+                        + ", and Notch now checks changes against it.";
                 default -> throw new IllegalArgumentException("Unknown tool: " + name);
             };
             return toolResult(text, false);
@@ -147,11 +161,41 @@ public final class McpServer {
         }
     }
 
+    /** Topic words that name a kind of tool, so "database" finds a decision about Postgres. */
+    private static final Map<String, String> CATEGORY_WORDS = Map.ofEntries(
+            Map.entry("database", "database"), Map.entry("db", "database"), Map.entry("datastore", "database"),
+            Map.entry("storage", "database"), Map.entry("sql", "database"), Map.entry("store", "database"),
+            Map.entry("cache", "cache"), Map.entry("caching", "cache"),
+            Map.entry("auth", "auth"), Map.entry("authentication", "auth"), Map.entry("login", "auth"),
+            Map.entry("session", "auth"), Map.entry("token", "auth"),
+            Map.entry("queue", "queue"), Map.entry("messaging", "queue"), Map.entry("event", "queue"),
+            Map.entry("streaming", "queue"), Map.entry("stream", "queue"), Map.entry("pipeline", "queue"),
+            Map.entry("frontend", "frontend"), Map.entry("ui", "frontend"), Map.entry("api", "api"),
+            Map.entry("orm", "orm"), Map.entry("hosting", "hosting"), Map.entry("deploy", "hosting"),
+            Map.entry("deployment", "hosting"), Map.entry("payment", "payments"), Map.entry("billing", "payments"),
+            Map.entry("test", "testing"), Map.entry("testing", "testing"), Map.entry("css", "styling"),
+            Map.entry("styling", "styling"), Map.entry("ratelimit", "ratelimit"), Map.entry("rate limiting", "ratelimit"));
+
+    static boolean matchesTopic(Decision d, String topic) {
+        String t = topic.toLowerCase(Locale.ROOT).strip();
+        String text = (d.title() + " " + String.join(" ", d.rejectedOptions())).toLowerCase(Locale.ROOT);
+        if (text.contains(t)) return true;
+        String singular = t.endsWith("s") && t.length() > 3 ? t.substring(0, t.length() - 1) : t;
+        if (text.contains(singular)) return true;
+        String category = CATEGORY_WORDS.getOrDefault(t, CATEGORY_WORDS.get(singular));
+        DecisionFacts f = DecisionFacts.of(d.title(), d.rejectedOptions());
+        List<TechCatalog.Tech> techs = new ArrayList<>(f.chosen());
+        techs.addAll(f.rejected());
+        for (TechCatalog.Tech tech : techs) {
+            if (tech.category().equals(category) || tech.name().toLowerCase(Locale.ROOT).contains(singular)) return true;
+        }
+        return false;
+    }
+
     private String decisions(String topic) throws NotchBackend.NotchException {
         List<Decision> all = backend.decisions();
-        String t = topic == null ? "" : topic.toLowerCase(Locale.ROOT).strip();
-        List<Decision> shown = t.isEmpty() ? all : all.stream().filter(d -> (d.title() + " " + String.join(" ", d.rejectedOptions()))
-                .toLowerCase(Locale.ROOT).contains(t)).toList();
+        String t = topic == null ? "" : topic.strip();
+        List<Decision> shown = t.isEmpty() ? all : all.stream().filter(d -> matchesTopic(d, t)).toList();
         if (shown.isEmpty()) return t.isEmpty() ? "No decisions recorded for this project yet." : "No decisions mention \"" + topic + "\".";
         DateTimeFormatter day = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH).withZone(ZoneOffset.UTC);
         StringBuilder sb = new StringBuilder("Decisions in force. Follow these unless the user says otherwise:\n");
@@ -160,7 +204,8 @@ public final class McpServer {
             List<String> extra = new ArrayList<>();
             if (d.decidedAt() != null) extra.add("decided " + day.format(d.decidedAt()));
             if (!d.rejectedOptions().isEmpty()) extra.add("ruled out: " + String.join(", ", d.rejectedOptions()));
-            if (!extra.isEmpty()) sb.append(" (").append(String.join("; ", extra)).append(')');
+            extra.add("id: " + d.id());
+            sb.append(" (").append(String.join("; ", extra)).append(')');
             sb.append('\n');
         }
         return sb.toString().strip();
@@ -169,15 +214,21 @@ public final class McpServer {
     private String checkChange(String path, String content) throws NotchBackend.NotchException {
         List<GuardFinding> findings = new DiffGuard().check(backend.decisions(), List.of(DiffParser.fromContent(path, content, true)));
         if (findings.isEmpty()) return "No conflicts: this change follows every decision in force.";
-        StringBuilder sb = new StringBuilder("This change goes against project decisions. Don't write it as is; tell the user and ask how to proceed.\n");
+        StringBuilder sb = new StringBuilder("STOP: this change goes against decisions recorded for this project. Don't write it, "
+                + "and don't try a variation of it. Tell the user which decision it conflicts with and ask how to proceed. If they "
+                + "want to change the decision, use notch_replace_decision once they confirm.\n");
         for (GuardFinding f : findings) sb.append("- [").append(f.severity()).append("] ").append(f.location()).append(": ").append(f.message()).append('\n');
         return sb.toString().strip();
     }
 
+    private static List<String> listArg(Map<String, Object> args, String key) {
+        List<String> out = new ArrayList<>();
+        if (args.get(key) instanceof List<?> l) for (Object o : l) if (o != null && !o.toString().isBlank()) out.add(o.toString());
+        return out;
+    }
+
     private String recordDecision(Map<String, Object> args) throws NotchBackend.NotchException {
-        List<String> ruledOut = new ArrayList<>();
-        if (args.get("ruled_out") instanceof List<?> l) for (Object o : l) if (o != null && !o.toString().isBlank()) ruledOut.add(o.toString());
-        String id = backend.record("DECISION", require(args, "decision"), Json.str(args, "why"), ruledOut);
+        String id = backend.record("DECISION", require(args, "decision"), Json.str(args, "why"), listArg(args, "ruled_out"));
         return "Recorded decision " + id + ". Notch will now check future changes against it.";
     }
 

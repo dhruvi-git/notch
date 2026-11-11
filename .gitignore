@@ -10,3 +10,6 @@ node_modules/
 .next/
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+# Rewritten by next dev and next build in different ways; generated locally.
+web/next-env.d.ts

@@ -35,6 +35,14 @@ class DecisionFactsTest {
     }
 
     @Test
+    void redisStreamsIsNotRedis() {
+        assertEquals(List.of("Redis Streams"), names(TechCatalog.find("Redis Streams")));
+        List<String> limiter = names(TechCatalog.find("a Redis token bucket"));
+        assertTrue(limiter.contains("Redis") && !limiter.contains("Redis Streams"), limiter.toString());
+        assertEquals("queue", TechCatalog.find("redis streams").get(0).category());
+    }
+
+    @Test
     void decisionWithoutKnownToolsHasNoCategory() {  // boundary
         DecisionFacts f = DecisionFacts.of("We decided to ship on Fridays.", List.of());
         assertNull(f.category());

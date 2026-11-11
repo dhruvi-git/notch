@@ -59,6 +59,7 @@ public final class DiffGuard {
     private List<GuardFinding> collect(List<Decision> decisions, List<FileChange> changes) {
         List<GuardFinding> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();  // one finding per decision, file and tool
+        java.util.Map<TechCatalog.Tech, java.time.Instant> latestChoice = latestChoices(decisions);
         for (Decision d : decisions) {
             DecisionFacts facts = DecisionFacts.of(d.title(), d.rejectedOptions());
             List<TechCatalog.Tech> sameKind = facts.category() == null ? List.of()
@@ -72,12 +73,14 @@ public final class DiffGuard {
                     Signal signal = lineSignal(fileSignal, line.text());
                     if (signal == Signal.IGNORED) continue;
                     for (TechCatalog.Tech t : facts.rejected()) {
+                        if (chosenLater(latestChoice, t, d)) continue;
                         String alias = firstAlias(line.text(), t, signal);
                         if (alias == null || !seen.add(d.id() + "|" + change.path() + "|" + t.name())) continue;
                         out.add(ruledOut(d, facts, change.path(), line, t, alias, signal));
                     }
                     if (signal != Signal.STRONG) continue;
                     for (TechCatalog.Tech t : sameKind) {
+                        if (chosenLater(latestChoice, t, d)) continue;
                         String alias = firstAlias(line.text(), t, signal);
                         if (alias == null || !seen.add(d.id() + "|" + change.path() + "|" + t.name())) continue;
                         out.add(differentChoice(d, facts, change.path(), line, t, alias));
@@ -87,6 +90,27 @@ public final class DiffGuard {
             }
         }
         return out;
+    }
+
+    /** When each tool was most recently chosen by an active decision. */
+    private static java.util.Map<TechCatalog.Tech, java.time.Instant> latestChoices(List<Decision> decisions) {
+        java.util.Map<TechCatalog.Tech, java.time.Instant> m = new java.util.HashMap<>();
+        for (Decision d : decisions) {
+            if (d.decidedAt() == null) continue;
+            for (TechCatalog.Tech t : DecisionFacts.of(d.title(), d.rejectedOptions()).chosen()) {
+                m.merge(t, d.decidedAt(), (a, b) -> a.isAfter(b) ? a : b);
+            }
+        }
+        return m;
+    }
+
+    /**
+     * A later decision chose this tool, so this earlier ruling-out no longer applies. Drift
+     * detection still flags the pair so the older decision can be marked as replaced.
+     */
+    private static boolean chosenLater(java.util.Map<TechCatalog.Tech, java.time.Instant> latest, TechCatalog.Tech t, Decision d) {
+        java.time.Instant chosen = latest.get(t);
+        return chosen != null && d.decidedAt() != null && chosen.isAfter(d.decidedAt());
     }
 
     private static GuardFinding ruledOut(Decision d, DecisionFacts f, String path, FileChange.Line line,

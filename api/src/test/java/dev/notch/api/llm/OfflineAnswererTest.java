@@ -76,9 +76,20 @@ class OfflineAnswererTest {
     }
 
     @Test
+    void theSameSentenceFromTwoSourcesIsSaidOnce() {
+        // A decision made in a chat and copied into notes.
+        AnswerDraft d = ask("what did we decide about the database?",
+                ctx(1, "Let's go with Postgres instead of MongoDB because we need joins.", true),
+                ctx(2, "Notes. Let's go with Postgres instead of MongoDB because we need joins.", true));
+        assertEquals(1, d.citations().size(), d.text());
+    }
+
+    @Test
     void limitsSentencesPerChunkAndOverall() {
-        String many = "Redis one. Redis two. Redis three. Redis four.";
-        AnswerDraft d = ask("redis", ctx(1, many, false), ctx(2, many, false), ctx(3, many, false));
+        AnswerDraft d = ask("redis",
+                ctx(1, "Redis one. Redis two. Redis three. Redis four.", false),
+                ctx(2, "Redis five. Redis six. Redis seven.", false),
+                ctx(3, "Redis eight. Redis nine.", false));
         assertEquals(OfflineAnswerer.MAX_SENTENCES, d.citations().size());
         assertTrue(d.citations().stream().filter(c -> c.n() == 1).count() <= OfflineAnswerer.MAX_PER_CHUNK);
     }

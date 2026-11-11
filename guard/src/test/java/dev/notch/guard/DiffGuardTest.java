@@ -102,6 +102,24 @@ class DiffGuardTest {
     }
 
     @Test
+    void ruledOutRedisStreamsDoesNotBlockRedisAsACache() {
+        Decision events = new Decision("d9", "For \u201cWhere should raw analytics events live?\u201d, we chose Postgres.",
+                List.of("Redis Streams", "Kafka"), DECIDED);
+        List<GuardFinding> f = guard.check(List.of(events), List.of(DiffParser.fromContent("src/limiter.ts",
+                "import Redis from 'ioredis';", true)));
+        assertTrue(f.isEmpty(), f.toString());
+    }
+
+    @Test
+    void aNewerDecisionChoosingAToolLiftsAnOlderRulingOut() {
+        Decision older = new Decision("d1", "We chose server-side sessions instead of JWT.", List.of("JWT"), DECIDED);
+        Decision newer = new Decision("d2", "We'll use JWT for the analytics API tokens.", List.of(), DECIDED.plusSeconds(86_400));
+        List<FileChange> change = List.of(DiffParser.fromContent("auth.js", "const jwt = require('jsonwebtoken');", true));
+        assertTrue(guard.check(List.of(older, newer), change).isEmpty());
+        assertEquals(1, guard.check(List.of(older), change).size());
+    }
+
+    @Test
     void highFindingsComeFirst() {
         List<GuardFinding> f = guard.check(List.of(POSTGRES), List.of(
                 DiffParser.fromContent("z.ts", "await saveToMongo(x)", true),

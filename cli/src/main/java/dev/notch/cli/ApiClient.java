@@ -76,6 +76,7 @@ public final class ApiClient implements NotchBackend {
             List<String> rejected = new ArrayList<>();
             if (m.get("rejectedOptions") instanceof List<?> l) for (Object r : l) if (r != null) rejected.add(r.toString());
             out.add(new Decision(Json.str(m, "id"), Json.str(m, "title"), rejected, instant(Json.str(m, "createdAt"))));
+            // Decisions carry their id so an agent can ask to replace one (with the user's go-ahead).
         }
         return out;
     }
@@ -117,15 +118,33 @@ public final class ApiClient implements NotchBackend {
         return sb.length() == 0 ? "No sessions recorded for this project yet." : sb.toString().strip();
     }
 
+    /** Shown in the Ledger as where a memory came from. */
+    static final String FROM_AGENT = "Recorded by your coding agent.";
+
     @Override
     public String record(String kind, String title, String rationale, List<String> ruledOut) throws NotchException {
         requireProject();
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("kind", kind);
         body.put("title", title);
+        body.put("body", FROM_AGENT);
         if (rationale != null && !rationale.isBlank()) body.put("rationale", rationale);
         body.put("rejectedOptions", ruledOut == null ? List.of() : ruledOut);
         Map<String, Object> m = Json.obj(Json.parse(send("POST", "/api/projects/" + enc(config.project) + "/memories", Json.write(body))));
+        return Json.str(m, "id");
+    }
+
+    @Override
+    public String replace(String decisionId, String title, String rationale, List<String> ruledOut) throws NotchException {
+        if (decisionId == null || !decisionId.matches("[0-9a-fA-F-]{36}")) {
+            throw new NotchException("Use the decision's id from notch_decisions.");
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("title", title);
+        body.put("body", FROM_AGENT);
+        if (rationale != null && !rationale.isBlank()) body.put("rationale", rationale);
+        body.put("rejectedOptions", ruledOut == null ? List.of() : ruledOut);
+        Map<String, Object> m = Json.obj(Json.parse(send("POST", "/api/memories/" + enc(decisionId) + "/supersede", Json.write(body))));
         return Json.str(m, "id");
     }
 

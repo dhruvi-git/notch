@@ -5,6 +5,7 @@ import dev.notch.guard.DiffGuard;
 import dev.notch.guard.DiffParser;
 import dev.notch.guard.FileChange;
 import dev.notch.guard.GuardFinding;
+import dev.notch.guard.InstallCommands;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,11 +35,12 @@ import java.util.Map;
  *
  * Exit codes for {@code check}: 0 nothing blocking, 1 a HIGH finding (or any finding with
  * {@code --strict}), 3 the check couldn't run. Hooks fail open: if Notch can't run, they
- * never block your work.
+ * never block your work. In Claude Code hook mode a block is reported as a JSON "deny"
+ * decision on stdout with exit 0, which stops file edits and terminal commands alike.
  */
 public final class Main {
 
-    static final int OK = 0, FOUND = 1, CLAUDE_BLOCK = 2, ERROR = 3;
+    static final int OK = 0, FOUND = 1, ERROR = 3;
 
     private final PrintStream out;
     private final PrintStream err;
@@ -174,8 +176,8 @@ public final class Main {
 
         if (claude) {
             if (findings.isEmpty()) return OK;
-            err.println(forAgent(findings));
-            return CLAUDE_BLOCK;  // Claude Code blocks the edit and shows Claude this reason
+            out.println(denyDecision(forAgent(findings)));  // Claude Code cancels the call and shows Claude why
+            return OK;
         }
         switch (format) {
             case "json" -> out.println(Json.write(findings.stream().map(Main::toJson).toList()));
@@ -196,11 +198,24 @@ public final class Main {
         return DiffParser.parse(diff);
     }
 
-    /** Claude Code's PreToolUse input: the new content of an Edit, MultiEdit or Write. */
+    /** The PreToolUse "deny" decision: Claude Code cancels the tool call and shows Claude the reason. */
+    static String denyDecision(String reason) {
+        Map<String, Object> specific = new LinkedHashMap<>();
+        specific.put("hookEventName", "PreToolUse");
+        specific.put("permissionDecision", "deny");
+        specific.put("permissionDecisionReason", reason);
+        return Json.write(Map.of("hookSpecificOutput", specific));
+    }
+
+    /**
+     * Claude Code's PreToolUse input: the new content of an Edit, MultiEdit or Write, or the
+     * packages a Bash command would install.
+     */
     static List<FileChange> fromClaudeHook(BufferedReader stdin, Path root) throws IOException {
         Map<String, Object> event = Json.obj(Json.parse(readAll(stdin)));
         if (!(event.get("tool_input") instanceof Map<?, ?>)) return List.of();
         Map<String, Object> input = Json.obj(event.get("tool_input"));
+        if ("Bash".equals(Json.str(event, "tool_name"))) return InstallCommands.parse(Json.str(input, "command"));
         String path = Json.str(input, "file_path");
         if (path == null) return List.of();
         if (root != null) {
@@ -220,10 +235,11 @@ public final class Main {
     }
 
     static String forAgent(List<GuardFinding> findings) {
-        StringBuilder sb = new StringBuilder("Notch blocked this edit: it goes against decisions recorded for this project.\n");
+        StringBuilder sb = new StringBuilder("Notch blocked this: it goes against decisions recorded for this project.\n");
         for (GuardFinding f : findings) sb.append("- ").append(f.location()).append(": ").append(f.message()).append('\n');
-        sb.append("Don't work around this. Tell the user which decision this conflicts with and ask whether they want to "
-                + "keep the decision or change it in Notch. Then continue with what they choose.");
+        sb.append("Don't work around this or try a variation. Tell the user which decision this conflicts with and ask whether "
+                + "they want to keep the decision or change it. If they confirm a change, replace the decision with "
+                + "notch_replace_decision (or in Notch), then continue.");
         return sb.toString();
     }
 
@@ -315,37 +331,87 @@ public final class Main {
             }
             Files.move(hook, hooks.resolve("pre-commit.before-notch"));
         }
-        Files.writeString(hook, "#!/bin/sh\n" + HOOK_MARKER + ": stops commits that go against the project's decisions.\n"
-                + "# Skip once with: git commit --no-verify\n"
-                + "exec notch check --staged --fail-open\n", StandardCharsets.UTF_8);
+        Files.writeString(hook, gitHookScript(ownJar()), StandardCharsets.UTF_8);
         makeExecutable(hook);
         out.println("Installed the pre-commit guard at " + root.relativize(hook) + ".");
         return OK;
+    }
+
+    /**
+     * The pre-commit script. Commits from IDEs often run without your shell's PATH, so it tries
+     * {@code notch} on PATH, then the jar this was installed from, and if neither is there it
+     * skips the check with a warning instead of blocking the commit.
+     */
+    static String gitHookScript(Path jar) {
+        String jarPath = jar == null ? "" : jar.toAbsolutePath().toString().replace('\\', '/');
+        return "#!/bin/sh\n" + HOOK_MARKER + ": stops commits that go against the project's decisions.\n"
+                + "# Skip once with: git commit --no-verify\n"
+                + "if command -v notch >/dev/null 2>&1; then exec notch check --staged --fail-open; fi\n"
+                + "JAR=\"" + jarPath + "\"\n"
+                + "if [ -n \"$JAR\" ] && [ -f \"$JAR\" ] && command -v java >/dev/null 2>&1; then\n"
+                + "  exec java -jar \"$JAR\" check --staged --fail-open\n"
+                + "fi\n"
+                + "echo \"notch: not found, so the decision check was skipped. Put cli/bin on your PATH.\" >&2\n"
+                + "exit 0\n";
+    }
+
+    /** The jar this CLI is running from, or null when run from classes (tests, IDE). */
+    static Path ownJar() {
+        try {
+            Path p = Path.of(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            return p.toString().endsWith(".jar") ? p.toAbsolutePath() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** True when {@code notch} (or notch.cmd on Windows) is on the PATH right now. */
+    private boolean notchOnPath() {
+        String path = env.getOrDefault("PATH", env.getOrDefault("Path", ""));
+        for (String dir : path.split(java.io.File.pathSeparator)) {
+            if (dir.isBlank()) continue;
+            for (String name : List.of("notch", "notch.cmd", "notch.bat")) {
+                if (Files.isRegularFile(Path.of(dir, name))) return true;
+            }
+        }
+        return false;
+    }
+
+    /** How agent configs should start Notch: by name when it's on PATH, else by its jar. */
+    private List<String> launcher() {
+        Path jar = ownJar();
+        if (notchOnPath() || jar == null) return List.of("notch");
+        out.println("notch isn't on your PATH, so this uses " + jar + " directly. That path is specific to this computer.");
+        return List.of("java", "-jar", jar.toString().replace('\\', '/'));
     }
 
     private int claudeHook(Path root) throws IOException {
         Path file = root.resolve(".claude").resolve("settings.json");
         Map<String, Object> settings = readJsonObject(file);
         Map<String, Object> hooks = child(settings, "hooks");
-        List<Object> pre = hooks.get("PreToolUse") instanceof List<?> l ? Json.arr(l) : new ArrayList<>();
-        boolean present = Json.write(pre).contains("notch check --claude-hook");
-        if (!present) {
-            Map<String, Object> cmd = new LinkedHashMap<>();
-            cmd.put("type", "command");
-            cmd.put("command", "notch check --claude-hook");
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("matcher", "Edit|MultiEdit|Write");
-            entry.put("hooks", List.of(cmd));
-            pre = new ArrayList<>(pre);
-            pre.add(entry);
-            hooks.put("PreToolUse", pre);
-            settings.put("hooks", hooks);
-            Files.createDirectories(file.getParent());
-            Files.writeString(file, Json.pretty(settings), StandardCharsets.UTF_8);
-        }
-        out.println((present ? "Claude Code hook already installed in " : "Added the Claude Code hook to ") + root.relativize(file)
-                + ". Edits that go against a decision will be stopped, and Claude will be told why.");
+        List<Object> pre = hooks.get("PreToolUse") instanceof List<?> l ? new ArrayList<>(Json.arr(l)) : new ArrayList<>();
+        boolean replaced = pre.removeIf(e -> Json.write(e).contains("check --claude-hook"));  // older Notch entries
+        List<String> cmd = new ArrayList<>(launcher());
+        cmd.add("check");
+        cmd.add("--claude-hook");
+        Map<String, Object> hook = new LinkedHashMap<>();
+        hook.put("type", "command");
+        hook.put("command", String.join(" ", cmd.stream().map(Main::shellQuote).toList()));
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("matcher", "Edit|MultiEdit|Write|Bash");
+        entry.put("hooks", List.of(hook));
+        pre.add(entry);
+        hooks.put("PreToolUse", pre);
+        settings.put("hooks", hooks);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, Json.pretty(settings), StandardCharsets.UTF_8);
+        out.println((replaced ? "Updated the Claude Code hook in " : "Added the Claude Code hook to ") + root.relativize(file)
+                + ". File edits and package installs that go against a decision will be stopped, and Claude will be told why.");
         return OK;
+    }
+
+    private static String shellQuote(String s) {
+        return s.matches("[A-Za-z0-9_./:=@-]+") ? s : "\"" + s.replace("\"", "\\\"") + "\"";
     }
 
     private int githubWorkflow(Path root) throws IOException {
@@ -386,9 +452,12 @@ public final class Main {
         }
         Map<String, Object> config = readJsonObject(file);
         Map<String, Object> servers = child(config, "mcpServers");
+        List<String> launch = launcher();
+        List<String> args = new ArrayList<>(launch.subList(1, launch.size()));
+        args.add("mcp");
         Map<String, Object> notch = new LinkedHashMap<>();
-        notch.put("command", "notch");
-        notch.put("args", List.of("mcp"));
+        notch.put("command", launch.get(0));
+        notch.put("args", args);
         servers.put("notch", notch);
         config.put("mcpServers", servers);
         Files.createDirectories(file.toAbsolutePath().getParent());

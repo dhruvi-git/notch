@@ -24,6 +24,10 @@ import java.util.concurrent.Executors;
  *       previous one; the new index is swapped in with a single volatile write. This hides
  *       the suffix-array build time measured in phase 1.</li>
  *   <li>Indexes unused for 30 minutes are dropped to free memory.</li>
+ *   <li>Each project has a content version in the database, bumped whenever its content
+ *       changes. Every instance compares it with the version its index was built from, so
+ *       with several API instances, all of them notice new imports, not just the one that
+ *       processed them.</li>
  * </ul>
  */
 @Component
@@ -36,6 +40,7 @@ public class IndexRegistry implements DisposableBean {
         volatile ProjectIndex index;
         volatile long lastUsed = System.currentTimeMillis();
         volatile long version;
+        volatile long builtFrom = -1;  // content version the current index reflects
         boolean rebuilding;   // guarded by synchronized (this)
         boolean dirty;        // another rebuild was requested while one was running
     }
@@ -58,16 +63,28 @@ public class IndexRegistry implements DisposableBean {
     public ProjectIndex get(Project project) {
         Holder h = holders.computeIfAbsent(project.id(), id -> new Holder());
         h.lastUsed = System.currentTimeMillis();
+        long current = projects.contentVersion(project.id());
         ProjectIndex idx = h.index;
-        if (idx != null) return idx;
+        if (idx != null) {
+            // Another instance changed this project: rebuild in the background, answer from this one meanwhile.
+            if (h.builtFrom < current) rebuildAsync(project.id());
+            return idx;
+        }
         synchronized (h) {
             if (h.index == null) {
                 h.index = loader.load(project.id(), project.userId());
+                h.builtFrom = current;
                 h.version++;
                 log.info("Built index for project {}: {}", project.id(), h.index.stats());
             }
             return h.index;
         }
+    }
+
+    /** Records that the project's content changed, then rebuilds this instance's index. */
+    public void contentChanged(UUID projectId) {
+        projects.bumpContentVersion(projectId);
+        rebuildAsync(projectId);
     }
 
     public long version(UUID projectId) {
@@ -97,8 +114,10 @@ public class IndexRegistry implements DisposableBean {
                     holders.remove(projectId);
                     return;
                 }
+                long version = projects.contentVersion(projectId);
                 ProjectIndex fresh = loader.load(p.id(), p.userId());
                 h.index = fresh;
+                h.builtFrom = version;
                 h.version++;
                 log.info("Rebuilt index for project {}: {}", projectId, fresh.stats());
                 synchronized (h) {

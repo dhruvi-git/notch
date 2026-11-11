@@ -18,6 +18,9 @@ public interface NotchBackend {
     /** Records a decision or task; returns its id. */
     String record(String kind, String title, String rationale, List<String> ruledOut) throws NotchException;
 
+    /** Replaces a decision in force with a new one; the old one stays in its history. Returns the new id. */
+    String replace(String decisionId, String title, String rationale, List<String> ruledOut) throws NotchException;
+
     String projectName() throws NotchException;
 
     final class NotchException extends Exception {

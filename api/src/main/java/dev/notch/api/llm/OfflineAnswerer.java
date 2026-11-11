@@ -55,8 +55,11 @@ public final class OfflineAnswerer {
                 .thenComparingInt(Candidate::contextIndex).thenComparingInt(Candidate::start));
         List<Candidate> chosen = new ArrayList<>();
         Map<Integer, Integer> perChunk = new HashMap<>();
+        java.util.Set<String> said = new java.util.HashSet<>();
         for (Candidate c : candidates) {
             if (chosen.size() == MAX_SENTENCES) break;
+            // The same sentence from two sources (a chat and the notes that copy it) is said once.
+            if (!said.add(clean(c.sentence()).toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").strip())) continue;
             if (perChunk.merge(c.contextIndex(), 1, Integer::sum) > MAX_PER_CHUNK) continue;
             chosen.add(c);
         }

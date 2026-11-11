@@ -43,25 +43,43 @@ class McpServerTest {
     }
 
     @Test
-    void listsTheSixTools() {
+    void listsTheSevenTools() {
         List<Object> tools = Json.arr(Json.obj(reply("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}").get("result")).get("tools"));
         assertEquals(List.of("notch_decisions", "notch_check_change", "notch_search", "notch_where_we_stopped",
-                "notch_record_decision", "notch_add_task"), tools.stream().map(t -> Json.obj(t).get("name")).toList());
+                "notch_record_decision", "notch_replace_decision", "notch_add_task"), tools.stream().map(t -> Json.obj(t).get("name")).toList());
         for (Object t : tools) assertEquals("object", Json.obj(Json.obj(t).get("inputSchema")).get("type"));
     }
 
     @Test
     void checkChangeCatchesARuledOutDependency() {
         String text = toolText("notch_check_change", "{\"file_path\":\"package.json\",\"content\":\"\\\"mongoose\\\": \\\"8\\\"\"}");
-        assertTrue(text.startsWith("This change goes against project decisions"), text);
+        assertTrue(text.startsWith("STOP: this change goes against decisions"), text);
         assertTrue(text.contains("[HIGH] package.json:1"));
         assertTrue(toolText("notch_check_change", "{\"file_path\":\"package.json\",\"content\":\"\\\"pg\\\": \\\"8\\\"\"}").startsWith("No conflicts"));
     }
 
     @Test
     void decisionsCanBeFilteredByTopic() {
-        assertTrue(toolText("notch_decisions", "{}").contains("ruled out: MongoDB"));
+        String all = toolText("notch_decisions", "{}");
+        assertTrue(all.contains("ruled out: MongoDB"));
+        assertTrue(all.contains("id: d1"), "ids let an agent ask to replace a decision");
         assertTrue(toolText("notch_decisions", "{\"topic\":\"auth\"}").startsWith("No decisions mention"));
+    }
+
+    @Test
+    void topicsMatchByKindOfTool() {
+        // The decision never says "database", but Postgres and MongoDB are databases.
+        assertTrue(toolText("notch_decisions", "{\"topic\":\"database\"}").contains("Postgres"));
+        assertTrue(toolText("notch_decisions", "{\"topic\":\"databases\"}").contains("Postgres"));
+        assertTrue(toolText("notch_decisions", "{\"topic\":\"mongo\"}").contains("Postgres"));
+    }
+
+    @Test
+    void replaceDecisionPassesThrough() {
+        String text = toolText("notch_replace_decision",
+                "{\"decision_id\":\"d1\",\"new_decision\":\"Use MongoDB for events.\",\"ruled_out\":[\"Postgres\"]}");
+        assertTrue(text.startsWith("Replaced the decision. The new one is r1"), text);
+        assertEquals("d1 -> Use MongoDB for events. | [Postgres]", backend.replaced.get(0));
     }
 
     @Test

@@ -42,6 +42,19 @@ public class ProjectRepository {
                 .optional();
     }
 
+    /** Marks the project's searchable content as changed; every instance's index sees it's stale. */
+    public void bumpContentVersion(UUID id) {
+        jdbc.sql("UPDATE projects SET content_version = content_version + 1 WHERE id = :id").param("id", id).update();
+    }
+
+    public long contentVersion(UUID id) {
+        return jdbc.sql("SELECT content_version FROM projects WHERE id = :id")
+                .param("id", id)
+                .query(Long.class)
+                .optional()
+                .orElse(0L);
+    }
+
     /** For background work outside a request; never exposed through the API. */
     public Optional<Project> findAnyOwner(UUID id) {
         return jdbc.sql("SELECT * FROM projects WHERE id = :id")

@@ -39,6 +39,12 @@ public class SearchService {
     static final int MAX_QUERY_CHARS = 500;
     static final int EXACT_CANDIDATES = 200;
     static final int SEMANTIC_CANDIDATES = 50;
+    /**
+     * Nearest neighbours below this cosine similarity are dropped: pgvector always returns the
+     * k nearest chunks, however unrelated. Tuned for the offline embeddings; revisit with a
+     * real embedding model.
+     */
+    static final double SEMANTIC_MIN = 0.3;
     static final Duration RECENCY_HALF_LIFE = Duration.ofDays(14);
     /** When the query is about decisions, the decision signal counts for more. */
     static final HybridRanker.Weights DECISION_WEIGHTS = new HybridRanker.Weights(0.30, 0.30, 0.10, 0.30);
@@ -119,7 +125,11 @@ public class SearchService {
     private Map<UUID, Double> semantic(Project project, String query) {
         float[] v = embeddings.embed(List.of(query)).get(0);
         if (v == null) return Map.of();
-        return chunks.nearest(project.id(), project.userId(), v, SEMANTIC_CANDIDATES);
+        Map<UUID, Double> near = new java.util.LinkedHashMap<>();
+        chunks.nearest(project.id(), project.userId(), v, SEMANTIC_CANDIDATES).forEach((id, sim) -> {
+            if (sim >= SEMANTIC_MIN) near.put(id, sim);
+        });
+        return near;
     }
 
     private static long elapsed(long startedNanos) {

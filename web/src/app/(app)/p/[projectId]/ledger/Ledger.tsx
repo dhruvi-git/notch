@@ -153,11 +153,20 @@ const EMPTY: Record<Tab, string> = {
   replaced: "No decision has been replaced. When plans change, replace a decision to keep its history.",
 };
 
+/** Where a memory without a source conversation came from. */
+const ORIGINS: Record<string, string> = {
+  "Decided in Compare.": "Decided in Compare",
+  "Recorded by your coding agent.": "Recorded by your coding agent",
+};
+
+function origin(body: string | null): string {
+  return (body && ORIGINS[body]) ?? "Recorded by hand";
+}
+
 function Source({ m }: { m: Memory }) {
   return (
     <p className={styles.source}>
-      {m.conversationTitle ? <>From &ldquo;{m.conversationTitle}&rdquo;, </>
-        : m.body === "Decided in Compare." ? <>Decided in Compare, </> : <>Recorded by hand, </>}
+      {m.conversationTitle ? <>From &ldquo;{m.conversationTitle}&rdquo;, </> : <>{origin(m.body)}, </>}
       {shortDate(m.createdAt)}
     </p>
   );

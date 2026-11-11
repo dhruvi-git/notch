@@ -37,6 +37,9 @@ public final class TechCatalog {
         add("auth", "Auth0", "auth0");
         add("auth", "Clerk", "clerk");
         add("queue", "Kafka", "kafka", "kafkajs");
+        // A product family member is its own choice: ruling out Redis Streams for events says
+        // nothing about Redis as a cache. Longest-alias-first matching keeps them apart.
+        add("queue", "Redis Streams", "redis streams", "redis stream");
         add("queue", "RabbitMQ", "rabbitmq");
         add("queue", "SQS", "sqs");
         add("api", "GraphQL", "graphql", "apollo", "apollo-server", "graphql-yoga");

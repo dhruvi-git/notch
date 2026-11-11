@@ -37,6 +37,14 @@ class FakeBackend implements NotchBackend {
         return "m" + recorded.size();
     }
 
+    final List<String> replaced = new ArrayList<>();
+
+    @Override
+    public String replace(String decisionId, String title, String rationale, List<String> ruledOut) {
+        replaced.add(decisionId + " -> " + title + " | " + ruledOut);
+        return "r" + replaced.size();
+    }
+
     @Override
     public String projectName() {
         return "Billing service";

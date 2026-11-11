@@ -29,7 +29,7 @@ notch status
 
 ```bash
 notch hook git        # pre-commit: stops commits that go against a decision
-notch hook claude     # Claude Code: stops edits that go against a decision, and tells Claude why
+notch hook claude     # Claude Code: stops edits and package installs that go against a decision, and tells Claude why
 notch hook github     # GitHub Actions: annotates pull requests
 ```
 
@@ -68,14 +68,24 @@ Short aliases such as `pg` only count in manifests and imports, where they're un
 `3` the check couldn't run. The hooks **fail open**: if Notch can't run (no network and no
 saved decisions, say), your commit or edit goes ahead and you see a warning.
 
+Commits from an IDE often run without your shell's PATH, so the pre-commit hook tries `notch`
+on PATH, then the jar it was installed from, and only skips the check (with a warning) when
+neither is there. `notch hook claude` and `notch setup` do the same: if `notch` isn't on PATH
+when you run them, they write the jar's full path into the config and tell you so.
+
+A newer decision that chooses a tool lifts an older decision's ruling-out of that tool for the
+guard; Drift still shows the pair so the older one can be marked as replaced.
+
 ### The Claude Code hook
 
-`notch hook claude` adds a `PreToolUse` hook for `Edit`, `MultiEdit` and `Write` to
-`.claude/settings.json`, keeping any settings already there. Claude Code sends the edit as
-JSON on stdin; when the new code goes against a decision, Notch exits with code 2, which
-blocks the edit and shows Claude the reason, so it can raise the conflict with you instead of
-working around it. (There is a reported Claude Code issue where exit code 2 doesn't stop
-`Bash` tool calls; Notch only hooks file edits, which aren't affected.)
+`notch hook claude` adds a `PreToolUse` hook for `Edit`, `MultiEdit`, `Write` and `Bash` to
+`.claude/settings.json`, keeping any settings already there (and replacing an older Notch
+entry). Claude Code sends the call as JSON on stdin. For edits, Notch checks the new code; for
+terminal commands, it reads package installs (`npm`, `pnpm`, `yarn`, `bun`, `pip`, `poetry`,
+`uv`, `cargo`, `go get`, `gem`, `composer`, `docker run`) as the manifest lines they would add.
+When something goes against a decision, Notch prints a `permissionDecision: "deny"` JSON
+decision: Claude Code cancels the call and shows Claude the reason, so it raises the conflict
+with you instead of working around it.
 
 ## MCP server
 
@@ -85,15 +95,16 @@ notch setup cursor     # writes .cursor/mcp.json
 notch setup codex      # prints the ~/.codex/config.toml entry
 ```
 
-The agent starts `notch mcp` itself and gets six tools:
+The agent starts `notch mcp` itself and gets seven tools:
 
 | Tool | What the agent uses it for |
 |---|---|
-| `notch_decisions` | The decisions in force, optionally filtered by topic, before choosing a library or design |
+| `notch_decisions` | The decisions in force, with ids, optionally by topic. Topics match kinds of tool too: "database" finds a Postgres decision |
 | `notch_check_change` | Check code before writing it: the same guard as the hooks |
 | `notch_search` | Search past conversations: an error, a file, why something was done |
 | `notch_where_we_stopped` | The last session, open tasks and drift alerts |
 | `notch_record_decision` | Record a decision the user just made, with why and what was ruled out |
+| `notch_replace_decision` | Replace a decision in force, once the user confirms; the old one stays in history |
 | `notch_add_task` | Record follow-up work |
 
 The server speaks MCP's newline-delimited JSON-RPC over stdio. Recording decisions from inside

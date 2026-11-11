@@ -23,27 +23,35 @@ export function ImportPanel({ projectId, remaining, limit }: { projectId: string
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
   const [dragging, setDragging] = useState(false);
+  // Only the latest upload may update the panel: an earlier one still polling must not overwrite it.
+  const latest = useRef(0);
 
   async function upload(file: File) {
     if (file.size > MAX_BYTES) {
       setState({ kind: "error", message: "Files can be up to 5 MB. Split larger exports into smaller files." });
       return;
     }
+    const mine = ++latest.current;
+    const current = () => latest.current === mine;
     setState({ kind: "uploading", name: file.name });
     const body = new FormData();
     body.append("file", file);
     try {
       let report = await call<ImportReport>(`/projects/${projectId}/imports`, { method: "POST", body });
+      if (!current()) return;
       setState({ kind: "done", report });
       router.refresh();
       // Memories are found in the background; follow along until it finishes.
       while (report.status === "PROCESSING") {
         await new Promise((r) => setTimeout(r, POLL_MS));
+        if (!current()) return;
         report = await call<ImportReport>(`/projects/${projectId}/imports/${report.id}`);
+        if (!current()) return;
         setState({ kind: "done", report });
       }
       router.refresh();
     } catch (err) {
+      if (!current()) return;
       setState({
         kind: "error",
         message: err instanceof ClientApiError ? err.message : "The upload didn't finish. Check your connection and try again.",

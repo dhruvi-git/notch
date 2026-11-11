@@ -36,7 +36,7 @@ public class DecisionController {
 
     /** Either {@code replacementId}, or the text of a new decision. */
     public record SupersedeRequest(UUID replacementId, @Size(max = 300) String title,
-                                   @Size(max = 500) String rationale,
+                                   @Size(max = 200) String body, @Size(max = 500) String rationale,
                                    @Size(max = 10) List<@Size(max = 80) String> rejectedOptions) {
     }
 
@@ -64,7 +64,7 @@ public class DecisionController {
     /** Replaces a decision. Returns the replacement. */
     @PostMapping("/api/memories/{memoryId}/supersede")
     public MemoryView supersede(@PathVariable UUID memoryId, @Valid @RequestBody SupersedeRequest req) {
-        return decisions.supersede(memoryId, req.replacementId(), req.title(), req.rationale(), req.rejectedOptions());
+        return decisions.supersede(memoryId, req.replacementId(), req.title(), req.body(), req.rationale(), req.rejectedOptions());
     }
 
     @GetMapping("/api/memories/{memoryId}/history")

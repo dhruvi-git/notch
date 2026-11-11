@@ -48,7 +48,7 @@ public class JobWorker {
                 default -> throw new IllegalStateException("unknown job kind " + job.kind());
             }
             jobs.complete(job.id());
-            indexes.rebuildAsync(job.projectId());  // new chunks and decisions become searchable
+            indexes.contentChanged(job.projectId());  // new chunks and decisions become searchable, on every instance
             log.info("Job {} ({}) done in {} ms", job.id(), job.kind(), (System.nanoTime() - started) / 1_000_000);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName() + ": " + e.getMessage();

@@ -94,17 +94,48 @@ class MainTest {
         assertEquals("d1", f.get("decisionId"));
     }
 
+    private Map<String, Object> denial() {
+        String text = out.toString(StandardCharsets.UTF_8).strip();
+        assertFalse(text.isEmpty(), "expected a deny decision on stdout");
+        return Json.obj(Json.obj(Json.parse(text)).get("hookSpecificOutput"));
+    }
+
     @Test
-    void claudeHookBlocksAndExplains() throws Exception {
+    void claudeHookBlocksEditsAndExplains() throws Exception {
         run("", "link", PROJECT);
         String event = "{\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\""
                 + repo.resolve("src/db.js").toString().replace("\\", "\\\\") + "\",\"content\":\"const mongoose = require('mongoose');\"}}";
-        assertEquals(Main.CLAUDE_BLOCK, run(event, "check", "--claude-hook", "--offline"));
-        String reason = err.toString(StandardCharsets.UTF_8);
-        assertTrue(reason.contains("Notch blocked this edit"), reason);
+        assertEquals(Main.OK, run(event, "check", "--claude-hook", "--offline"));
+        Map<String, Object> d = denial();
+        assertEquals("PreToolUse", d.get("hookEventName"));
+        assertEquals("deny", d.get("permissionDecision"));
+        String reason = (String) d.get("permissionDecisionReason");
+        assertTrue(reason.contains("Notch blocked this"), reason);
         assertTrue(reason.contains("src/db.js:1"), reason);
         String edit = "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"a.js\",\"old_string\":\"x\",\"new_string\":\"const pg = require('pg');\"}}";
         assertEquals(Main.OK, run(edit, "check", "--claude-hook", "--offline"));
+        assertTrue(out.toString(StandardCharsets.UTF_8).isBlank(), "allowed edits print nothing");
+    }
+
+    @Test
+    void claudeHookBlocksPackageInstallsInTheTerminal() throws Exception {
+        run("", "link", PROJECT);
+        String bash = "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd api && npm install mongoose@8\"}}";
+        assertEquals(Main.OK, run(bash, "check", "--claude-hook", "--offline"));
+        assertTrue(((String) denial().get("permissionDecisionReason")).contains("Adds MongoDB (mongoose)"));
+        String harmless = "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"npm test\"}}";
+        assertEquals(Main.OK, run(harmless, "check", "--claude-hook", "--offline"));
+        assertTrue(out.toString(StandardCharsets.UTF_8).isBlank());
+    }
+
+    @Test
+    void gitHookSkipsInsteadOfBlockingWhenNotchIsMissing() throws Exception {
+        Path script = tmp.resolve("pre-commit");
+        Files.writeString(script, Main.gitHookScript(null));
+        Process p = new ProcessBuilder("sh", script.toString()).redirectErrorStream(true).start();
+        String output = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertEquals(0, p.waitFor(), output);
+        assertTrue(output.contains("decision check was skipped"), output);
     }
 
     @Test
@@ -130,7 +161,7 @@ class MainTest {
         assertTrue(settings.containsKey("permissions"), "existing settings are kept");
         List<Object> pre = Json.arr(Json.obj(settings.get("hooks")).get("PreToolUse"));
         assertEquals(1, pre.size());
-        assertEquals("Edit|MultiEdit|Write", Json.obj(pre.get(0)).get("matcher"));
+        assertEquals("Edit|MultiEdit|Write|Bash", Json.obj(pre.get(0)).get("matcher"));
 
         assertEquals(Main.OK, run("", "setup", "claude"));
         Map<String, Object> mcp = Json.obj(Json.obj(Json.parse(Files.readString(repo.resolve(".mcp.json")))).get("mcpServers"));
