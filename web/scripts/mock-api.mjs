@@ -401,7 +401,10 @@ function mentions(path) {
     const at = c.text.toLowerCase().indexOf(term.toLowerCase());
     if (at < 0 || seen.has(c.id)) continue;
     seen.add(c.id);
-    out.push({ matched: term, conversationId: c.conv, conversationTitle: c.conv, sentAt: c.sentAt, role: c.role, text: c.text, decision: false });
+    const i = CODE_CHUNKS.indexOf(c);
+    const reply = CODE_CHUNKS.slice(i + 1).find((n) => n.conv === c.conv && n.role !== c.role);
+    out.push({ matched: term, conversationId: c.conv, conversationTitle: c.conv, sentAt: c.sentAt, role: c.role, text: c.text, decision: false,
+      replyRole: reply?.role ?? null, replyText: reply?.text ?? null });
   }
   return out;
 }

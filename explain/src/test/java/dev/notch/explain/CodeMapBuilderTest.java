@@ -176,6 +176,18 @@ class CodeMapBuilderTest {
     }
 
     @Test
+    void linesAndFoldersAreCountedAsAPersonWould() {
+        CodeMap m = new CodeMapBuilder().build(List.of(
+                f("src/events/store.ts", "export const a = 1;\nexport const b = 2;\n"),
+                f("src/events/track.ts", "import { a } from './store';"),
+                f("src/components/Table.tsx", "export function Table() { return null; }")));
+        assertEquals(2, m.file("src/events/store.ts").lines(), "the trailing newline isn't a third line");
+        assertEquals(1, m.file("src/events/track.ts").lines());
+        assertEquals(List.of("src/components", "src/events"), m.modules().stream().map(CodeMap.Module::path).toList(),
+                "small folders keep their own name instead of becoming \"src\"");
+    }
+
+    @Test
     void emptyAndOversizedInputsAreSafe() {  // boundary
         CodeMap empty = new CodeMapBuilder().build(List.of());
         assertEquals(0, empty.stats().files());

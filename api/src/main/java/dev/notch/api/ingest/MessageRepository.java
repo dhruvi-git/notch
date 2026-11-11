@@ -24,6 +24,27 @@ public class MessageRepository {
         this.jdbc = jdbc;
     }
 
+    /**
+     * The next message from the other speaker in the same conversation, such as the answer to a
+     * question. Empty if the message is the last word.
+     */
+    public java.util.Optional<StoredMessage> nextReply(UUID messageId, UUID userId) {
+        return jdbc.sql("""
+                SELECT n.id, n.conversation_id, c.title, n.seq, n.role, n.body, n.sent_at
+                FROM messages m
+                JOIN messages n ON n.conversation_id = m.conversation_id AND n.seq > m.seq AND n.role <> m.role
+                JOIN conversations c ON c.id = n.conversation_id
+                WHERE m.id = :id AND m.user_id = :u
+                ORDER BY n.seq
+                LIMIT 1""")
+                .param("id", messageId)
+                .param("u", userId)
+                .query((rs, n) -> new StoredMessage(dev.notch.api.support.Db.uuid(rs, "id"),
+                        dev.notch.api.support.Db.uuid(rs, "conversation_id"), rs.getString("title"), rs.getInt("seq"),
+                        rs.getString("role"), rs.getBytes("body"), dev.notch.api.support.Db.instant(rs, "sent_at")))
+                .optional();
+    }
+
     public Set<String> externalIds(UUID conversationId) {
         return new HashSet<>(jdbc.sql("SELECT external_id FROM messages WHERE conversation_id = :c")
                 .param("c", conversationId)

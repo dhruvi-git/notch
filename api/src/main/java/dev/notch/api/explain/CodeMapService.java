@@ -57,9 +57,12 @@ public class CodeMapService {
                            List<CodeDecisionLinks.Conflict> conflicts, List<CodeDecisionLinks.ToolUse> tools) {
     }
 
-    /** A conversation passage that mentions the file or one of its folders. */
+    /**
+     * A conversation passage that mentions the file or one of its folders, and the reply that
+     * followed it. The reply matters: an answer rarely repeats the file name it's answering about.
+     */
     public record Mention(String matched, UUID conversationId, String conversationTitle, Instant sentAt, String role,
-                          String text, boolean decision) {
+                          String text, boolean decision, String replyRole, String replyText) {
     }
 
     public record FileView(CodeMap.FileInfo file, List<String> affected, List<CodeDecisionLinks.Link> decisions,
@@ -75,10 +78,12 @@ public class CodeMapService {
     private final MemoryRepository memories;
     private final MemoryCodec memoryCodec;
     private final IndexRegistry indexes;
+    private final dev.notch.api.ingest.MessageRepository messages;
 
     public CodeMapService(CodeMapRepository repo, ProjectService projects, CurrentUser currentUser, ContentCipher cipher,
                           ObjectMapper mapper, UsageService usage, MemoryRepository memories, MemoryCodec memoryCodec,
-                          IndexRegistry indexes) {
+                          IndexRegistry indexes, dev.notch.api.ingest.MessageRepository messages) {
+        this.messages = messages;
         this.repo = repo;
         this.projects = projects;
         this.currentUser = currentUser;
@@ -179,14 +184,31 @@ public class CodeMapService {
             if (index.hasKey(d) || index.hasKey(d + "/")) terms.add(d + "/");
         }
         Map<UUID, Mention> found = new LinkedHashMap<>();
+        java.util.Set<UUID> messagesSeen = new java.util.HashSet<>();
+        UUID userId = currentUser.id();
         for (String term : terms) {
             for (IndexedChunk c : index.chunksContaining(term)) {
-                found.putIfAbsent(c.chunkId(), new Mention(term, c.conversationId(), c.conversationTitle(), c.sentAt(), c.role(),
-                        excerpt(c.text(), term), c.decision()));
-                if (found.size() >= 12) return new ArrayList<>(found.values());
+                if (!messagesSeen.add(c.messageId())) continue;  // one mention per message
+                String replyRole = null;
+                String replyText = null;
+                var reply = messages.nextReply(c.messageId(), userId);
+                if (reply.isPresent()) {
+                    replyRole = reply.get().role();
+                    replyText = clip(cipher.decrypt(reply.get().body(), userId.toString()), 420);
+                }
+                found.put(c.chunkId(), new Mention(term, c.conversationId(), c.conversationTitle(), c.sentAt(), c.role(),
+                        excerpt(c.text(), term), c.decision(), replyRole, replyText));
+                if (found.size() >= 8) return new ArrayList<>(found.values());
             }
         }
         return new ArrayList<>(found.values());
+    }
+
+    private static String clip(String s, int max) {
+        String t = s.strip();
+        if (t.length() <= max) return t;
+        int cut = t.lastIndexOf(' ', max);
+        return t.substring(0, cut > max / 2 ? cut : max).strip() + "\u2026";
     }
 
     private static String excerpt(String text, String term) {

@@ -62,7 +62,8 @@ export default async function FilePage({
         <p className={styles.againstBanner} role="status">
           This file uses {against.map((d) => d.tool).join(" and ")}, which{" "}
           {against.length === 1 && against[0].decidedAt ? `the ${shortDate(against[0].decidedAt)} decision` : "a decision"} ruled
-          out. Either move it to what was decided, or, if {against.length === 1 ? against[0].tool : "they're"} now intended,{" "}
+          out. Either move it to what was decided, or, if {against.length === 1 ? `${against[0].tool} is` : "they're"} now
+          intended,{" "}
           <Link href={`${base}/ledger`}>replace the decision in the Ledger</Link>.
         </p>
       ) : null}
@@ -146,6 +147,12 @@ export default async function FilePage({
                       <span className={styles.speaker}>{SPEAKER[m.role] ?? m.role}: </span>
                       <Highlighted text={m.text} spans={spans(m.text, m.matched)} length={320} />
                     </p>
+                    {m.replyText ? (
+                      <p className={styles.reply}>
+                        <span className={styles.speaker}>{SPEAKER[m.replyRole ?? ""] ?? m.replyRole} replied: </span>
+                        {m.replyText}
+                      </p>
+                    ) : null}
                     <p className={styles.whyMeta}>
                       {m.conversationTitle}, {shortDate(m.sentAt)}
                       {m.matched.endsWith("/") ? <>, about the <code>{m.matched}</code> folder</> : null}

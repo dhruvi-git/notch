@@ -556,6 +556,14 @@
   font-size: var(--t-sm);
 }
 
+.reply {
+  margin-top: 0.4rem;
+  padding-left: 0.8rem;
+  border-left: 2px solid var(--line-strong);
+  font-size: var(--t-sm);
+  color: var(--ink);
+}
+
 .speaker {
   color: var(--ink-soft);
   font-weight: 600;

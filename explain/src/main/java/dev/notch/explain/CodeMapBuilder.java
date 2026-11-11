@@ -360,24 +360,10 @@ public final class CodeMapBuilder {
 
     // ------------------------------------------------------------------ structure
 
-    /**
-     * Each file's module: its folder, or the nearest folder above it holding at least three
-     * files in total, so that tiny folders join a meaningful parent.
-     */
+    /** Each file's module: the folder it's in ("(root)" for files at the top). */
     private static Map<String, String> modules(Map<String, FileFacts> facts) {
-        Map<String, Integer> subtree = new HashMap<>();
-        for (String p : facts.keySet()) {
-            for (String d = dir(p); ; d = dir(d)) {
-                subtree.merge(d, 1, Integer::sum);
-                if (d.isEmpty()) break;
-            }
-        }
         Map<String, String> out = new HashMap<>();
-        for (String p : facts.keySet()) {
-            String d = dir(p);
-            while (!d.isEmpty() && subtree.getOrDefault(d, 0) < 3) d = dir(d);
-            out.put(p, d.isEmpty() ? "(root)" : d);
-        }
+        for (String p : facts.keySet()) out.put(p, dir(p).isEmpty() ? "(root)" : dir(p));
         return out;
     }
 

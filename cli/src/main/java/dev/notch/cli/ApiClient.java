@@ -209,6 +209,10 @@ public final class ApiClient implements NotchBackend {
                 Map<String, Object> m = Json.obj(o);
                 sb.append("- \u201c").append(Json.str(m, "conversationTitle")).append("\u201d (").append(day(Json.str(m, "sentAt")))
                         .append("): ").append(Json.str(m, "text").replace('\n', ' ')).append('\n');
+                if (m.get("replyText") != null) {
+                    sb.append("  ").append(Json.str(m, "replyRole")).append(" replied: ")
+                            .append(Json.str(m, "replyText").replace('\n', ' ')).append('\n');
+                }
             }
         }
         if (decisions.isEmpty() && mentions.isEmpty()) sb.append("No decisions or conversations in Notch mention this file yet.\n");

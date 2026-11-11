@@ -55,7 +55,8 @@ final class FileFacts {
         this.path = path;
         this.name = path.substring(path.lastIndexOf('/') + 1);
         this.language = languageOf(path);
-        this.lines = content.isEmpty() ? 0 : content.split("\n", -1).length;
+        int n = content.isEmpty() ? 0 : content.split("\n", -1).length;
+        this.lines = content.endsWith("\n") ? n - 1 : n;  // a final newline ends the last line, it doesn't start one
         read(content);
     }
 

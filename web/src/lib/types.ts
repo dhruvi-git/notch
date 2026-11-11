@@ -291,6 +291,8 @@ export type CodeFileView = {
     role: string;
     text: string;
     decision: boolean;
+    replyRole: string | null;
+    replyText: string | null;
   }[];
   mapLabel: string;
   mapCreatedAt: string;

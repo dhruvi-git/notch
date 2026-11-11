@@ -86,12 +86,14 @@ class McpServerTest {
                 + "\"endpoints\":[],\"imports\":[\"src/db.ts\"],\"importedBy\":[\"src/app.ts\",\"src/worker.ts\"],\"tools\":[\"MongoDB\"]},"
                 + "\"affected\":[\"src/app.ts\",\"src/worker.ts\",\"src/main.ts\"],"
                 + "\"decisions\":[{\"kind\":\"GOES_AGAINST\",\"tool\":\"MongoDB\",\"decisionTitle\":\"Let's go with Postgres instead of MongoDB.\"}],"
-                + "\"mentions\":[{\"conversationTitle\":\"Analytics\",\"sentAt\":\"2026-11-09T10:00:00Z\",\"text\":\"store events in src/events.ts\"}]}";
+                + "\"mentions\":[{\"conversationTitle\":\"Analytics\",\"sentAt\":\"2026-11-09T10:00:00Z\",\"text\":\"store events in src/events.ts?\","
+                + "\"replyRole\":\"assistant\",\"replyText\":\"That goes against the Postgres decision.\"}]}";
         String text = ApiClient.describe(Json.obj(Json.parse(view)));
         assertTrue(text.contains("What it does: Stores raw events."), text);
         assertTrue(text.contains("used by 2 (src/app.ts, src/worker.ts); changing it could affect 3 files."), text);
         assertTrue(text.contains("GOES AGAINST: uses MongoDB per"), text);
-        assertTrue(text.contains("\u201cAnalytics\u201d (2026-11-09): store events in src/events.ts"), text);
+        assertTrue(text.contains("\u201cAnalytics\u201d (2026-11-09): store events in src/events.ts?"), text);
+        assertTrue(text.contains("assistant replied: That goes against the Postgres decision."), "agents see the answer, not just the question");
     }
 
     @Test
