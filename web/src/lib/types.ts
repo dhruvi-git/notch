@@ -213,3 +213,87 @@ export type ComparisonSummary = {
   chosen: string | null;
   updatedAt: string;
 };
+
+export type CodeRole =
+  | "ENTRY" | "PAGE" | "LAYOUT" | "API_ROUTE" | "CONTROLLER" | "SERVICE" | "COMPONENT" | "CODE"
+  | "TEST" | "SCRIPT" | "CONFIG" | "MIGRATION" | "STYLE" | "DOC" | "DATA";
+
+export type CodeStats = {
+  files: number;
+  codeFiles: number;
+  lines: number;
+  languages: Record<string, number>;
+  skipped: number;
+  truncated: boolean;
+  filesWithSecrets: string[];
+};
+
+export type CodeFileSummary = {
+  path: string;
+  role: CodeRole;
+  summary: string;
+  lines: number;
+  module: string;
+  route: string | null;
+  importedBy: number;
+  conflict: boolean;
+};
+
+export type CodeFileInfo = {
+  path: string;
+  language: string | null;
+  lines: number;
+  role: CodeRole;
+  route: string | null;
+  summary: string;
+  symbols: string[];
+  endpoints: string[];
+  imports: string[];
+  importedBy: string[];
+  packages: string[];
+  tools: string[];
+  module: string;
+  secrets: number;
+};
+
+export type CodeDecisionLink = {
+  kind: "FOLLOWS" | "GOES_AGAINST";
+  tool: string;
+  decisionId: string;
+  decisionTitle: string;
+  decidedAt: string | null;
+};
+
+export type CodeOverview = {
+  id: string;
+  label: string;
+  source: "cli" | "zip";
+  createdAt: string;
+  stats: CodeStats;
+  modules: { path: string; files: number; lines: number; dependsOn: string[]; usedBy: string[] }[];
+  areas: { files: number; modules: string[] }[];
+  startHere: CodeFileSummary[];
+  entryPoints: { path: string; role: CodeRole; route: string | null; endpoints: string[]; summary: string }[];
+  possiblyUnused: CodeFileSummary[];
+  conflicts: { path: string; tool: string; decisionId: string; decisionTitle: string; decidedAt: string | null }[];
+  tools: { tool: string; files: number; decisionId: string | null; decisionTitle: string | null; kind: "FOLLOWS" | "GOES_AGAINST" | null }[];
+};
+
+export type CodeFileView = {
+  file: CodeFileInfo;
+  affected: string[];
+  decisions: CodeDecisionLink[];
+  mentions: {
+    matched: string;
+    conversationId: string;
+    conversationTitle: string;
+    sentAt: string;
+    role: string;
+    text: string;
+    decision: boolean;
+  }[];
+  mapLabel: string;
+  mapCreatedAt: string;
+};
+
+export type CodeUpload = { id: string; label: string; source: string; createdAt: string; stats: CodeStats };

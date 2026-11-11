@@ -79,7 +79,23 @@ npm run dev
 Open http://localhost:3000 and use **Sign in** under "Local development". Import the files
 in `samples/` to see the flow end to end.
 
-## 7. Try the guard and the MCP server
+## 7. Try Explain
+
+Zip the sample codebase and upload it under **Explain** in the web app:
+
+```powershell
+Compress-Archive -Path samples\billing-service -DestinationPath billing-service.zip   # Windows
+```
+
+```bash
+cd samples && zip -r ../billing-service.zip billing-service                             # macOS, Linux
+```
+
+Import `samples/code-review-chat.md` too, and the file views show the conversation behind
+`src/lib/db.ts` and `src/events/store.ts`. The events module imports MongoDB, so with the
+Postgres decision from the other samples it shows up as code that goes against a decision.
+
+## 8. Try the guard and the MCP server
 
 ```bash
 mvn -q -pl cli -am package

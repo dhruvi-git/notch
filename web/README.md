@@ -44,6 +44,14 @@ Checks: `npm test` (unit tests for highlighting and answer parsing; Node 22.6 or
   with every weight randomly varied between half and one-and-a-half times its value.
   "Record decision" puts the winner in the Ledger with the other options ruled out, so the
   guard and drift detection protect the choice from then on.
+- **Explain:** a map of the project's codebase, from a zip upload or `notch map`. The overview
+  shows where to start reading, the pages and endpoints where things begin, every tool the
+  code relies on with the decision behind it, files that go against a decision, how the
+  folders depend on each other, files that look unused, and files that look like they hold
+  secrets. Each file's view answers what it does, how it fits (depends on, used by, what a
+  change could affect) and why it's like this (the decisions it follows or goes against, and
+  the conversation passages that mention it or its folders, highlighted). Try it with
+  `samples/billing-service`.
 - **Ledger:** decisions in force with what they ruled out, tasks you can tick off, fixes, and
   replaced decisions. Replacing a decision (with an existing one or a new one) keeps its
   history, shown oldest first. Decisions and tasks can be recorded by hand.

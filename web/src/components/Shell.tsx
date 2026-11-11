@@ -23,6 +23,7 @@ export function Shell({ project, projects, user, usage, theme, driftCount, child
   const nav: NavItem[] = [
     { href: `${base}/recall`, label: "Recall" },
     { href: `${base}/resume`, label: "Where you stopped" },
+    { href: `${base}/explain`, label: "Explain" },
     { href: `${base}/compare`, label: "Compare" },
     { href: `${base}/ledger`, label: "Ledger" },
     { href: `${base}/drift`, label: "Drift", badge: driftCount },

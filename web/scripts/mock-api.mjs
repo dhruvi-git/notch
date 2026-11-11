@@ -330,6 +330,82 @@ function seedComparisons(project, ownerId) {
       scores: { c1: { o1: 3, o2: 4, o3: 5 }, c2: { o1: 5, o2: 4, o3: 1 }, c3: { o1: 5, o2: 3, o3: 2 }, c4: { o1: 5, o2: 4, o3: 2 } } } });
 }
 
+
+// Explain: the sample billing-service map, built by the real Java CodeMapBuilder (see fixtures/).
+import { readFileSync } from "node:fs";
+const SAMPLE_MAP = JSON.parse(readFileSync(new URL("./fixtures/billing-service.map.json", import.meta.url), "utf8"));
+const codeMaps = new Map();  // projectId -> { id, label, source, createdAt, map }
+
+// A small stand-in for DecisionFacts: which known tools a decision chose and ruled out.
+const TOOL_WORDS = { PostgreSQL: /postgres/i, MongoDB: /mongo/i, Redis: /\bredis\b(?! streams)/i, Stripe: /stripe/i, JWT: /\bjwt\b/i };
+function decisionTools(d) {
+  const rejected = Object.keys(TOOL_WORDS).filter((t) => d.rejectedOptions.some((r) => TOOL_WORDS[t].test(r)));
+  const chosen = Object.keys(TOOL_WORDS).filter((t) => TOOL_WORDS[t].test(d.title) && !rejected.includes(t));
+  return { chosen, rejected };
+}
+function fileLinks(file, decisions) {
+  const out = [];
+  for (const d of decisions) {
+    const { chosen, rejected } = decisionTools(d);
+    for (const t of file.tools) {
+      if (chosen.includes(t)) out.push({ kind: "FOLLOWS", tool: t, decisionId: d.id, decisionTitle: d.title, decidedAt: d.createdAt });
+      if (rejected.includes(t)) out.push({ kind: "GOES_AGAINST", tool: t, decisionId: d.id, decisionTitle: d.title, decidedAt: d.createdAt });
+    }
+  }
+  return out.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "GOES_AGAINST" ? -1 : 1));
+}
+function codeOverview(stored, decisions) {
+  const map = stored.map;
+  const byPath = new Map(map.files.map((f) => [f.path, f]));
+  const conflicts = map.files.flatMap((f) => fileLinks(f, decisions).filter((l) => l.kind === "GOES_AGAINST")
+    .map((l) => ({ path: f.path, tool: l.tool, decisionId: l.decisionId, decisionTitle: l.decisionTitle, decidedAt: l.decidedAt })));
+  const conflicted = new Set(conflicts.map((c) => c.path));
+  const summary = (f) => ({ path: f.path, role: f.role, summary: f.summary, lines: f.lines, module: f.module, route: f.route,
+    importedBy: f.importedBy.length, conflict: conflicted.has(f.path) });
+  const counts = new Map();
+  map.files.forEach((f) => f.tools.forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1)));
+  const tools = [...counts].map(([tool, files]) => {
+    let cover = null, kind = null;
+    for (const d of decisions) {
+      const { chosen, rejected } = decisionTools(d);
+      if (chosen.includes(tool)) { cover = d; kind = "FOLLOWS"; break; }
+      if (rejected.includes(tool)) { cover = d; kind = "GOES_AGAINST"; }
+    }
+    return { tool, files, decisionId: cover?.id ?? null, decisionTitle: cover?.title ?? null, kind };
+  }).sort((a, b) => b.files - a.files || a.tool.localeCompare(b.tool));
+  return { id: stored.id, label: stored.label, source: stored.source, createdAt: stored.createdAt, stats: map.stats,
+    modules: map.modules, areas: map.areas, startHere: map.startHere.map((p) => summary(byPath.get(p))),
+    entryPoints: map.entryPoints.map((p) => { const f = byPath.get(p); return { path: f.path, role: f.role, route: f.route, endpoints: f.endpoints, summary: f.summary }; }),
+    possiblyUnused: map.possiblyUnused.map((p) => summary(byPath.get(p))), conflicts, tools, _summary: summary };
+}
+function affectedBy(map, path) {
+  const byPath = new Map(map.files.map((f) => [f.path, f]));
+  const seen = new Set([path]), queue = [path], out = [];
+  while (queue.length) for (const i of byPath.get(queue.shift())?.importedBy ?? []) if (!seen.has(i)) { seen.add(i); out.push(i); queue.push(i); }
+  return out;
+}
+const CODE_CHUNKS = [
+  { conv: "Code review: billing-service, week 3", role: "user", days: 2, text: "Can you look at src/lib/db.ts? The pool keeps running out under load." },
+  { conv: "Code review: billing-service, week 3", role: "assistant", days: 2, text: "The pool in src/lib/db.ts allows 10 connections, but createInvoice in src/billing/invoices.ts holds one for the whole transaction. Under load, raise max to 20 and make sure every path releases the client, which the finally block already does." },
+  { conv: "Code review: billing-service, week 3", role: "user", days: 2, text: "Also, someone added src/events/store.ts with Mongo for analytics events. Is that fine?" },
+  { conv: "Code review: billing-service, week 3", role: "assistant", days: 2, text: "It goes against the decision to keep billing data in Postgres. If the events can live in Postgres too, an append-only events table would avoid running a second database. Everything under src/billing/ should stay on Postgres either way." },
+].map((c, i) => ({ ...c, id: `code-chunk-${i}`, sentAt: daysAgo(c.days) }));
+function mentions(path) {
+  const name = path.split("/").pop();
+  const terms = [path];
+  if (name.length >= 6 && name.includes(".") && !/^(index|page|layout|route|main|app|utils?)\./i.test(name)) terms.push(name);
+  const parts = path.split("/");
+  for (let i = parts.length - 1; i >= 2; i--) terms.push(parts.slice(0, i).join("/") + "/");
+  const out = [], seen = new Set();
+  for (const term of terms) for (const c of CODE_CHUNKS) {
+    const at = c.text.toLowerCase().indexOf(term.toLowerCase());
+    if (at < 0 || seen.has(c.id)) continue;
+    seen.add(c.id);
+    out.push({ matched: term, conversationId: c.conv, conversationTitle: c.conv, sentAt: c.sentAt, role: c.role, text: c.text, decision: false });
+  }
+  return out;
+}
+
 function send(res, status, body) {
   res.writeHead(status, { "content-type": status >= 400 ? "application/problem+json" : "application/json" });
   res.end(body === undefined ? "" : JSON.stringify(body));
@@ -481,6 +557,38 @@ createServer(async (req, res) => {
 
 
 
+
+  if (rest === "/code-maps/zip" && req.method === "POST") {
+    const raw = await readBody(req);
+    if (raw.length < 100) return problem(res, 400, "invalid_zip", "That doesn't look like a valid zip file.");
+    const name = (/filename="([^"]+)"/.exec(raw.subarray(0, 600).toString())?.[1] ?? "billing-service.zip").replace(/\.zip$/, "");
+    await new Promise((r) => setTimeout(r, 900));
+    const stored = { id: randomUUID(), label: name, source: "zip", createdAt: now(), map: SAMPLE_MAP };
+    codeMaps.set(project.id, stored);
+    const u = usage.get(user.id); u.import = Math.max(0, u.import - 1);
+    return send(res, 201, { id: stored.id, label: stored.label, source: "zip", createdAt: stored.createdAt, stats: SAMPLE_MAP.stats });
+  }
+  if (rest === "/code-maps" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)).toString() || "{}");
+    const stored = { id: randomUUID(), label: body.label || "codebase", source: "cli", createdAt: now(), map: body.map ?? SAMPLE_MAP };
+    codeMaps.set(project.id, stored);
+    return send(res, 201, { id: stored.id, label: stored.label, source: "cli", createdAt: stored.createdAt, stats: stored.map.stats });
+  }
+  if (rest.startsWith("/code-map")) {
+    const stored = codeMaps.get(project.id);
+    if (!stored) return problem(res, 404, "no_code_map", "No code map for this project yet. Upload a zip, or run notch map in the repository.");
+    const decisions = memoriesFor(project.id).filter((m) => m.kind === "DECISION" && m.status === "ACTIVE");
+    const overview = codeOverview(stored, decisions);
+    if (rest === "/code-map") { const { _summary, ...o } = overview; return send(res, 200, o); }
+    if (rest === "/code-map/files") return send(res, 200, stored.map.files.map(overview._summary));
+    if (rest === "/code-map/file") {
+      const path = url.searchParams.get("path") ?? "";
+      const file = stored.map.files.find((f) => f.path === path);
+      if (!file) return problem(res, 404, "not_found", "File was not found.");
+      return send(res, 200, { file, affected: affectedBy(stored.map, path), decisions: fileLinks(file, decisions),
+        mentions: mentions(path), mapLabel: stored.label, mapCreatedAt: stored.createdAt });
+    }
+  }
   if (rest === "/comparisons" && req.method === "GET") {
     seedComparisons(project, user.id);
     return send(res, 200, [...comparisons.values()].filter((x) => x.projectId === project.id)
