@@ -40,8 +40,8 @@ Wait for `Started NotchApiApplication`. On the first start Flyway creates the ta
 Quick check in a second terminal:
 
 ```bash
-curl localhost:8080/actuator/health          # {"status":"UP"}
-curl localhost:8080/auth/config              # {"github":false,"devLogin":true}
+curl localhost:8090/actuator/health          # {"status":"UP"}
+curl localhost:8090/auth/config              # {"github":false,"devLogin":true}
 ```
 
 ## 5. Run the live tests
@@ -50,12 +50,12 @@ In the second terminal:
 
 macOS / Linux:
 ```bash
-NOTCH_API_URL=http://localhost:8080 mvn -pl api test -Dtest='WalkthroughSmokeTest,CrossUserIsolationTest'
+NOTCH_API_URL=http://localhost:8090 mvn -pl api test -Dtest='WalkthroughSmokeTest,CrossUserIsolationTest'
 ```
 
 Windows (PowerShell):
 ```powershell
-$env:NOTCH_API_URL="http://localhost:8080"; mvn -pl api test "-Dtest=WalkthroughSmokeTest,CrossUserIsolationTest"
+$env:NOTCH_API_URL="http://localhost:8090"; mvn -pl api test "-Dtest=WalkthroughSmokeTest,CrossUserIsolationTest"
 ```
 
 - **WalkthroughSmokeTest** (13 steps) imports every sample, waits for background processing,
@@ -94,9 +94,9 @@ Create a personal token in the web app (Settings), then follow [`cli/README.md`]
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `release version 21 not supported` | Maven is using an older JDK | Point `JAVA_HOME` at JDK 21 |
-| `Connection to localhost:5432 refused` | Database not running | `docker compose up -d`, wait for healthy |
-| `port 5432 is already allocated` | Another Postgres is running | Stop it, or change the port in `docker-compose.yml` and `DATABASE_URL` |
-| `Port 8080 was already in use` | Something else on 8080 | Stop it, or run with `PORT=8081` and use that in `NOTCH_API_URL` |
+| `Connection to localhost:5433 refused` | Database not running | `docker compose up -d`, wait for healthy |
+| `port 5433 is already allocated` | Something else uses 5433 | Stop it, or change the port in `docker-compose.yml` and `DATABASE_URL` |
+| `Port 8090 was already in use` | Something else on 8090 | Stop it, or run with `PORT=8091` and use that in `NOTCH_API_URL` |
 | `type "vector" does not exist` | Plain Postgres instead of pgvector | Use the compose file's `pgvector/pgvector` image; `docker compose down -v` then up |
 | Flyway `checksum mismatch` | A migration changed after it ran | Local only: `docker compose down -v` (deletes local data), then start again |
 | Live tests say `dev-login needs ... local profile` | API started with another profile | Start without `SPRING_PROFILES_ACTIVE`, or set it to `local` |

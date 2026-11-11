@@ -123,6 +123,12 @@ class MainTest {
         String bash = "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cd api && npm install mongoose@8\"}}";
         assertEquals(Main.OK, run(bash, "check", "--claude-hook", "--offline"));
         assertTrue(((String) denial().get("permissionDecisionReason")).contains("Adds MongoDB (mongoose)"));
+        String powershell = "{\"tool_name\":\"PowerShell\",\"tool_input\":{\"command\":\"npm install mongoose\"}}";
+        assertEquals(Main.OK, run(powershell, "check", "--claude-hook", "--offline"));
+        assertEquals("deny", denial().get("permissionDecision"), "PowerShell is how Claude Code runs commands on Windows");
+        String windowsPath = "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"src\\\\db.js\",\"content\":\"require('mongoose')\"}}";
+        assertEquals(Main.OK, run(windowsPath, "check", "--claude-hook", "--offline"));
+        assertTrue(((String) denial().get("permissionDecisionReason")).contains("src/db.js:1"), "paths use forward slashes");
         String harmless = "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"npm test\"}}";
         assertEquals(Main.OK, run(harmless, "check", "--claude-hook", "--offline"));
         assertTrue(out.toString(StandardCharsets.UTF_8).isBlank());
@@ -161,7 +167,7 @@ class MainTest {
         assertTrue(settings.containsKey("permissions"), "existing settings are kept");
         List<Object> pre = Json.arr(Json.obj(settings.get("hooks")).get("PreToolUse"));
         assertEquals(1, pre.size());
-        assertEquals("Edit|MultiEdit|Write|Bash", Json.obj(pre.get(0)).get("matcher"));
+        assertEquals("Edit|MultiEdit|Write|Bash|PowerShell", Json.obj(pre.get(0)).get("matcher"));
 
         assertEquals(Main.OK, run("", "setup", "claude"));
         Map<String, Object> mcp = Json.obj(Json.obj(Json.parse(Files.readString(repo.resolve(".mcp.json")))).get("mcpServers"));

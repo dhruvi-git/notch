@@ -1,7 +1,7 @@
 // A stand-in for the Notch API, for working on the web app without the Java backend.
 // Development only: data lives in memory and resets on restart.
 //
-//   npm run mock-api            # listens on :8080, like the real API
+//   npm run mock-api            # listens on :8090, like the real API
 //   MOCK_PORT=8090 npm run mock-api
 //
 // Covers sign-in, projects, imports (with background processing), conversations and usage.
@@ -10,7 +10,7 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 
-const PORT = Number(process.env.MOCK_PORT ?? 8080);
+const PORT = Number(process.env.MOCK_PORT ?? 8090);
 const now = () => new Date().toISOString();
 const daysAgo = (d) => new Date(Date.now() - d * 86_400_000).toISOString();
 

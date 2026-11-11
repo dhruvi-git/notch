@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: notch
       POSTGRES_PASSWORD: notch
     ports:
-      - "5432:5432"
+      - "5433:5432"   # 5433 on your machine, so a locally installed PostgreSQL on 5432 can keep running
     volumes:
       - notch-db:/var/lib/postgresql/data
     healthcheck:

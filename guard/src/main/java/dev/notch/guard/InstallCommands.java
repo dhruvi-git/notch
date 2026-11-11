@@ -34,10 +34,14 @@ public final class InstallCommands {
     private static FileChange install(List<String> t) {
         // Skip leading sudo, env assignments and "npx"/"python -m".
         int i = 0;
-        while (i < t.size() && (t.get(i).equals("sudo") || t.get(i).contains("=") && !t.get(i).startsWith("-"))) i++;
+        // Skip "sudo", env assignments, and PowerShell's call operator ("& npm install ...").
+        while (i < t.size() && (t.get(i).equals("sudo") || t.get(i).equals("&")
+                || t.get(i).contains("=") && !t.get(i).startsWith("-"))) i++;
         if (i < t.size() - 1 && (t.get(i).startsWith("python") && t.get(i + 1).equals("-m"))) i += 2;
         if (i >= t.size()) return null;
-        String tool = t.get(i).toLowerCase(Locale.ROOT);
+        // npm.cmd, pip.exe and full paths on Windows name the same tools.
+        String tool = t.get(i).toLowerCase(Locale.ROOT).replace('\\', '/');
+        tool = tool.substring(tool.lastIndexOf('/') + 1).replaceAll("\\.(cmd|exe|bat|ps1)$", "");
         String verb = i + 1 < t.size() ? t.get(i + 1).toLowerCase(Locale.ROOT) : "";
         List<String> args = t.subList(Math.min(i + 2, t.size()), t.size());
         return switch (tool) {

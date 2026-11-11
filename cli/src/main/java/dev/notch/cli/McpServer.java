@@ -50,7 +50,8 @@ public final class McpServer {
             if (line.isBlank()) continue;
             String reply = handle(line);
             if (reply != null) {
-                out.println(reply);
+                out.print(reply);
+                out.print('\n');  // MCP stdio messages end in \n; println would write \r\n on Windows
                 out.flush();
             }
         }

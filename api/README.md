@@ -10,86 +10,86 @@ Prerequisites: JDK 21, Maven 3.9+, Docker Desktop.
 ```bash
 docker compose up -d                 # Postgres 17 with pgvector, from the repo root
 mvn -q install -DskipTests           # builds engine and api
-mvn -pl api spring-boot:run          # starts on http://localhost:8080 with the "local" profile
+mvn -pl api spring-boot:run          # starts on http://localhost:8090 with the "local" profile
 ```
 
 The `local` profile needs no environment variables: it uses a development encryption key, and
 requests without a token act as a seeded developer account, so the `curl` commands below work
-as written. Check it is up: `curl localhost:8080/actuator/health`.
+as written. Check it is up: `curl localhost:8090/actuator/health`.
 
 ## Walkthrough with the sample data
 
 ```bash
 # 1. Create a project
-curl -s -X POST localhost:8080/api/projects \
+curl -s -X POST localhost:8090/api/projects \
   -H 'Content-Type: application/json' -d '{"name":"Billing service"}'
 # copy the "id" from the response
 P=<project-id>
 
 # 2. Import a ChatGPT export (a zip or conversations.json both work)
-curl -s -F file=@samples/chatgpt-conversations.json localhost:8080/api/projects/$P/imports
+curl -s -F file=@samples/chatgpt-conversations.json localhost:8090/api/projects/$P/imports
 #    The report shows messagesAdded, chunksAdded and secretsRedacted: 1 (the fake API key).
 
 # 3. Import a pasted copy of part of the same chat
-curl -s -F file=@samples/pasted-billing-chat.txt localhost:8080/api/projects/$P/imports
+curl -s -F file=@samples/pasted-billing-chat.txt localhost:8090/api/projects/$P/imports
 #    duplicateChunks: 3. The Bloom filter flagged them, the exact check confirmed them,
 #    and they are not stored or embedded again.
 
 # 4. Import the same export again
-curl -s -F file=@samples/chatgpt-conversations.json localhost:8080/api/projects/$P/imports
+curl -s -F file=@samples/chatgpt-conversations.json localhost:8090/api/projects/$P/imports
 #    messagesSkipped: 11, messagesAdded: 0, status READY immediately.
 
 # 5. Import a Claude export and a markdown note
-curl -s -F file=@samples/claude-conversations.json localhost:8080/api/projects/$P/imports
-curl -s -F file=@samples/billing-notes.md localhost:8080/api/projects/$P/imports
+curl -s -F file=@samples/claude-conversations.json localhost:8090/api/projects/$P/imports
+curl -s -F file=@samples/billing-notes.md localhost:8090/api/projects/$P/imports
 
 # 6. After a few seconds (background job), read the decision ledger
-curl -s "localhost:8080/api/projects/$P/memories?kind=decision"
-curl -s "localhost:8080/api/projects/$P/memories?kind=task"
-curl -s "localhost:8080/api/projects/$P/memories?kind=fix"
+curl -s "localhost:8090/api/projects/$P/memories?kind=decision"
+curl -s "localhost:8090/api/projects/$P/memories?kind=task"
+curl -s "localhost:8090/api/projects/$P/memories?kind=fix"
 
 # 7. Search: exact error codes, stems ("caching" finds "cache") and "why this result" scores
-curl -s "localhost:8080/api/projects/$P/search?q=ECONNREFUSED"
-curl -s "localhost:8080/api/projects/$P/search?q=how+do+we+rate+limit"
+curl -s "localhost:8090/api/projects/$P/search?q=ECONNREFUSED"
+curl -s "localhost:8090/api/projects/$P/search?q=how+do+we+rate+limit"
 
 # 8. Ask for a cited answer (uses one of 30 daily questions)
-curl -s -X POST localhost:8080/api/projects/$P/ask \
+curl -s -X POST localhost:8090/api/projects/$P/ask \
   -H 'Content-Type: application/json' -d '{"question":"What did we decide about the database?"}'
 #    -> "Let's go with Postgres instead of MongoDB because we need joins ... [1]"
 #       with citation 1 pointing at the exact sentence in the ChatGPT conversation.
 
 # 9. Autocomplete, threads and index statistics
-curl -s "localhost:8080/api/projects/$P/autocomplete?prefix=econ"
-curl -s localhost:8080/api/projects/$P/threads
-curl -s localhost:8080/api/projects/$P/index
+curl -s "localhost:8090/api/projects/$P/autocomplete?prefix=econ"
+curl -s localhost:8090/api/projects/$P/threads
+curl -s localhost:8090/api/projects/$P/index
 
 # 10. Import a later chat that drifts from earlier decisions
-curl -s -F file=@samples/analytics-chat.txt localhost:8080/api/projects/$P/imports
+curl -s -F file=@samples/analytics-chat.txt localhost:8090/api/projects/$P/imports
 #    After the background job, check for drift:
-curl -s localhost:8080/api/projects/$P/drift
+curl -s localhost:8090/api/projects/$P/drift
 #    -> HIGH: "This decision chooses JWT, which the ... decision ruled out."
 #    -> MEDIUM: "This conversation starts using MongoDB, but on ... the project chose PostgreSQL instead."
 
 # 11. Resolve the JWT conflict: replace the sessions decision with the new one
-curl -s "localhost:8080/api/projects/$P/memories?kind=decision"     # find both ids
-curl -s -X POST localhost:8080/api/memories/<sessions-decision-id>/supersede \
+curl -s "localhost:8090/api/projects/$P/memories?kind=decision"     # find both ids
+curl -s -X POST localhost:8090/api/memories/<sessions-decision-id>/supersede \
   -H 'Content-Type: application/json' -d '{"replacementId":"<jwt-decision-id>"}'
-curl -s localhost:8080/api/memories/<jwt-decision-id>/history     # oldest first
+curl -s localhost:8090/api/memories/<jwt-decision-id>/history     # oldest first
 
 # 12. Dismiss an alert you've decided is fine
-curl -s -X POST localhost:8080/api/projects/$P/drift/<alert-key>/dismiss
+curl -s -X POST localhost:8090/api/projects/$P/drift/<alert-key>/dismiss
 
 # 13. Where you stopped, a context pack, and agent files
-curl -s localhost:8080/api/projects/$P/resume
-curl -s "localhost:8080/api/projects/$P/context-pack?budget=1500"
-curl -s -OJ localhost:8080/api/projects/$P/export/agents-md     # saves AGENTS.md
-curl -s -OJ localhost:8080/api/projects/$P/export/claude-md     # saves CLAUDE.md
+curl -s localhost:8090/api/projects/$P/resume
+curl -s "localhost:8090/api/projects/$P/context-pack?budget=1500"
+curl -s -OJ localhost:8090/api/projects/$P/export/agents-md     # saves AGENTS.md
+curl -s -OJ localhost:8090/api/projects/$P/export/claude-md     # saves CLAUDE.md
 
 
 # Other endpoints
-curl -s localhost:8080/api/projects/$P/imports
-curl -s localhost:8080/api/projects/$P/conversations
-curl -s localhost:8080/api/usage
+curl -s localhost:8090/api/projects/$P/imports
+curl -s localhost:8090/api/projects/$P/conversations
+curl -s localhost:8090/api/usage
 ```
 
 ## Endpoints so far
@@ -236,7 +236,7 @@ checks that malformed, unknown and revoked tokens get 401.
 
 ```bash
 mvn -pl api spring-boot:run                                          # terminal 1
-NOTCH_API_URL=http://localhost:8080 mvn -pl api test -Dtest=CrossUserIsolationTest   # terminal 2
+NOTCH_API_URL=http://localhost:8090 mvn -pl api test -Dtest=CrossUserIsolationTest   # terminal 2
 ```
 
 Without `NOTCH_API_URL` the test is skipped, so `mvn test` never needs a running server.
@@ -257,13 +257,13 @@ against.
 
 | Variable | Default (local profile) | Notes |
 |---|---|---|
-| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/notch` | JDBC form; for Neon add `?sslmode=require` |
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5433/notch` | JDBC form; for Neon add `?sslmode=require` |
 | `DATABASE_USER`, `DATABASE_PASSWORD` | `notch` / `notch` | |
 | `NOTCH_CRYPTO_KEY` | development key | Required in `cloud`. `openssl rand -base64 32` |
 | `NOTCH_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated |
 | `NOTCH_AUTH_SECRET` | development secret | Required in `cloud`; 32+ characters, signs the OAuth state |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | unset | GitHub sign-in is disabled until both are set |
-| `GITHUB_CALLBACK_URL` | `http://localhost:8080/auth/github/callback` | Must match the OAuth app |
+| `GITHUB_CALLBACK_URL` | `http://localhost:8090/auth/github/callback` | Must match the OAuth app |
 | `SPRING_PROFILES_ACTIVE` | `local` | `cloud` requires a token on every `/api` request |
 
 ## Current limits

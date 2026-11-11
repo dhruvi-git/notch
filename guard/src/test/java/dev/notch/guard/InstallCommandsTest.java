@@ -31,6 +31,13 @@ class InstallCommandsTest {
     }
 
     @Test
+    void windowsSpellingsAreRead() {
+        assertEquals(List.of("package.json | \"mongoose\": \"*\","), lines("& npm.cmd install mongoose"));
+        assertEquals(List.of("requirements.txt | pymongo"), lines("C:\\Python312\\Scripts\\pip.exe install pymongo"));
+        assertEquals(List.of("package.json | \"mongoose\": \"*\","), lines("cd web; npm install mongoose"));
+    }
+
+    @Test
     void chainedCommandsAreAllRead() {
         assertEquals(2, lines("cd api && npm i mongoose; pip install pymongo").size());
     }

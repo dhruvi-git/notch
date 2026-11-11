@@ -109,7 +109,9 @@ class McpServerTest {
         McpServer s = new McpServer(backend, new PrintStream(bytes, true, StandardCharsets.UTF_8), new PrintStream(new ByteArrayOutputStream()));
         s.serve(new java.io.BufferedReader(new java.io.StringReader(
                 "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n")));
-        String[] lines = bytes.toString(StandardCharsets.UTF_8).strip().split("\n");
+        String raw = bytes.toString(StandardCharsets.UTF_8);
+        assertFalse(raw.contains("\r"), "MCP messages end in \\n only, on every platform");
+        String[] lines = raw.strip().split("\n");
         assertEquals(2, lines.length);
         assertEquals("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}", lines[0]);
     }

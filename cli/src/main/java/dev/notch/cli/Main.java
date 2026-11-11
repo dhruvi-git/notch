@@ -209,19 +209,20 @@ public final class Main {
 
     /**
      * Claude Code's PreToolUse input: the new content of an Edit, MultiEdit or Write, or the
-     * packages a Bash command would install.
+     * packages a terminal command would install (Bash, or PowerShell on Windows).
      */
     static List<FileChange> fromClaudeHook(BufferedReader stdin, Path root) throws IOException {
         Map<String, Object> event = Json.obj(Json.parse(readAll(stdin)));
         if (!(event.get("tool_input") instanceof Map<?, ?>)) return List.of();
         Map<String, Object> input = Json.obj(event.get("tool_input"));
-        if ("Bash".equals(Json.str(event, "tool_name"))) return InstallCommands.parse(Json.str(input, "command"));
+        if (input.get("command") instanceof String command) return InstallCommands.parse(command);  // Bash, PowerShell
         String path = Json.str(input, "file_path");
         if (path == null) return List.of();
         if (root != null) {
             Path p = Path.of(path);
             if (p.isAbsolute() && p.startsWith(root)) path = root.relativize(p).toString();
         }
+        path = path.replace('\\', '/');  // as git writes paths, on Windows too
         List<String> texts = new ArrayList<>();
         if (input.get("content") != null) texts.add(Json.str(input, "content"));
         if (input.get("new_string") != null) texts.add(Json.str(input, "new_string"));
@@ -398,7 +399,7 @@ public final class Main {
         hook.put("type", "command");
         hook.put("command", String.join(" ", cmd.stream().map(Main::shellQuote).toList()));
         Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("matcher", "Edit|MultiEdit|Write|Bash");
+        entry.put("matcher", "Edit|MultiEdit|Write|Bash|PowerShell");
         entry.put("hooks", List.of(hook));
         pre.add(entry);
         hooks.put("PreToolUse", pre);

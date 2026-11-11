@@ -15,7 +15,7 @@ npm run dev                  # http://localhost:3000
 Without the Java backend, for working on the interface alone:
 
 ```bash
-npm run mock-api             # terminal 1: an in-memory stand-in on :8080
+npm run mock-api             # terminal 1: an in-memory stand-in on :8090
 npm run dev                  # terminal 2
 ```
 
@@ -24,7 +24,7 @@ so far with sample data, keeps everything in memory, and never ships with the ap
 
 | Variable | Default | Notes |
 |---|---|---|
-| `NOTCH_API_URL` | `http://localhost:8080` | Read on the server only |
+| `NOTCH_API_URL` | `http://localhost:8090` | Read on the server only |
 
 Checks: `npm test` (unit tests for highlighting and answer parsing; Node 22.6 or newer),
 `npm run typecheck` and `npm run build`.

@@ -17,7 +17,7 @@ import java.util.Properties;
  */
 public final class Config {
 
-    public static final String DEFAULT_API = "http://localhost:8080";
+    public static final String DEFAULT_API = "http://localhost:8090";
     static final String REPO_FILE = ".notch";
 
     public final String api;

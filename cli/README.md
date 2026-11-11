@@ -78,7 +78,7 @@ guard; Drift still shows the pair so the older one can be marked as replaced.
 
 ### The Claude Code hook
 
-`notch hook claude` adds a `PreToolUse` hook for `Edit`, `MultiEdit`, `Write` and `Bash` to
+`notch hook claude` adds a `PreToolUse` hook for `Edit`, `MultiEdit`, `Write`, `Bash` and `PowerShell` (how Claude Code runs commands on Windows) to
 `.claude/settings.json`, keeping any settings already there (and replacing an older Notch
 entry). Claude Code sends the call as JSON on stdin. For edits, Notch checks the new code; for
 terminal commands, it reads package installs (`npm`, `pnpm`, `yarn`, `bun`, `pip`, `poetry`,
