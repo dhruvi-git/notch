@@ -1,5 +1,7 @@
 # Notch
 
+[![CI](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml/badge.svg)](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml)
+
 Notch is the project brain every coding agent plugs into. `git blame` tells you who changed a
 line; Notch tells you why. It keeps a ledger of your project's decisions from your chats and
 coding sessions, gives every agent that ledger over MCP, and stops commits and agent edits
