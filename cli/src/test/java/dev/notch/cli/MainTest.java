@@ -1,5 +1,6 @@
 package dev.notch.cli;
 
+import dev.notch.guard.Json;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

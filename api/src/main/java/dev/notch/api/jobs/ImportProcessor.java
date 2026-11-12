@@ -94,7 +94,7 @@ public class ImportProcessor {
             List<float[]> vectors = embeddings.embed(inputs);
             for (int i = 0; i < batch.size(); i++) {
                 float[] v = vectors.get(i);
-                if (v != null) chunks.setEmbedding(batch.get(i).id(), v);
+                chunks.setEmbedding(batch.get(i).id(), v, embeddings.name());
             }
         }
     }

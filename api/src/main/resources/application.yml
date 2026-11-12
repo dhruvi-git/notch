@@ -33,8 +33,16 @@ notch:
     questions-per-day: 30
   cors:
     allowed-origins: ${NOTCH_CORS_ORIGINS:http://localhost:3000}
+  # AI models. With no keys set, Notch runs fully offline. Private projects are never sent to either.
+  llm:
+    provider: ${NOTCH_LLM:auto}                     # auto: Claude when ANTHROPIC_API_KEY is set
+    model: ${NOTCH_LLM_MODEL:claude-haiku-5-5}
+    api-key: ${ANTHROPIC_API_KEY:}
   embedding:
     dimensions: 1024   # must match vector(1024) in the schema
+    provider: ${NOTCH_EMBEDDINGS:auto}              # auto: Voyage when VOYAGE_API_KEY is set
+    model: ${NOTCH_EMBEDDING_MODEL:voyage-4-lite}
+    api-key: ${VOYAGE_API_KEY:}
   ingest:
     max-file-bytes: 5242880
     max-chunk-chars: 1200

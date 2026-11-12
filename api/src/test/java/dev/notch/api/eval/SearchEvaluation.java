@@ -73,12 +73,18 @@ public final class SearchEvaluation {
     private final List<Question> questions;
     private final Map<UUID, String> messageOfChunk = new HashMap<>();
     private final Map<UUID, float[]> vectors = new LinkedHashMap<>();
-    private final HashingEmbeddingClient embeddings = new HashingEmbeddingClient(1024);
+    private final dev.notch.api.llm.EmbeddingClient embeddings;
     private final ProjectIndex index;
 
     public SearchEvaluation(List<Message> messages, List<Question> questions) {
+        this(messages, questions, new HashingEmbeddingClient(1024));
+    }
+
+    /** With any embedding client: the offline one by default, or a real model such as Voyage. */
+    public SearchEvaluation(List<Message> messages, List<Question> questions, dev.notch.api.llm.EmbeddingClient embeddings) {
         this.messages = messages;
         this.questions = questions;
+        this.embeddings = embeddings;
         this.index = buildIndex();
     }
 
@@ -86,6 +92,18 @@ public final class SearchEvaluation {
 
     public static SearchEvaluation fromResources() throws IOException {
         return new SearchEvaluation(parseCorpus(resource("eval/corpus.txt")), parseQuestions(resource("eval/questions.tsv")));
+    }
+
+    public static SearchEvaluation fromResources(dev.notch.api.llm.EmbeddingClient embeddings) throws IOException {
+        return new SearchEvaluation(parseCorpus(resource("eval/corpus.txt")), parseQuestions(resource("eval/questions.tsv")), embeddings);
+    }
+
+    /** Voyage embeddings when VOYAGE_API_KEY is set, else null. */
+    public static dev.notch.api.llm.EmbeddingClient voyageFromEnvironment() {
+        String key = System.getenv("VOYAGE_API_KEY");
+        if (key == null || key.isBlank()) return null;
+        String model = System.getenv().getOrDefault("NOTCH_EMBEDDING_MODEL", "voyage-4-lite");
+        return new dev.notch.api.llm.VoyageEmbeddingClient(new dev.notch.api.llm.VoyageEmbeddingClient.Config(key, model, 1024, null, null));
     }
 
     static String resource(String name) throws IOException {
@@ -137,6 +155,7 @@ public final class SearchEvaluation {
         HeuristicMemoryExtractor extractor = new HeuristicMemoryExtractor();
         Chunker chunker = new Chunker(1200);
         List<IndexedChunk> chunks = new ArrayList<>();
+        List<String> texts = new ArrayList<>();
         for (List<Message> conv : byConversation.values()) {
             List<ExtractionRequest.SourceMessage> source = conv.stream()
                     .map(m -> new ExtractionRequest.SourceMessage(m.role(), m.text())).toList();
@@ -157,16 +176,19 @@ public final class SearchEvaluation {
                     chunks.add(new IndexedChunk(chunkId, messageId, convId, m.conversationTitle(), m.role(), m.sentAt(),
                             c.text(), c.estimatedTokens(), decision));
                     messageOfChunk.put(chunkId, m.id());
-                    vectors.put(chunkId, embeddings.embed(List.of(c.text())).get(0));
+                    texts.add(c.text());
                 }
             }
         }
+        // One batched call for every passage, as an import would make.
+        List<float[]> vs = embeddings.embed(texts);
+        for (int i = 0; i < chunks.size(); i++) vectors.put(chunks.get(i).chunkId(), vs.get(i));
         return ProjectIndex.build(chunks, NOW, new RandomizedSelect(1));
     }
 
     /** Vector search: exact cosine nearest neighbours, with the app's limits. */
     private Map<UUID, Double> nearest(String query) {
-        float[] q = embeddings.embed(List.of(query)).get(0);
+        float[] q = embeddings.embedQuery(query);
         if (q == null) return Map.of();
         List<Map.Entry<UUID, Double>> sims = new ArrayList<>();
         for (Map.Entry<UUID, float[]> e : vectors.entrySet()) {
@@ -178,7 +200,7 @@ public final class SearchEvaluation {
         sims.sort(Map.Entry.<UUID, Double>comparingByValue().reversed());
         Map<UUID, Double> out = new LinkedHashMap<>();
         for (Map.Entry<UUID, Double> e : sims.subList(0, Math.min(SearchPipeline.SEMANTIC_CANDIDATES, sims.size()))) {
-            if (e.getValue() >= SearchPipeline.SEMANTIC_MIN) out.put(e.getKey(), e.getValue());
+            if (e.getValue() >= embeddings.minSimilarity()) out.put(e.getKey(), e.getValue());
         }
         return out;
     }
@@ -320,8 +342,40 @@ public final class SearchEvaluation {
         return sb.toString();
     }
 
+    /** Inserts the real-embeddings section before the per-question table. */
+    static String withComparison(String md, Report offline, Report real, String model) {
+        int at = md.indexOf("\n## Every question");
+        String section = comparison(offline, real, model);
+        return at < 0 ? md + section : md.substring(0, at) + section + md.substring(at);
+    }
+
     private static String rank(Outcome o) {
         return o.firstRank() == 0 ? "\u2013" : String.valueOf(o.firstRank());
+    }
+
+    /** A section comparing a run with real embeddings against the offline run. */
+    public static String comparison(Report offline, Report real, String model) {
+        StringBuilder sb = new StringBuilder("\n## With real embeddings (").append(model).append(")\n\n")
+                .append("The same questions, with vector search using ").append(model)
+                .append(" instead of the offline word hashing. Everything else is identical.\n\n")
+                .append("| Mode | Hit@1 | Hit@5 | MRR@10 | Recall@10 | MRR@10 offline |\n|---|---|---|---|---|---|\n");
+        for (SearchPipeline.Mode m : SearchPipeline.Mode.values()) {
+            if (m == SearchPipeline.Mode.EXACT_ONLY) continue;  // no embeddings involved
+            Scores s = real.overall().get(m);
+            sb.append(String.format(Locale.ROOT, "| %s | %.2f | %.2f | %.3f | %.2f | %.3f |%n",
+                    MODE_NAMES.get(m).replace("offline embeddings", model), s.hitAt1(), s.hitAt5(), s.mrr(), s.recallAtK(),
+                    offline.overall().get(m).mrr()));
+        }
+        sb.append("\n| Kind | Hybrid, offline | Hybrid, ").append(model).append(" | Vector, offline | Vector, ").append(model)
+                .append(" |\n|---|---|---|---|---|\n");
+        for (String cat : offline.byCategory().get(SearchPipeline.Mode.HYBRID).keySet()) {
+            sb.append(String.format(Locale.ROOT, "| %s | %.3f | %.3f | %.3f | %.3f |%n", cat,
+                    offline.byCategory().get(SearchPipeline.Mode.HYBRID).get(cat).mrr(),
+                    real.byCategory().get(SearchPipeline.Mode.HYBRID).get(cat).mrr(),
+                    offline.byCategory().get(SearchPipeline.Mode.SEMANTIC_ONLY).get(cat).mrr(),
+                    real.byCategory().get(SearchPipeline.Mode.SEMANTIC_ONLY).get(cat).mrr()));
+        }
+        return sb.toString();
     }
 
     public List<Question> questions() {
@@ -336,6 +390,8 @@ public final class SearchEvaluation {
         SearchEvaluation e = fromResources();
         Report r = e.run();
         String md = markdown(r, e.questions());
+        dev.notch.api.llm.EmbeddingClient voyage = voyageFromEnvironment();
+        if (voyage != null) md = withComparison(md, r, fromResources(voyage).run(), voyage.name());
         if (args.length > 0) Files.writeString(Path.of(args[0]), md, StandardCharsets.UTF_8);
         System.out.println(md);
     }

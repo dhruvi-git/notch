@@ -95,7 +95,45 @@ Import `samples/code-review-chat.md` too, and the file views show the conversati
 `src/lib/db.ts` and `src/events/store.ts`. The events module imports MongoDB, so with the
 Postgres decision from the other samples it shows up as code that goes against a decision.
 
-## 8. Try the guard and the MCP server
+## 8. Optional: use real AI models
+
+Without keys, Notch runs fully offline: answers quote the passages that match, decisions are found
+by patterns, and "meaning" search compares words. With keys, Claude writes answers and finds
+decisions, and Voyage embeddings make search understand meaning. Private projects are never sent
+to either.
+
+1. Create an API key at console.anthropic.com (add credits first) and one at
+   dashboard.voyageai.com.
+2. Set them in the terminal you start the API from. Never put keys in a file inside the
+   repository, a commit, a chat or a screenshot.
+
+   ```powershell
+   $env:ANTHROPIC_API_KEY = "sk-ant-..."     # PowerShell; lasts until the terminal closes
+   $env:VOYAGE_API_KEY = "pa-..."
+   mvn -pl api spring-boot:run
+   ```
+
+   ```bash
+   export ANTHROPIC_API_KEY=sk-ant-... VOYAGE_API_KEY=pa-...   # macOS, Linux
+   ```
+
+3. The API's log says what it's using: `Answers and extraction: Claude (claude-haiku-5-5)` and
+   `Embeddings: voyage-4-lite-1024`. Existing passages are re-embedded in the background; until
+   that finishes, meaning search only covers what's been converted.
+
+Choose models with `NOTCH_LLM_MODEL` (default `claude-haiku-5-5`) and `NOTCH_EMBEDDING_MODEL`
+(default `voyage-4-lite`). Force offline with `NOTCH_LLM=offline` or `NOTCH_EMBEDDINGS=offline`.
+Costs are capped by the daily limits: 30 questions and 20 imports per user.
+
+To compare search with real embeddings, run the evaluation with `VOYAGE_API_KEY` set:
+
+```powershell
+mvn -q -pl api test -Dtest=SearchEvaluationTest -Dnotch.eval.out=../docs/evaluation.md
+```
+
+`docs/evaluation.md` then gains a section comparing Voyage with the offline embeddings.
+
+## 9. Try the guard and the MCP server
 
 ```bash
 mvn -q -pl cli -am package

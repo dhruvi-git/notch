@@ -1,5 +1,6 @@
 package dev.notch.cli;
 
+import dev.notch.guard.Json;
 import dev.notch.guard.Decision;
 import dev.notch.guard.DecisionFacts;
 import dev.notch.guard.TechCatalog;

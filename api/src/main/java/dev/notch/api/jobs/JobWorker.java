@@ -22,8 +22,11 @@ public class JobWorker {
     private final ImportRepository imports;
     private final IndexRegistry indexes;
 
+    private final ReembedProcessor reembedProcessor;
+
     public JobWorker(JobRepository jobs, ImportProcessor importProcessor, ImportRepository imports,
-                     IndexRegistry indexes) {
+                     IndexRegistry indexes, ReembedProcessor reembedProcessor) {
+        this.reembedProcessor = reembedProcessor;
         this.jobs = jobs;
         this.importProcessor = importProcessor;
         this.imports = imports;
@@ -45,10 +48,12 @@ public class JobWorker {
         try {
             switch (job.kind()) {
                 case ImportProcessor.KIND -> importProcessor.process(job);
+                case ReembedProcessor.KIND -> reembedProcessor.process(job);
                 default -> throw new IllegalStateException("unknown job kind " + job.kind());
             }
             jobs.complete(job.id());
-            indexes.contentChanged(job.projectId());  // new chunks and decisions become searchable, on every instance
+            // New chunks and decisions become searchable, on every instance. Vectors live in pgvector, not the index.
+            if (!ReembedProcessor.KIND.equals(job.kind())) indexes.contentChanged(job.projectId());
             log.info("Job {} ({}) done in {} ms", job.id(), job.kind(), (System.nanoTime() - started) / 1_000_000);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName() + ": " + e.getMessage();

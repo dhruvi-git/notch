@@ -1,5 +1,6 @@
 package dev.notch.cli;
 
+import dev.notch.guard.Json;
 import dev.notch.explain.CodeMap;
 import dev.notch.explain.CodeMapBuilder;
 import dev.notch.explain.CodeMapJson;

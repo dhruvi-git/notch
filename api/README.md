@@ -246,6 +246,23 @@ NOTCH_API_URL=http://localhost:8090 mvn -pl api test -Dtest=CrossUserIsolationTe
 
 Without `NOTCH_API_URL` the test is skipped, so `mvn test` never needs a running server.
 
+## AI models
+
+Notch runs fully offline by default. With `ANTHROPIC_API_KEY` set, Claude (`claude-haiku-5-5`
+by default) extracts memories and writes answers; with `VOYAGE_API_KEY`, Voyage embeddings
+(`voyage-4-lite`, 1024 dimensions) power meaning search. Private projects always stay offline.
+
+- **Quotes are checked.** The model must copy an exact quote for every memory and citation; Notch
+  finds it in the source text and drops any quote that isn't there, so highlights stay truthful.
+- **Failures fall back.** A network error, error status, refusal or unreadable reply uses the
+  offline result instead. Logs record only status codes, never content.
+- **Vectors know their model.** Each stored vector records the model that made it; search only
+  compares vectors from the current model, and a `reembed` job converts old ones after a change.
+- **Queries and passages are embedded differently** (Voyage's `query` and `document` input types).
+
+Settings: `NOTCH_LLM` / `NOTCH_EMBEDDINGS` (`auto`, a provider, or `offline`),
+`NOTCH_LLM_MODEL`, `NOTCH_EMBEDDING_MODEL`. See RUNNING.md, step 8.
+
 ## Search evaluation
 
 `SearchEvaluation` scores search on 50 labelled questions over a fictional startup's chats

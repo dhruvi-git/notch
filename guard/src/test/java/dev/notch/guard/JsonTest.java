@@ -1,4 +1,4 @@
-package dev.notch.cli;
+package dev.notch.guard;
 
 import org.junit.jupiter.api.Test;
 

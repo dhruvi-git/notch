@@ -1,5 +1,6 @@
 package dev.notch.cli;
 
+import dev.notch.guard.Json;
 import dev.notch.guard.Decision;
 
 import java.io.IOException;

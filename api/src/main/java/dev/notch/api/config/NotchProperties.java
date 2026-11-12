@@ -7,7 +7,7 @@ import java.util.List;
 /** Typed view of the {@code notch.*} settings in application.yml. */
 @ConfigurationProperties(prefix = "notch")
 public record NotchProperties(Crypto crypto, Limits limits, Cors cors, Embedding embedding,
-                              Ingest ingest, Jobs jobs, Auth auth) {
+                              Ingest ingest, Jobs jobs, Auth auth, Llm llm) {
 
     public record Crypto(String key) {
     }
@@ -18,7 +18,12 @@ public record NotchProperties(Crypto crypto, Limits limits, Cors cors, Embedding
     public record Cors(List<String> allowedOrigins) {
     }
 
-    public record Embedding(int dimensions) {
+    /** provider: auto (Voyage when an API key is set), voyage, or offline. */
+    public record Embedding(int dimensions, String provider, String model, String apiKey) {
+    }
+
+    /** provider: auto (Claude when an API key is set), anthropic, or offline. */
+    public record Llm(String provider, String model, String apiKey) {
     }
 
     public record Ingest(long maxFileBytes, int maxChunkChars) {

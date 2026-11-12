@@ -28,6 +28,15 @@ public class JobRepository {
                 .update();
     }
 
+    /** Whether a job of this kind is already waiting or running for the project. */
+    public boolean hasOpen(String kind, UUID projectId) {
+        return jdbc.sql("SELECT count(*) FROM jobs WHERE kind = :k AND project_id = :p AND status IN ('PENDING', 'RUNNING')")
+                .param("k", kind)
+                .param("p", projectId)
+                .query(Long.class)
+                .single() > 0;
+    }
+
     public Optional<Job> claimNext() {
         return jdbc.sql("""
                 UPDATE jobs SET status = 'RUNNING', started_at = now(), attempts = attempts + 1

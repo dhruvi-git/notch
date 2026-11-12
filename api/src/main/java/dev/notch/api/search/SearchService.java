@@ -93,11 +93,17 @@ public class SearchService {
     }
 
     private Map<UUID, Double> semantic(Project project, String query) {
-        float[] v = embeddings.embed(List.of(query)).get(0);
+        float[] v;
+        try {
+            v = embeddings.embedQuery(query);
+        } catch (RuntimeException e) {
+            return Map.of();  // the embedding service is down: exact search still answers
+        }
         if (v == null) return Map.of();
         Map<UUID, Double> near = new java.util.LinkedHashMap<>();
-        chunks.nearest(project.id(), project.userId(), v, SEMANTIC_CANDIDATES).forEach((id, sim) -> {
-            if (sim >= SEMANTIC_MIN) near.put(id, sim);
+        double min = embeddings.minSimilarity();
+        chunks.nearest(project.id(), project.userId(), v, embeddings.name(), SEMANTIC_CANDIDATES).forEach((id, sim) -> {
+            if (sim >= min) near.put(id, sim);
         });
         return near;
     }

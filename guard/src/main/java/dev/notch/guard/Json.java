@@ -1,4 +1,4 @@
-package dev.notch.cli;
+package dev.notch.guard;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A small JSON reader and writer, so the CLI ships as one dependency-free jar.
+ * A small JSON reader and writer with no dependencies, shared by the CLI (one jar, nothing else)
+ * and the API's model clients.
  * Objects become {@link LinkedHashMap}, arrays {@link ArrayList}, numbers {@link Double}.
  */
 public final class Json {
