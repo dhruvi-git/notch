@@ -32,7 +32,9 @@ final class ClaudeCodeSessions {
 
     static final int MAX_MESSAGE_CHARS = 8_000;
     static final int MAX_ERROR_CHARS = 1_200;
-    private static final Pattern NOISE = Pattern.compile("(?s)<system-reminder>.*?</system-reminder>");
+    /** Text editors and Claude Code add these around what the person typed; they aren't the message. */
+    private static final Pattern NOISE = Pattern.compile(
+            "(?s)<system-reminder>.*?</system-reminder>|<(ide_[a-z_]+|command-[a-z-]+|local-command-[a-z-]+)>.*?</\\1>");
 
     private ClaudeCodeSessions() {
     }
@@ -90,6 +92,7 @@ final class ClaudeCodeSessions {
         List<Message> messages = new ArrayList<>();
         String sessionId = null;
         String title = null;
+        String namedTitle = null;  // Claude Code's own title for the session, when it wrote one
         Instant started = null;
         int n = 0;
         try (BufferedReader r = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
@@ -104,6 +107,8 @@ final class ClaudeCodeSessions {
                 }
                 if (sessionId == null && o.get("sessionId") instanceof String s) sessionId = s;
                 String type = Json.str(o, "type");
+                String named = namedTitle(type, o);
+                if (named != null) namedTitle = named;
                 if (!"user".equals(type) && !"assistant".equals(type)) continue;
                 if (Boolean.TRUE.equals(o.get("isSidechain")) || Boolean.TRUE.equals(o.get("isMeta"))) continue;
                 if (!(o.get("message") instanceof Map<?, ?> msg)) continue;
@@ -116,7 +121,19 @@ final class ClaudeCodeSessions {
             }
         }
         String id = sessionId != null ? sessionId : file.getFileName().toString().replaceAll("\\.jsonl$", "");
-        return new Session(id, file, title != null ? title : "Claude Code session", started, messages);
+        String best = namedTitle != null ? namedTitle : title != null ? title : "Claude Code session";
+        return new Session(id, file, best, started, messages);
+    }
+
+    /** A title Claude Code generated for the session (an "ai-title" or summary line), if this is one. */
+    static String namedTitle(String type, Map<String, Object> o) {
+        if (type == null) return null;
+        String t = type.toLowerCase(Locale.ROOT);
+        if (!t.contains("title") && !t.equals("summary")) return null;
+        for (String key : new String[] {"title", "aiTitle", "ai_title", "summary"}) {
+            if (o.get(key) instanceof String s && !s.isBlank()) return titleFrom(s);
+        }
+        return null;
     }
 
     private static Message message(String type, Object content, String uuid, Instant at, Path file, int line) {

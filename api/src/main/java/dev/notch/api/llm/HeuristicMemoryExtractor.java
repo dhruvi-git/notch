@@ -26,7 +26,7 @@ public final class HeuristicMemoryExtractor {
     static final int MAX_TITLE = 140;
 
     private static final String[] DECISION_CUES = {
-            "we decided", "decided to", "decision:", "let's go with", "lets go with", "we'll go with",
+            "we decided", "decided to", "let's go with", "lets go with", "we'll go with",
             "we will go with", "we'll use", "we will use", "going with", "we chose", "i chose",
             "chose to", "we're switching to", "switching to", "settled on", "agreed to", "we picked"};
 
@@ -61,7 +61,8 @@ public final class HeuristicMemoryExtractor {
             for (int[] s : sentences(m.text())) {
                 String sentence = m.text().substring(s[0], s[1]);
                 String lower = sentence.toLowerCase(Locale.ROOT);
-                if (containsAny(lower, DECISION_CUES) && !lower.endsWith("?")) {
+                boolean leadIn = lower.strip().startsWith("decision:");  // "Decision: use Postgres", not "The Worli Decision: ..."
+                if ((leadIn || containsAny(lower, DECISION_CUES)) && !lower.endsWith("?")) {
                     add(out, seen, decision(sentence, i, s[0], s[1]));
                 } else if (isTask(sentence, lower)) {
                     add(out, seen, new ExtractedMemory(MemoryKind.TASK, title(stripBullet(sentence)),
@@ -88,8 +89,13 @@ public final class HeuristicMemoryExtractor {
                 rejected, msg, start, end);
     }
 
+    private static final String[] OFFERS = {
+            "if you", "i can ", "i could ", "want me to", "would you like", "shall i", "should i", "let me know",
+            "do you want", "happy to"};
+
     private static boolean isTask(String sentence, String lower) {
         String t = sentence.strip();
+        if (t.endsWith("?") || containsAny(lower, OFFERS)) return false;  // offers and questions, not work agreed
         return t.startsWith("- [ ]") || t.startsWith("* [ ]") || containsAny(lower, TASK_CUES);
     }
 

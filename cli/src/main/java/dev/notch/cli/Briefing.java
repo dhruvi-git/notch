@@ -26,7 +26,8 @@ final class Briefing {
         for (Object line : Json.arr(r.get("whereYouStopped"))) sb.append("- ").append(line).append('\n');
         if (root != null) {
             List<String> changed = new java.util.ArrayList<>(GitHistory.uncommitted(root));
-            changed.remove(".notch");  // Notch's own link file isn't the work in progress
+            // Files notch init itself writes aren't the work in progress.
+            changed.removeIf(f -> f.equals(".notch") || f.equals(".mcp.json") || f.equals(".claude/") || f.startsWith(".claude/settings"));
             if (!changed.isEmpty()) {
                 sb.append("- Uncommitted changes (").append(changed.size()).append("): ")
                         .append(String.join(", ", changed.subList(0, Math.min(8, changed.size()))))

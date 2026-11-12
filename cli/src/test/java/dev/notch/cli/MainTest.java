@@ -192,8 +192,9 @@ class MainTest {
         Files.writeString(repo.resolve(".claude/settings.json"), "{\"permissions\":{\"allow\":[\"Read\"]}}");
         assertEquals(Main.OK, run("", "hook", "claude"));
         assertEquals(Main.OK, run("", "hook", "claude"));  // idempotent
-        Map<String, Object> settings = Json.obj(Json.parse(Files.readString(repo.resolve(".claude/settings.json"))));
-        assertTrue(settings.containsKey("permissions"), "existing settings are kept");
+        Map<String, Object> shared = Json.obj(Json.parse(Files.readString(repo.resolve(".claude/settings.json"))));
+        assertEquals(List.of("Read"), Json.arr(Json.obj(shared.get("permissions")).get("allow")), "the shared settings are left alone");
+        Map<String, Object> settings = Json.obj(Json.parse(Files.readString(repo.resolve(".claude/settings.local.json"))));
         List<Object> pre = Json.arr(Json.obj(settings.get("hooks")).get("PreToolUse"));
         assertEquals(1, pre.size());
         assertEquals("Edit|MultiEdit|Write|Bash|PowerShell", Json.obj(pre.get(0)).get("matcher"));

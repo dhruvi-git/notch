@@ -143,7 +143,8 @@ class CaptureTest {
     void transcriptsKeepWhatExplainsTheWork() throws Exception {
         ClaudeCodeSessions.Session s = ClaudeCodeSessions.read(transcript("s1", repo.toString()));
         assertEquals("s1", s.id());
-        assertEquals("Why does the pool keep running out?", s.title(), "the system reminder isn't part of the title");
+        assertEquals("Pool work", s.title(), "Claude Code's own short title for the session wins");
+        assertEquals("Why does the pool keep running out?", s.messages().get(0).text(), "the system reminder is stripped");
         List<String> texts = s.messages().stream().map(ClaudeCodeSessions.Message::text).toList();
         assertEquals(4, texts.size(), texts.toString());
         assertTrue(texts.get(1).contains("Ran: npm test") && !texts.get(1).contains("Read"), "commands kept, browsing dropped");
@@ -173,7 +174,10 @@ class CaptureTest {
         assertTrue(Files.readString(repo.resolve(".notch")).contains(PROJECT));
         assertTrue(Files.readString(repo.resolve(".git/hooks/pre-commit")).contains("notch check --staged"));
         assertTrue(Files.readString(repo.resolve(".git/hooks/post-commit")).contains("sync --quiet"));
-        Map<String, Object> hooks = Json.obj(Json.obj(Json.parse(Files.readString(repo.resolve(".claude/settings.json")))).get("hooks"));
+        Map<String, Object> local = Json.obj(Json.parse(Files.readString(repo.resolve(".claude/settings.local.json"))));
+        assertTrue(Json.write(local.get("permissions")).contains("mcp__notch"), "Notch's own tools are pre-approved");
+        assertFalse(said.contains("notch hook claude"), "no tip to run what init just ran");
+        Map<String, Object> hooks = Json.obj(local.get("hooks"));
         assertTrue(Json.write(hooks.get("SessionStart")).contains("resume --claude-hook"));
         assertTrue(Json.write(hooks.get("SessionEnd")).contains("capture --claude-hook"));
         assertTrue(Json.write(hooks.get("PreToolUse")).contains("check --claude-hook"));
@@ -245,5 +249,41 @@ class CaptureTest {
         assertTrue(said.startsWith("billing-service:"), said);
         assertTrue(said.contains("Local Postgres (2026-09-01)") && said.contains("docker compose up -d"), said);
         assertTrue(requests.stream().anyMatch(r -> r[1].contains("q=ECONNREFUSED+127.0.0.1%3A5432")));
+    }
+
+    @Test
+    void editorTagsAreStrippedAndClaudeCodesOwnTitleWins() throws Exception {
+        Path dir = Files.createDirectories(claudeDir.resolve("projects").resolve("x"));
+        String c = Json.write(repo.toString());
+        Path f = dir.resolve("s7.jsonl");
+        Files.write(f, List.of(
+                "{\"type\":\"user\",\"sessionId\":\"s7\",\"uuid\":\"u1\",\"cwd\":" + c + ",\"message\":{\"role\":\"user\",\"content\":"
+                        + "\"<ide_opened_file>The user opened the file C:\\\\x\\\\.env.local in the IDE.</ide_opened_file> okay, let me explain the brief\"}}",
+                "{\"type\":\"ai-title\",\"sessionId\":\"s7\",\"title\":\"Worli decision site UI improvements\"}"));
+        ClaudeCodeSessions.Session s = ClaudeCodeSessions.read(f);
+        assertEquals("Worli decision site UI improvements", s.title());
+        assertEquals("okay, let me explain the brief", s.messages().get(0).text());
+    }
+
+    @Test
+    void whyOnlyShowsResultsThatReallyMatch() {
+        assertTrue(WhyMatch.relevant("ECONNREFUSED 127.0.0.1:5432", "Error: connect ECONNREFUSED 127.0.0.1:5432"));
+        assertFalse(WhyMatch.relevant("useWorkspace must be used inside WorkspaceProvider",
+                "The assignment brief: build a meeting room page that must be used by the family."), "shared common words don't count");
+        assertTrue(WhyMatch.relevant("useWorkspace must be used inside WorkspaceProvider", "Wrap the app in WorkspaceProvider first."));
+        assertTrue(WhyMatch.relevant("why is the pool running out", "the connection pool keeps running out under load"));
+        assertFalse(WhyMatch.relevant("why is the pool running out", "we chose CSS modules for styling"));
+    }
+
+    @Test
+    void anOlderInstallsSharedHooksMoveToLocalSettings() throws Exception {
+        Files.createDirectories(repo.resolve(".claude"));
+        Files.writeString(repo.resolve(".claude/settings.json"), "{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Edit\",\"hooks\":"
+                + "[{\"type\":\"command\",\"command\":\"notch check --claude-hook\"}]}]},\"model\":\"x\"}");
+        assertEquals(Main.OK, run("", "hook", "claude"));
+        Map<String, Object> shared = Json.obj(Json.parse(Files.readString(repo.resolve(".claude/settings.json"))));
+        assertFalse(shared.containsKey("hooks"), "Notch's hooks leave the shared file");
+        assertEquals("x", shared.get("model"), "other settings stay");
+        assertTrue(Files.readString(repo.resolve(".claude/settings.local.json")).contains("check --claude-hook"));
     }
 }

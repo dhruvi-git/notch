@@ -70,4 +70,15 @@ class SecretScannerTest {
     void shortKeyLikeStringsAreNotRedacted() {
         assertTrue(scanner.scan("sk-short").findings().isEmpty());
     }
+
+    @Test
+    void urlPathsAreNotSecretsButTheirQueryStringsAre() {
+        SecretScanner scanner = new SecretScanner();
+        String trailer = "Claude-Session: https://claude.ai/code/session_01AbCdEfGh2IjKlMn3OpQrStUv4WxYz";
+        assertEquals(trailer, scanner.scan(trailer).redacted(), "a session link isn't a secret");
+        String leak = "curl https://api.example.com/v1/data?token=Zx8Kq2Lm9Vb4Nc7Rt1Yw6Pd3Hs5Gf0Ja";
+        assertTrue(scanner.scan(leak).redacted().contains("[REDACTED:"), "a token in a query string is");
+        String key = "see https://github.com/x?y=1 and ghp_abcdefghijklmnopqrstuvwxyzABCDEF123456";
+        assertTrue(scanner.scan(key).redacted().contains("[REDACTED:"), "known key formats are caught anywhere");
+    }
 }

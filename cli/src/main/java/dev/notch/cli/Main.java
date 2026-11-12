@@ -352,7 +352,7 @@ public final class Main {
         postCommitHook(root);
         claudeHook(root);
         claudeSessionHooks(root);
-        setup(new Args(new String[] {"setup", "claude"}), root);
+        setup(new Args(new String[] {"setup", "claude", "--quiet-tip"}), root);
         out.println();
         out.println("Capturing your history: Claude Code sessions in this repository, recent commits and the code map\u2026");
         try {
@@ -455,8 +455,11 @@ public final class Main {
                     !String.valueOf(y.get("id")).equals(config.project)));
             int shown = 0;
             for (Map<String, Object> p : projects.subList(0, Math.min(12, projects.size()))) {
-                Map<String, Object> r = api.searchIn(Json.str(p, "id"), query, 3);
-                List<Object> hits = Json.arr(r.get("hits"));
+                Map<String, Object> r = api.searchIn(Json.str(p, "id"), query, 6);
+                List<Object> hits = new ArrayList<>();
+                for (Object h : Json.arr(r.get("hits"))) {
+                    if (WhyMatch.relevant(query, Json.str(Json.obj(h), "text")) && hits.size() < 3) hits.add(h);
+                }
                 if (hits.isEmpty()) continue;
                 out.println(Json.str(p, "name") + ":");
                 for (Object h : hits) {
@@ -470,7 +473,7 @@ public final class Main {
                 }
                 out.println();
             }
-            if (shown == 0) out.println("Nothing in your Notch history matches that yet.");
+            if (shown == 0) out.println("Not seen before: nothing in any of your projects mentions that.");
             return OK;
         } catch (NotchBackend.NotchException e) {
             err.println("notch: " + e.getMessage());
@@ -617,7 +620,7 @@ public final class Main {
 
     /** Claude Code: a briefing when a session starts, and capture when it ends. */
     private void claudeSessionHooks(Path root) throws IOException {
-        Path file = root.resolve(".claude").resolve("settings.json");
+        Path file = claudeLocalSettings(root);
         Map<String, Object> settings = readJsonObject(file);
         Map<String, Object> hooks = child(settings, "hooks");
         String launch = String.join(" ", launcher().stream().map(Main::shellQuote).toList());
@@ -631,6 +634,12 @@ public final class Main {
             hooks.put(spec[0], entries);
         }
         settings.put("hooks", hooks);
+        // Let Claude Code use Notch's own tools without asking, including in headless sessions.
+        Map<String, Object> permissions = child(settings, "permissions");
+        List<Object> allow = permissions.get("allow") instanceof List<?> l ? new ArrayList<>(Json.arr(l)) : new ArrayList<>();
+        if (!allow.contains("mcp__notch")) allow.add("mcp__notch");
+        permissions.put("allow", allow);
+        settings.put("permissions", permissions);
         Files.createDirectories(file.getParent());
         Files.writeString(file, Json.pretty(settings), StandardCharsets.UTF_8);
         out.println("Claude Code will start each session with a Notch briefing and capture it when it ends.");
@@ -658,16 +667,49 @@ public final class Main {
         return false;
     }
 
-    /** How agent configs should start Notch: by name when it's on PATH, else by its jar. */
+    /**
+     * How agent configs should start Notch. Claude Code started from an editor doesn't see a PATH
+     * set in some terminal, so when Notch runs from its jar, configs name the Java executable and
+     * the jar by full path. (From classes, as in tests, it's plain "notch".)
+     */
     private List<String> launcher() {
         Path jar = ownJar();
-        if (notchOnPath() || jar == null) return List.of("notch");
-        out.println("notch isn't on your PATH, so this uses " + jar + " directly. That path is specific to this computer.");
-        return List.of("java", "-jar", jar.toString().replace('\\', '/'));
+        if (jar == null) return List.of("notch");
+        String java = ProcessHandle.current().info().command().orElse("java").replace('\\', '/');
+        return List.of(java, "-jar", jar.toString().replace('\\', '/'));
+    }
+
+    /**
+     * Claude Code settings for this machine only: hooks there name this computer's Java and jar,
+     * so they go in .claude/settings.local.json (personal, not shared) rather than settings.json.
+     */
+    static Path claudeLocalSettings(Path root) {
+        return root.resolve(".claude").resolve("settings.local.json");
+    }
+
+    /** Removes Notch's hook commands from a Claude Code settings file (older installs used settings.json). */
+    private static void removeNotchHooks(Path file) throws IOException {
+        if (!Files.exists(file)) return;
+        Map<String, Object> settings = readJsonObject(file);
+        if (!(settings.get("hooks") instanceof Map<?, ?>)) return;
+        Map<String, Object> hooks = child(settings, "hooks");
+        boolean changed = false;
+        for (String event : new ArrayList<>(hooks.keySet())) {
+            if (!(hooks.get(event) instanceof List<?> l)) continue;
+            List<Object> entries = new ArrayList<>(Json.arr(l));
+            changed |= entries.removeIf(e -> Json.write(e).matches(".*(check|resume|capture) --claude-hook.*"));
+            if (entries.isEmpty()) hooks.remove(event);
+            else hooks.put(event, entries);
+        }
+        if (!changed) return;
+        if (hooks.isEmpty()) settings.remove("hooks");
+        else settings.put("hooks", hooks);
+        Files.writeString(file, Json.pretty(settings), StandardCharsets.UTF_8);
     }
 
     private int claudeHook(Path root) throws IOException {
-        Path file = root.resolve(".claude").resolve("settings.json");
+        removeNotchHooks(root.resolve(".claude").resolve("settings.json"));
+        Path file = claudeLocalSettings(root);
         Map<String, Object> settings = readJsonObject(file);
         Map<String, Object> hooks = child(settings, "hooks");
         List<Object> pre = hooks.get("PreToolUse") instanceof List<?> l ? new ArrayList<>(Json.arr(l)) : new ArrayList<>();
@@ -744,7 +786,7 @@ public final class Main {
         Files.createDirectories(file.toAbsolutePath().getParent());
         Files.writeString(file, Json.pretty(config), StandardCharsets.UTF_8);
         out.println("Connected " + agent + " to Notch through " + root.relativize(file) + ".");
-        if ("claude".equals(agent)) {
+        if ("claude".equals(agent) && !a.has("quiet-tip")) {
             out.println("Also stop edits that break decisions: notch hook claude");
         }
         return OK;

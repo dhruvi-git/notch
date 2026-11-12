@@ -83,7 +83,25 @@ public final class SecretScanner {
         }
     }
 
+    private static final java.util.regex.Pattern URL = java.util.regex.Pattern.compile("\\bhttps?://[^\\s\"'<>()\\]]+");
+
+    /**
+     * The path part of every URL (scheme, host and path, up to any '?'). Long random-looking
+     * segments there are usually ids (a session link, a commit), not secrets; the query string,
+     * where tokens do get passed, is still checked, and known key formats are caught anywhere.
+     */
+    private static List<int[]> urlPaths(String text) {
+        List<int[]> out = new java.util.ArrayList<>();
+        java.util.regex.Matcher m = URL.matcher(text);
+        while (m.find()) {
+            int q = text.indexOf('?', m.start());
+            out.add(new int[] {m.start(), q >= 0 && q < m.end() ? q : m.end()});
+        }
+        return out;
+    }
+
     private static void findHighEntropy(String text, List<Finding> out) {
+        List<int[]> paths = urlPaths(text);
         int i = 0;
         while (i < text.length()) {
             if (!isTokenChar(text.charAt(i)) && !isBase64Extra(text.charAt(i))) {
@@ -93,7 +111,9 @@ public final class SecretScanner {
             int start = i;
             while (i < text.length() && (isTokenChar(text.charAt(i)) || isBase64Extra(text.charAt(i)))) i++;
             String token = text.substring(start, i);
-            if (token.length() >= ENTROPY_MIN_LENGTH && hasMixedClasses(token)
+            boolean inUrlPath = false;
+            for (int[] p : paths) inUrlPath |= start >= p[0] && start < p[1];
+            if (!inUrlPath && token.length() >= ENTROPY_MIN_LENGTH && hasMixedClasses(token)
                     && shannonEntropy(token) >= ENTROPY_THRESHOLD && !overlapsAny(out, start, i)) {
                 out.add(new Finding("high-entropy-string", start, i));
             }

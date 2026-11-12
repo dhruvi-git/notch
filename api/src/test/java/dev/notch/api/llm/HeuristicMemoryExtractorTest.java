@@ -84,4 +84,15 @@ class HeuristicMemoryExtractorTest {
         for (int i = 0; i < 80; i++) many.append("We decided to use tool").append(i).append(". ");
         assertEquals(HeuristicMemoryExtractor.MAX_PER_CONVERSATION, run(new SourceMessage("user", many.toString())).size());
     }
+
+    @Test
+    void theNounDecisionAndOffersDontBecomeMemories() {
+        List<ExtractedMemory> got = new HeuristicMemoryExtractor().extractMemories(new ExtractionRequest("Commits", List.of(
+                new ExtractionRequest.SourceMessage("note", "Commit 1a2b3c4: The Worli Decision: meeting room for the Mehta family"),
+                new ExtractionRequest.SourceMessage("assistant", "If you grant permission for the Notch tool, I can check the next step and follow up on it."),
+                new ExtractionRequest.SourceMessage("user", "Decision: use Postgres for billing data."))));
+        assertEquals(1, got.size(), got.toString());
+        assertEquals(MemoryKind.DECISION, got.get(0).kind());
+        assertTrue(got.get(0).title().contains("Postgres"));
+    }
 }

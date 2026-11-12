@@ -17,6 +17,10 @@ spring:
       enabled: true
 
 server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force-response: true   # JSON says charset=utf-8, so every client decodes it right
   port: ${PORT:8090}
 
 management:

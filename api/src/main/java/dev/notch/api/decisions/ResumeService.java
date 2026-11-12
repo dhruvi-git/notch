@@ -114,8 +114,12 @@ public class ResumeService {
                 SELECT c.id, c.title, MAX(m.sent_at) AS last_at, COUNT(m.id) AS n
                 FROM conversations c JOIN messages m ON m.conversation_id = c.id
                 WHERE c.project_id = :p AND c.user_id = :u
-                GROUP BY c.id, c.title
-                ORDER BY last_at DESC
+                GROUP BY c.id, c.title, c.source
+                -- The latest session with real work: commits aren't a session, and a single question
+                -- ("where did we stop?") isn't the work being resumed. Falls back to whatever exists.
+                ORDER BY (c.source <> 'git') DESC,
+                         (COUNT(m.id) FILTER (WHERE m.role = 'user') >= 2) DESC,
+                         last_at DESC
                 LIMIT 1""")
                 .param("p", project.id())
                 .param("u", userId)

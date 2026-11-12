@@ -34,6 +34,11 @@ notch resume                          # where you stopped in this repository
 notch why "ECONNREFUSED 127.0.0.1"    # have you seen this before, in any project?
 ```
 
+Claude Code's hooks are written to `.claude/settings.local.json`, Claude Code's file for
+settings on this computer only, because they name this machine's Java and the Notch jar by full
+path: sessions started from an editor work even if `notch` isn't on that editor's PATH. `init`
+also pre-approves Notch's own MCP tools (`mcp__notch`) there.
+
 Transcripts can include command output, so everything goes through Notch's import pipeline:
 secrets are removed before storage, text is encrypted, and repeated passages are skipped with
 the Bloom filter. Automatic captures have their own daily allowance (200), separate from manual
