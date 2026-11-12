@@ -1,3 +1,4 @@
+import { ConnectRepo } from "@/components/ConnectRepo";
 import type { Metadata } from "next";
 import { api } from "@/lib/server-api";
 import { relativeTime, SOURCE_LABEL } from "@/lib/format";
@@ -18,9 +19,12 @@ export default async function Imports({ params }: { params: Promise<{ projectId:
     <div className={styles.page}>
       <h1>Imports</h1>
       <p className={styles.intro}>
-        Bring in chats and notes. Secrets are hidden before anything is saved, and passages you&rsquo;ve already
-        imported are skipped.
+        Notch captures your Claude Code sessions and commits by itself once a repository is connected. Here you can also
+        bring in ChatGPT or Claude exports and notes. Secrets are hidden before anything is saved, and passages you&rsquo;ve
+        already got are skipped.
       </p>
+
+      <ConnectRepo projectId={projectId} compact />
 
       <ImportPanel projectId={projectId} remaining={usage.remaining.import} limit={usage.limits.import} />
 

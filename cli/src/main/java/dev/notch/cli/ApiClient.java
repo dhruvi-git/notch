@@ -149,6 +149,38 @@ public final class ApiClient implements NotchBackend {
         return Json.str(m, "id");
     }
 
+    /** Sends captured conversations (Claude Code sessions or commits) through the import pipeline. */
+    public Map<String, Object> capture(String source, String label, List<Object> conversations) throws NotchException {
+        requireProject();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("source", source);
+        body.put("label", label);
+        body.put("conversations", conversations);
+        return Json.obj(Json.parse(send("POST", "/api/projects/" + enc(config.project) + "/captures", Json.write(body))));
+    }
+
+    /** The account's projects as id and name. */
+    public List<Map<String, Object>> projects() throws NotchException {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object o : Json.arr(Json.parse(get("/api/projects")))) out.add(Json.obj(o));
+        return out;
+    }
+
+    public String createProject(String name) throws NotchException {
+        return Json.str(Json.obj(Json.parse(send("POST", "/api/projects", Json.write(Map.of("name", name))))), "id");
+    }
+
+    /** Raw search results for another project (cross-project lookups). */
+    public Map<String, Object> searchIn(String projectId, String query, int k) throws NotchException {
+        return Json.obj(Json.parse(get("/api/projects/" + enc(projectId) + "/search?k=" + k + "&q=" + enc(query))));
+    }
+
+    /** The server's "where you stopped" view, raw. */
+    public Map<String, Object> resume() throws NotchException {
+        requireProject();
+        return Json.obj(Json.parse(get("/api/projects/" + enc(config.project) + "/resume")));
+    }
+
     /** Uploads a code map (JSON as written by CodeMapJson). */
     public String uploadMap(String label, String mapJson) throws NotchException {
         requireProject();

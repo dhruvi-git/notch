@@ -1,0 +1,38 @@
+.card {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1.25rem;
+  padding: 1.4rem 1.6rem;
+  border-radius: var(--r-panel);
+  background: var(--accent-soft);
+}
+
+.title {
+  font-size: var(--t-xl);
+  letter-spacing: -0.02em;
+}
+
+.card[data-compact="true"] .title {
+  font-size: var(--t-lg);
+}
+
+.card p {
+  max-width: 62ch;
+}
+
+.cmd {
+  margin: 0;
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--r-control);
+  background: #1b1029;
+  color: #f3eefa;
+  font-size: var(--t-sm);
+  overflow-x: auto;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.note {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}

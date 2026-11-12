@@ -4,6 +4,7 @@ import dev.notch.api.config.ApiException;
 import dev.notch.api.config.NotchProperties;
 import dev.notch.api.crypto.ContentCipher;
 import dev.notch.api.ingest.core.Chunk;
+import dev.notch.api.ingest.core.ImportFormat;
 import dev.notch.api.ingest.core.Chunker;
 import dev.notch.api.ingest.core.ContentHash;
 import dev.notch.api.ingest.core.ParsedConversation;
@@ -88,7 +89,23 @@ public class ImportService {
         if (messageCount == 0) {
             throw ApiException.badRequest("no_messages", "The file was read, but it has no messages to import.");
         }
+        return store(project, userId, filename, parsed);
+    }
 
+    /**
+     * Conversations captured automatically by the CLI: Claude Code sessions and git history. They
+     * go through the same pipeline as file imports (secrets removed, encrypted, chunked,
+     * deduplicated with the Bloom filter, memories extracted), and messages already stored are
+     * skipped by their ids, so capturing a session again only adds what's new.
+     */
+    public ImportReport importCaptured(UUID projectId, ImportFormat format, String label, List<ParsedConversation> conversations) {
+        Project project = projects.require(projectId);
+        UUID userId = currentUser.id();
+        usage.consume(userId, UsageService.CAPTURE);
+        return store(project, userId, label, new ImportFileReader.Result(format, conversations));
+    }
+
+    private ImportReport store(Project project, UUID userId, String filename, ImportFileReader.Result parsed) {
         UUID importId = UUID.randomUUID();
         Instant now = Instant.now();
         // The import row must exist before messages reference it.

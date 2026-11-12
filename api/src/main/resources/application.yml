@@ -31,6 +31,7 @@ notch:
   limits:
     imports-per-day: 20
     questions-per-day: 30
+    captures-per-day: 200   # automatic capture: each sync or finished session counts once
   cors:
     allowed-origins: ${NOTCH_CORS_ORIGINS:http://localhost:3000}
   # AI models. With no keys set, Notch runs fully offline. Private projects are never sent to either.

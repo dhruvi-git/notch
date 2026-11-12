@@ -12,7 +12,8 @@ public record NotchProperties(Crypto crypto, Limits limits, Cors cors, Embedding
     public record Crypto(String key) {
     }
 
-    public record Limits(int importsPerDay, int questionsPerDay) {
+    /** capturesPerDay: uploads from notch sync and the Claude Code hook, counted apart from manual imports. */
+    public record Limits(int importsPerDay, int questionsPerDay, int capturesPerDay) {
     }
 
     public record Cors(List<String> allowedOrigins) {

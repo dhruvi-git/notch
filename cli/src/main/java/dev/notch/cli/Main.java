@@ -89,6 +89,11 @@ public final class Main {
             case "hook" -> hook(a, root);
             case "setup" -> setup(a, root);
             case "map" -> map(a, config, root);
+            case "init" -> init(a, config, root);
+            case "sync" -> sync(a, config, root);
+            case "capture" -> capture(a, config, root, stdin);
+            case "resume" -> resume(a, config, root, stdin);
+            case "why" -> why(a, config);
             case "mcp" -> {
                 err.println("notch: MCP server ready on stdio" + (config.project == null ? " (no project linked yet)" : ""));
                 new McpServer(new ApiClient(config, false), out, err).serve(stdin);
@@ -309,6 +314,170 @@ public final class Main {
         return ERROR;
     }
 
+    // ------------------------------------------------------------------ capture and recall
+
+    /**
+     * One-time setup in a repository: links (or creates) the project, installs every hook, and
+     * captures existing history. After this, Notch keeps itself up to date.
+     */
+    private int init(Args a, Config config, Path root) throws IOException {
+        if (root == null) {
+            err.println("Run notch init inside a git repository.");
+            return ERROR;
+        }
+        if (config.token == null) {
+            err.println("First sign in: create a personal token in Notch (Settings), then run notch login --token <token>.");
+            return ERROR;
+        }
+        String name = root.getFileName().toString();
+        if (config.project == null) {
+            try {
+                ApiClient api = new ApiClient(config, false);
+                String id = null;
+                for (Map<String, Object> p : api.projects()) if (name.equalsIgnoreCase(Json.str(p, "name"))) id = Json.str(p, "id");
+                if (id == null) {
+                    id = api.createProject(name);
+                    out.println("Created the Notch project \u201c" + name + "\u201d.");
+                } else {
+                    out.println("Linked to your existing Notch project \u201c" + name + "\u201d.");
+                }
+                Config.saveRepo(root, id);
+                config = config.withProject(id);
+            } catch (NotchBackend.NotchException e) {
+                err.println("notch: " + e.getMessage());
+                return ERROR;
+            }
+        }
+        gitHook(root, a.has("force"));
+        postCommitHook(root);
+        claudeHook(root);
+        claudeSessionHooks(root);
+        setup(new Args(new String[] {"setup", "claude"}), root);
+        out.println();
+        out.println("Capturing your history: Claude Code sessions in this repository, recent commits and the code map\u2026");
+        try {
+            Sync.Result r = new Sync(new ApiClient(config, false), config, root, env, home, err).run(true);
+            out.printf("Captured %d session%s (%,d messages), %d commit%s%s.%n", r.sessions(), r.sessions() == 1 ? "" : "s",
+                    r.sessionMessages(), r.commits(), r.commits() == 1 ? "" : "s", r.mapped() ? " and the code map" : "");
+        } catch (NotchBackend.NotchException | IOException e) {
+            err.println("notch: the first capture didn't finish (" + e.getMessage() + "). It will retry after your next commit.");
+        }
+        out.println();
+        out.println("Done. From now on Notch updates itself after every commit and every Claude Code session.");
+        out.println("Coming back later? Run notch resume, or just open Claude Code here: it starts with a briefing.");
+        return OK;
+    }
+
+    private int sync(Args a, Config config, Path root) throws IOException {
+        boolean quiet = a.has("quiet");
+        if (root == null || config.token == null || config.project == null) {
+            if (!quiet) err.println("Run notch init in this repository first.");
+            return quiet ? OK : ERROR;
+        }
+        try {
+            Sync.Result r = new Sync(new ApiClient(config, false), config, root, env, home, err).run(!a.has("no-map"));
+            if (!quiet) {
+                out.printf("Captured %d new session%s (%,d messages) and %d commit%s%s.%n", r.sessions(), r.sessions() == 1 ? "" : "s",
+                        r.sessionMessages(), r.commits(), r.commits() == 1 ? "" : "s", r.mapped() ? ", and refreshed the code map" : "");
+            }
+            return OK;
+        } catch (NotchBackend.NotchException | IOException | RuntimeException e) {
+            if (!quiet) err.println("notch: " + e.getMessage());
+            return quiet ? OK : ERROR;  // hooks never fail because of Notch
+        }
+    }
+
+    /** Claude Code's SessionEnd hook: capture the session that just finished. Never fails the hook. */
+    private int capture(Args a, Config config, Path root, BufferedReader stdin) {
+        try {
+            Path transcript = null;
+            if (a.has("claude-hook")) {
+                Map<String, Object> event = Json.obj(Json.parse(readAll(stdin)));
+                String path = Json.str(event, "transcript_path");
+                if (path != null) transcript = Path.of(path);
+                String cwd = Json.str(event, "cwd");
+                if (root == null && cwd != null) root = Git.root(Path.of(cwd));
+                if (root != null && config.project == null) config = Config.load(env, home, root);
+            } else if (a.positional(1) != null) {
+                transcript = cwd.resolve(a.positional(1));
+            }
+            if (transcript == null || !Files.isRegularFile(transcript) || root == null || config.project == null || config.token == null) return OK;
+            int n = new Sync(new ApiClient(config, false), config, root, env, home, err).captureOne(transcript);
+            if (!a.has("claude-hook")) out.println("Captured " + n + " messages.");
+        } catch (Exception e) {
+            if (!a.has("claude-hook")) err.println("notch: " + e.getMessage());
+        }
+        return OK;
+    }
+
+    /** The briefing; with --claude-hook, handed to Claude Code as context at session start. */
+    private int resume(Args a, Config config, Path root, BufferedReader stdin) {
+        boolean hook = a.has("claude-hook");
+        if (config.token == null || config.project == null) {
+            if (!hook) err.println("Run notch init in this repository first.");
+            return hook ? OK : ERROR;
+        }
+        try {
+            ApiClient api = new ApiClient(config, false);
+            String name = root != null ? root.getFileName().toString() : api.projectName();
+            String text = Briefing.build(api, root, name);
+            if (hook) {
+                Map<String, Object> specific = new LinkedHashMap<>();
+                specific.put("hookEventName", "SessionStart");
+                specific.put("additionalContext", "Notch briefing for this project:\n" + text);
+                out.println(Json.write(Map.of("hookSpecificOutput", specific)));
+            } else {
+                out.println(text);
+            }
+            return OK;
+        } catch (NotchBackend.NotchException | RuntimeException e) {
+            if (!hook) err.println("notch: " + e.getMessage());
+            return hook ? OK : ERROR;
+        }
+    }
+
+    /** "Have I seen this before?" across every project: errors, fixes and decisions. */
+    private int why(Args a, Config config) {
+        String query = String.join(" ", a.positionalsFrom(1)).strip();
+        if (query.isEmpty()) {
+            err.println("Usage: notch why \"<error message or question>\"");
+            return ERROR;
+        }
+        if (config.token == null) {
+            err.println("Sign in first: notch login --token <token>");
+            return ERROR;
+        }
+        try {
+            ApiClient api = new ApiClient(config, false);
+            List<Map<String, Object>> projects = api.projects();
+            // The current project first, then the rest.
+            projects.sort((x, y) -> Boolean.compare(!String.valueOf(x.get("id")).equals(config.project),
+                    !String.valueOf(y.get("id")).equals(config.project)));
+            int shown = 0;
+            for (Map<String, Object> p : projects.subList(0, Math.min(12, projects.size()))) {
+                Map<String, Object> r = api.searchIn(Json.str(p, "id"), query, 3);
+                List<Object> hits = Json.arr(r.get("hits"));
+                if (hits.isEmpty()) continue;
+                out.println(Json.str(p, "name") + ":");
+                for (Object h : hits) {
+                    Map<String, Object> hit = Json.obj(h);
+                    Map<String, Object> src = Json.obj(hit.get("source"));
+                    String text = Json.str(hit, "text").replaceAll("\\s+", " ").strip();
+                    out.println("  " + Json.str(src, "conversationTitle") + " (" + String.valueOf(Json.str(src, "sentAt")).substring(0, 10) + ")"
+                            + (Boolean.TRUE.equals(hit.get("decision")) ? " [decision]" : ""));
+                    out.println("    " + (text.length() > 240 ? text.substring(0, 239) + "\u2026" : text));
+                    shown++;
+                }
+                out.println();
+            }
+            if (shown == 0) out.println("Nothing in your Notch history matches that yet.");
+            return OK;
+        } catch (NotchBackend.NotchException e) {
+            err.println("notch: " + e.getMessage());
+            return ERROR;
+        }
+    }
+
     // ------------------------------------------------------------------ map
 
     /**
@@ -416,6 +585,55 @@ public final class Main {
                 + "fi\n"
                 + "echo \"notch: not found, so the decision check was skipped. Put cli/bin on your PATH.\" >&2\n"
                 + "exit 0\n";
+    }
+
+    static final String SYNC_MARKER = "# Installed by Notch: sync";
+
+    /** After each commit: capture it, new Claude Code sessions and the code map, in the background. */
+    private void postCommitHook(Path root) throws IOException {
+        Path hooks = Git.hooksDir(root);
+        Files.createDirectories(hooks);
+        Path hook = hooks.resolve("post-commit");
+        if (Files.exists(hook) && !Files.readString(hook).contains(SYNC_MARKER)) {
+            out.println("A post-commit hook already exists; add this line to it so Notch stays current: notch sync --quiet &");
+            return;
+        }
+        Files.writeString(hook, postCommitScript(ownJar()), StandardCharsets.UTF_8);
+        makeExecutable(hook);
+        out.println("Installed the post-commit sync at " + root.relativize(hook) + ".");
+    }
+
+    static String postCommitScript(Path jar) {
+        String jarPath = jar == null ? "" : jar.toAbsolutePath().toString().replace('\\', '/');
+        return "#!/bin/sh\n" + SYNC_MARKER + ". Captures this commit, new Claude Code sessions and the code map\n"
+                + "# in the background, so committing never waits for it.\n"
+                + "if command -v notch >/dev/null 2>&1; then (notch sync --quiet >/dev/null 2>&1 &); exit 0; fi\n"
+                + "JAR=\"" + jarPath + "\"\n"
+                + "if [ -n \"$JAR\" ] && [ -f \"$JAR\" ] && command -v java >/dev/null 2>&1; then\n"
+                + "  (java -jar \"$JAR\" sync --quiet >/dev/null 2>&1 &)\n"
+                + "fi\n"
+                + "exit 0\n";
+    }
+
+    /** Claude Code: a briefing when a session starts, and capture when it ends. */
+    private void claudeSessionHooks(Path root) throws IOException {
+        Path file = root.resolve(".claude").resolve("settings.json");
+        Map<String, Object> settings = readJsonObject(file);
+        Map<String, Object> hooks = child(settings, "hooks");
+        String launch = String.join(" ", launcher().stream().map(Main::shellQuote).toList());
+        for (String[] spec : new String[][] {{"SessionStart", "resume --claude-hook"}, {"SessionEnd", "capture --claude-hook"}}) {
+            List<Object> entries = hooks.get(spec[0]) instanceof List<?> l ? new ArrayList<>(Json.arr(l)) : new ArrayList<>();
+            entries.removeIf(e -> Json.write(e).contains(spec[1]));
+            Map<String, Object> cmd = new LinkedHashMap<>();
+            cmd.put("type", "command");
+            cmd.put("command", launch + " " + spec[1]);
+            entries.add(Map.of("hooks", List.of(cmd)));
+            hooks.put(spec[0], entries);
+        }
+        settings.put("hooks", hooks);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, Json.pretty(settings), StandardCharsets.UTF_8);
+        out.println("Claude Code will start each session with a Notch briefing and capture it when it ends.");
     }
 
     /** The jar this CLI is running from, or null when run from classes (tests, IDE). */
@@ -602,10 +820,19 @@ public final class Main {
         String positional(int i) {
             return i < positionals.size() ? positionals.get(i) : null;
         }
+
+        List<String> positionalsFrom(int i) {
+            return i < positionals.size() ? positionals.subList(i, positionals.size()) : List.of();
+        }
     }
 
     static final String HELP = """
             notch: keeps code and coding agents in line with your project's decisions
+
+            Start here
+              notch init                                  set up this repository: hooks, agent briefing, history capture
+              notch resume                                where you stopped: last session, uncommitted work, next tasks
+              notch why "<error or question>"             have you seen this before? searches every project
 
             Setup
               notch login --token <token> [--api <url>]   save a personal token (Notch > Settings)
@@ -620,6 +847,10 @@ public final class Main {
               notch hook git                              stop commits that go against a decision
               notch hook claude                           stop Claude Code edits that go against a decision
               notch hook github                           check pull requests in GitHub Actions
+
+            Capture (automatic after notch init)
+              notch sync                                  capture new Claude Code sessions, commits and the code map
+              notch capture <transcript.jsonl>            capture one Claude Code session
 
             Explain
               notch map                                   map this codebase locally and upload the map (no code is sent)

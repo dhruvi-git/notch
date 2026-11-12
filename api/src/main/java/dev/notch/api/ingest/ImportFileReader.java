@@ -36,6 +36,9 @@ public class ImportFileReader {
         ImportFormat requested;
         try {
             requested = ImportFormat.parseOrNull(requestedFormat);
+            if (requested != null && requested.captured()) {
+                throw new IllegalArgumentException("'" + requestedFormat + "' is captured by notch sync, not uploaded as a file");
+            }
         } catch (IllegalArgumentException e) {
             throw ApiException.badRequest("unknown_format", e.getMessage());
         }

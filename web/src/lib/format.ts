@@ -29,6 +29,8 @@ export const SOURCE_LABEL: Record<string, string> = {
   claude: "Claude",
   markdown: "Markdown",
   text: "Text",
+  "claude-code": "Claude Code",
+  git: "Git commits",
 };
 
 export const ROLE_LABEL: Record<string, string> = {

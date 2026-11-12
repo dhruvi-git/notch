@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConnectRepo } from "@/components/ConnectRepo";
 import { api } from "@/lib/server-api";
 import { plural, relativeTime, shortDate } from "@/lib/format";
 import type { ResumeView } from "@/lib/types";
@@ -25,9 +26,10 @@ export default async function ResumePage({ params }: { params: Promise<{ project
       <div className={styles.page}>
         <h1>Where you stopped</h1>
         <p className={styles.empty}>
-          Nothing here yet. <Link href={`${base}/imports`}>Import a conversation</Link> and Notch will pick up the thread
-          from its last messages.
+          Nothing here yet. Connect the repository and Notch picks up the thread from your last Claude Code session and commits,
+          or <Link href={`${base}/imports`}>import a conversation</Link>.
         </p>
+        <ConnectRepo projectId={projectId} />
       </div>
     );
   }

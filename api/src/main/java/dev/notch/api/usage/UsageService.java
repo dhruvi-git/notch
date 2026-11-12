@@ -19,6 +19,7 @@ public class UsageService {
 
     public static final String IMPORT = "import";
     public static final String QUESTION = "question";
+    public static final String CAPTURE = "capture";
 
     private final JdbcClient jdbc;
     private final NotchProperties props;
@@ -32,6 +33,7 @@ public class UsageService {
         return switch (action) {
             case IMPORT -> props.limits().importsPerDay();
             case QUESTION -> props.limits().questionsPerDay();
+            case CAPTURE -> props.limits().capturesPerDay() > 0 ? props.limits().capturesPerDay() : 200;
             default -> throw new IllegalArgumentException("unknown action " + action);
         };
     }
@@ -52,7 +54,7 @@ public class UsageService {
                 .optional()
                 .isPresent();
         if (!taken) {
-            String what = action.equals(IMPORT) ? "imports" : "questions";
+            String what = action.equals(IMPORT) ? "imports" : action.equals(CAPTURE) ? "automatic captures" : "questions";
             throw ApiException.limitReached("You've used today's " + limit + " " + what
                     + ". Search still works, and the allowance resets at midnight UTC.");
         }
@@ -70,6 +72,7 @@ public class UsageService {
                 .forEach(e -> used.put(e.getKey(), e.getValue()));
         return Map.of(
                 IMPORT, Math.max(0, limit(IMPORT) - used.getOrDefault(IMPORT, 0)),
-                QUESTION, Math.max(0, limit(QUESTION) - used.getOrDefault(QUESTION, 0)));
+                QUESTION, Math.max(0, limit(QUESTION) - used.getOrDefault(QUESTION, 0)),
+                CAPTURE, Math.max(0, limit(CAPTURE) - used.getOrDefault(CAPTURE, 0)));
     }
 }

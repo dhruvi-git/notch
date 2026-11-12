@@ -10,6 +10,35 @@ written:
 Decisions are downloaded and checked **on your machine**: your code is never sent to Notch.
 The last download is kept, so checks still work offline.
 
+## Start here
+
+```bash
+notch login --token ntch_pat_...     # once per computer (token from Notch > Settings)
+cd your-project && notch init        # once per repository
+```
+
+`notch init` links the repository to a Notch project (creating one named after the folder),
+installs the hooks below, and captures your history: past Claude Code sessions in this
+repository, the last 100 commits and the code map. After that, Notch keeps itself current:
+
+| When | What's captured |
+|---|---|
+| A Claude Code session ends | That session: what you asked, what was answered, commands run, files edited, errors hit |
+| You commit | The commit (message and files changed), any new sessions, and a refreshed code map, in the background |
+| A Claude Code session starts | Claude gets a briefing: where you stopped, uncommitted work, next tasks, decisions in force |
+
+Then, whenever you've lost the thread:
+
+```bash
+notch resume                          # where you stopped in this repository
+notch why "ECONNREFUSED 127.0.0.1"    # have you seen this before, in any project?
+```
+
+Transcripts can include command output, so everything goes through Notch's import pipeline:
+secrets are removed before storage, text is encrypted, and repeated passages are skipped with
+the Bloom filter. Automatic captures have their own daily allowance (200), separate from manual
+imports.
+
 ## Install
 
 ```bash

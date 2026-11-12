@@ -79,7 +79,24 @@ npm run dev
 Open http://localhost:3000 and use **Sign in** under "Local development". Import the files
 in `samples/` to see the flow end to end.
 
-## 7. Try Explain
+## 7. Use Notch on a real project
+
+This is how Notch is meant to be used: once per repository, then it captures by itself.
+
+1. Build the CLI and put it on your PATH:
+   ```powershell
+   mvn -q -pl cli -am package
+   $env:PATH = "$PWD\cli\bin;$env:PATH"
+   ```
+2. In the web app, create a token under **Settings**, then: `notch login --token <token>`.
+3. In one of your own repositories: `notch init`. It captures your past Claude Code sessions for
+   that repository, your recent commits and the code map.
+4. Open the project in the web app: **Where you stopped**, **Recall**, **Ledger** and **Explain**
+   now show your real work. In the terminal, try `notch resume` and `notch why "<an error you hit>"`.
+5. Open Claude Code in the repository: it starts with a Notch briefing, and each session is
+   captured when it ends.
+
+## 8. Try Explain with the sample
 
 Zip the sample codebase and upload it under **Explain** in the web app:
 
@@ -95,7 +112,7 @@ Import `samples/code-review-chat.md` too, and the file views show the conversati
 `src/lib/db.ts` and `src/events/store.ts`. The events module imports MongoDB, so with the
 Postgres decision from the other samples it shows up as code that goes against a decision.
 
-## 8. Optional: use real AI models
+## 9. Optional: use real AI models
 
 Without keys, Notch runs fully offline: answers quote the passages that match, decisions are found
 by patterns, and "meaning" search compares words. With keys, Claude writes answers and finds
@@ -133,7 +150,7 @@ mvn -q -pl api test -Dtest=SearchEvaluationTest -Dnotch.eval.out=../docs/evaluat
 
 `docs/evaluation.md` then gains a section comparing Voyage with the offline embeddings.
 
-## 9. Try the guard and the MCP server
+## 10. Try the guard and the MCP server
 
 ```bash
 mvn -q -pl cli -am package

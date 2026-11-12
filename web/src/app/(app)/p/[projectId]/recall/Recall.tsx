@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ConnectRepo } from "@/components/ConnectRepo";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { call, ClientApiError, postJson } from "@/lib/client-api";
 import { plural } from "@/lib/format";
@@ -242,9 +243,10 @@ export function Recall({ projectId, initialQuery, questionsLeft: initialLeft, ha
         <section className={styles.empty}>
           <h2>Nothing to search yet</h2>
           <p className="muted">
-            Recall searches the conversations in this project. <Link href={`/p/${projectId}/imports`}>Import a chat export</Link>{" "}
-            and come back.
+            Recall searches this project&rsquo;s sessions, commits and chats. Connect the repository and they arrive by
+            themselves, or <Link href={`/p/${projectId}/imports`}>import a chat export</Link>.
           </p>
+          <ConnectRepo projectId={projectId} compact />
         </section>
       ) : results ? (
         <Results results={results} searching={searching} />

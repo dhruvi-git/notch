@@ -125,7 +125,8 @@ public class CodeMapService {
         String problem = MapLimits.problem(map);
         if (problem != null) throw ApiException.badRequest("invalid_map", problem);
         UUID userId = currentUser.id();
-        usage.consume(userId, UsageService.IMPORT);
+        // A zip is a manual upload; maps from the CLI arrive automatically on every commit.
+        usage.consume(userId, "cli".equals(source) ? UsageService.CAPTURE : UsageService.IMPORT);
         String cleanLabel = label == null || label.isBlank() ? "codebase" : label.strip();
         if (cleanLabel.length() > 120) cleanLabel = cleanLabel.substring(0, 120);
         UUID id = UUID.randomUUID();
