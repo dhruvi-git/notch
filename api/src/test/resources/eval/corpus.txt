@@ -1,0 +1,158 @@
+# Ledgerly: a fictional invoicing startup's development chats over two months.
+# Format: "## <id> | <title> | <days before the evaluation date>", then one message per line,
+# "user:" or "assistant:". Message ids are the conversation id plus m1, m2, ... in order.
+
+## c01 | Choosing a database for invoices | 60
+user: We're starting Ledgerly's invoicing backend. Mongo or Postgres? Invoices join customers, line items and payments.
+assistant: For relational data like invoices with line items and payments, Postgres fits better: joins, foreign keys and transactions. Mongo would push those joins into application code.
+user: Let's go with Postgres instead of MongoDB because we need joins and real transactions for payments.
+assistant: Good call. Start with a customers table, invoices with a customer_id foreign key, and line_items keyed by invoice_id.
+
+## c02 | Local Postgres won't connect | 58
+user: Running npm run dev and getting: Error: connect ECONNREFUSED 127.0.0.1:5432
+assistant: ECONNREFUSED on 5432 means nothing is listening there: Postgres isn't running. Start it with docker compose up -d and check that docker compose ps shows it healthy.
+user: That was it, the container had stopped after a reboot. Works now.
+
+## c03 | Connection pool exhausted under load | 40
+user: Under load testing we get "timeout exceeded when trying to connect" from pg. src/lib/db.ts creates the Pool with max: 10.
+assistant: The pool in src/lib/db.ts runs out because createInvoice holds a client for the whole transaction. Raise max to 20 and make sure every path calls client.release() in a finally block.
+user: Raised it to 20 and added the finally block; the load test passes now.
+
+## c04 | Auth: sessions or JWT | 52
+user: For the dashboard login, should we use JWT or server-side sessions?
+assistant: With one first-party frontend, server-side sessions are simpler: you can revoke them instantly and keep tokens out of JavaScript. JWTs are better when many services verify tokens independently.
+user: We chose server-side sessions instead of JWT because we need instant logout and only have one frontend.
+
+## c05 | Logged-out users still had access | 50
+user: Support says users who log out can still use the app for a while in another tab.
+assistant: That's because the access token stays valid until it expires; logging out only deletes it in that tab. Revoking it needs a server-side check, which is a reason to prefer sessions.
+
+## c06 | Session cookie settings | 48
+user: What flags should the session cookie have?
+assistant: HttpOnly so JavaScript can't read it, Secure so it's only sent over HTTPS, SameSite=Lax to block most cross-site requests, and a 30-day expiry with server-side revocation.
+user: Set in src/lib/session.ts. Still need to add CSRF protection to the session cookie.
+
+## c07 | Rate limiting the public API | 45
+user: Some API keys are hammering /api/invoices. How should we limit them?
+assistant: A token bucket per API key works well. Store buckets in Redis so limits hold across instances. Start with 60 requests per minute and a burst of 20, and return 429 with a Retry-After header.
+user: We decided to use a Redis token bucket rather than an in-memory limiter, since we run three instances behind the load balancer.
+assistant: The limiter lives in src/lib/rate-limit.ts; it calls allow(key) before each request. Add X-RateLimit-Remaining headers so clients can back off.
+
+## c08 | Partner sync hitting limits | 30
+user: A partner integration keeps getting 429 Too Many Requests during their nightly sync.
+assistant: Their sync bursts past the 20-request burst. Either give their key a higher tier or ask them to honour Retry-After and spread requests out.
+user: We gave partner keys 300 requests a minute.
+
+## c09 | Payments: webhooks or polling | 44
+user: How do we know when a Stripe invoice is paid? Poll the API every minute?
+assistant: Polling would hit Stripe's rate limits and still lag. Use the invoice.paid webhook: Stripe calls you, you verify the signature, and you mark the invoice paid.
+user: We'll use Stripe webhooks for payment status, since polling the Stripe API would hit their rate limits.
+
+## c10 | Webhook signature failing | 42
+user: Stripe webhooks fail with "No signatures found matching the expected signature for payload".
+assistant: The body was parsed as JSON before verification. constructEvent needs the raw body: read request.text() in src/app/api/webhooks/stripe/route.ts and pass that.
+
+## c11 | Totals off by a cent | 47
+user: Totals are off by a cent on some invoices.
+assistant: Floating-point amounts cause that. Store and compute money in integer cents: subtotal and withTax in src/billing/pricing.ts should work in cents and only format at the edge with formatCents.
+user: Switched everything to cents; the totals match now.
+
+## c12 | Tax rate per country | 20
+user: India needs 18% GST but we're adding EU customers with different VAT.
+assistant: Make the rate a parameter of withTax and look it up from the customer's country in a tax_rates table, instead of the hard-coded 0.18.
+
+## c13 | Worker crashes after an upgrade | 35
+user: After upgrading node-fetch the worker crashes: Error [ERR_REQUIRE_ESM]: require() of ES Module not supported.
+assistant: node-fetch 3 is ESM-only. Either import it with dynamic import(), switch the worker to "type": "module", or use the built-in fetch in Node 18+, which needs no package at all.
+user: Dropped node-fetch and used the built-in fetch.
+
+## c14 | Dashboard crash for new customers | 25
+user: The dashboard throws TypeError: Cannot read properties of undefined (reading 'map') for new customers.
+assistant: invoices is undefined until the query resolves. Default it to an empty array in InvoiceTable and render an empty state instead.
+
+## c15 | Pricing widget blocked | 22
+user: The marketing site's pricing widget gets: blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+assistant: The API only allows the dashboard's origin. Add the marketing domain to the API's allowed origins list and redeploy.
+
+## c16 | Build fails in CI | 18
+user: CI fails with FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory during next build.
+assistant: Give Node more heap in CI with NODE_OPTIONS=--max-old-space-size=4096, and check whether a huge JSON file is being bundled into the client.
+
+## c17 | Hosting: Vercel or Cloud Run | 55
+user: Where should we host? Everything on Vercel?
+assistant: The Next.js dashboard fits Vercel well. The API, with long webhook handlers and Postgres connections, fits a container platform better.
+user: For now we'll host everything on Vercel to keep it simple.
+
+## c18 | Moving the API to Cloud Run | 6
+user: Vercel function timeouts keep cutting off the nightly invoice job.
+assistant: Long-running work doesn't fit serverless time limits. Move the API and jobs to Cloud Run with a minimum of one instance, and keep the dashboard on Vercel.
+user: We decided to move the API to Cloud Run instead of Vercel functions; the dashboard stays on Vercel.
+
+## c19 | Slow first request | 4
+user: The first request after a quiet period takes about 6 seconds.
+assistant: That's a cold start: Cloud Run scaled to zero and had to start a container. Set min instances to 1 for the API, or accept the delay for internal tools.
+
+## c20 | Invoice creation got slow | 28
+user: Sending invoice emails inside the request makes creating invoices slow.
+assistant: Put email sending on a queue. With Postgres already in place, a jobs table with FOR UPDATE SKIP LOCKED is enough; Kafka would be overkill at this size.
+user: Let's use a Postgres jobs table for background work instead of Kafka.
+
+## c21 | Test runner | 38
+user: Jest or Vitest for the TypeScript code?
+assistant: Vitest runs faster with ESM and shares Vite's config; Jest needs more setup for ESM.
+user: We'll use Vitest instead of Jest.
+
+## c22 | Styling the dashboard | 36
+user: Tailwind or CSS modules for the dashboard?
+assistant: Tailwind is fast for prototypes; CSS modules keep styles next to components without a new vocabulary.
+user: We chose CSS modules over Tailwind to keep the markup readable.
+
+## c23 | Consistent colours and spacing | 34
+user: How should we name colours and spacing so they stay consistent?
+assistant: Define design tokens as CSS variables on :root, like --space-2 and --color-accent, and use them everywhere instead of raw values.
+
+## c24 | A secret nearly committed | 33
+user: Someone almost committed the Stripe secret key.
+assistant: Keep secrets in environment variables: .env.local for development, which must be in .gitignore, and the host's secret manager in production. Rotate the key if it was ever pushed.
+user: Added .env.local to .gitignore and rotated the key.
+
+## c25 | Changing the schema | 31
+user: How do we change the database schema safely?
+assistant: Write numbered SQL migrations in db/migrations and run them on deploy. Never edit an applied migration; add a new one.
+user: Added 004_tax_rates.sql for the tax table.
+
+## c26 | Missing table in production | 29
+user: Production says: relation "tax_rates" does not exist.
+assistant: The migration didn't run on deploy. Run migrations before the new version starts serving traffic, as a release step.
+
+## c27 | Repeated customer lookups | 15
+user: The customer page queries the same customer many times per request.
+assistant: Cache customer lookups in Redis for 60 seconds, keyed by id, and delete the key when the customer changes.
+user: Let's cache customer lookups in Redis with a 60 second TTL.
+
+## c28 | One repo or two | 41
+user: Should the dashboard and API live in one repo?
+assistant: One repo makes shared types and atomic changes easy; separate repos make independent deploys simpler. With one small team, a monorepo is usually easier.
+user: We'll keep the dashboard and API in one monorepo.
+
+## c29 | Where analytics events go | 3
+user: Where should raw analytics events go?
+assistant: You could set up MongoDB for them: run npm install mongoose and connect to MongoDB Atlas.
+user: Hmm, we said Postgres for data. Does that work for events too?
+assistant: Yes. An append-only events table in Postgres handles this volume and avoids running a second database.
+
+## c30 | Recording how people use the dashboard | 12
+user: Product wants session recordings of how people use the dashboard.
+assistant: A tool like PostHog can record sessions; mask invoice amounts and customer emails before turning it on.
+
+## c31 | PDF generation blocks requests | 10
+user: Generating invoice PDFs blocks the event loop.
+assistant: Run PDF rendering in a worker pool with piscina, sized to the number of CPU cores, so requests stay responsive.
+
+## c32 | Daily notes | 1
+user: Today: added CSRF tokens to forms using the double-submit cookie, and started the CSV export of invoices.
+assistant: For the export, stream rows instead of loading every invoice into memory, and reuse formatCents for the amounts.
+
+## c33 | Missed webhooks | 2
+user: If our server is down, do we lose Stripe webhooks?
+assistant: No: Stripe retries failed webhooks for up to three days with backoff. Make the handler idempotent by checking whether the invoice is already paid before marking it.

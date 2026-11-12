@@ -246,6 +246,19 @@ NOTCH_API_URL=http://localhost:8090 mvn -pl api test -Dtest=CrossUserIsolationTe
 
 Without `NOTCH_API_URL` the test is skipped, so `mvn test` never needs a running server.
 
+## Search evaluation
+
+`SearchEvaluation` scores search on 50 labelled questions over a fictional startup's chats
+(`src/test/resources/eval/`), comparing hybrid ranking with exact-only and vector-only. Every
+chat goes through the real import steps and the app's ranking code (`SearchPipeline`). Results
+are in [`../docs/evaluation.md`](../docs/evaluation.md); regenerate them with:
+
+```bash
+mvn -q -pl api test -Dtest=SearchEvaluationTest -Dnotch.eval.out=../docs/evaluation.md
+```
+
+The test also fails the build if hybrid ranking ever scores below either signal alone.
+
 ## How Explain works
 
 The `explain` module builds a map from source files: language, role (page, API route,

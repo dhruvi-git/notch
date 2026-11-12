@@ -1,0 +1,51 @@
+# id	category	question	relevant message ids (any of them answers it)
+q01	errors	ECONNREFUSED 127.0.0.1:5432	c02m1,c02m2
+q02	errors	ERR_REQUIRE_ESM	c13m1,c13m2
+q03	errors	429 Too Many Requests	c08m1,c08m2,c07m2
+q04	errors	Cannot read properties of undefined (reading 'map')	c14m1,c14m2
+q05	errors	No 'Access-Control-Allow-Origin' header	c15m1,c15m2
+q06	errors	JavaScript heap out of memory	c16m1,c16m2
+q07	errors	relation "tax_rates" does not exist	c26m1,c26m2
+q08	errors	No signatures found matching the expected signature	c10m1,c10m2
+q09	errors	timeout exceeded when trying to connect	c03m1,c03m2
+q10	errors	Retry-After header	c07m2,c08m2
+q11	code	src/lib/db.ts	c03m1,c03m2
+q12	code	createInvoice transaction	c03m2
+q13	code	withTax	c11m2,c12m2
+q14	code	src/lib/rate-limit.ts	c07m4
+q15	code	constructEvent raw body	c10m2
+q16	code	formatCents	c11m2,c32m2
+q17	code	004_tax_rates.sql	c25m3
+q18	code	FOR UPDATE SKIP LOCKED	c20m2
+q19	decisions	What did we decide about the database?	c01m3
+q20	decisions	What did we decide about authentication?	c04m3
+q21	decisions	What did we decide about rate limiting?	c07m3
+q22	decisions	What did we decide for payment status?	c09m3
+q23	decisions	Which test runner did we choose?	c21m3
+q24	decisions	What did we decide about styling?	c22m3
+q25	decisions	What did we decide about background jobs?	c20m3
+q26	decisions	What did we decide about caching?	c27m3
+q27	decisions	Did we decide on one repo or two?	c28m3
+q28	decisions	What did we decide about hosting?	c18m3
+q29	paraphrase	How do we stop one customer flooding us with requests?	c07m1,c07m2,c07m3
+q30	paraphrase	Why could people keep using the app after signing out?	c05m1,c05m2
+q31	paraphrase	Why were invoice totals wrong by a penny?	c11m1,c11m2
+q32	paraphrase	How do we find out a customer has paid?	c09m2,c09m3
+q33	paraphrase	Why is the first page load after a quiet spell so slow?	c19m1,c19m2
+q34	paraphrase	How do we keep credentials out of version control?	c24m2
+q35	paraphrase	What happens if our server is offline when Stripe sends an event?	c33m2
+q36	paraphrase	Why did making an invoice become sluggish?	c20m1,c20m2
+q37	paraphrase	How should amounts of money be stored?	c11m2
+q38	paraphrase	Where do tax rates for other countries come from?	c12m2
+q39	paraphrase	How do we stop PDF rendering from freezing the server?	c31m2
+q40	paraphrase	How do we alter tables without breaking production?	c25m2,c26m2
+q41	recent	Where is the API hosted now?	c18m2,c18m3
+q42	recent	What did we work on yesterday?	c32m1,c32m2
+q43	recent	What did we decide last week?	c18m3
+q44	recent	What is the latest on analytics events?	c29m2,c29m4
+q45	recent	What changed for partner rate limits?	c08m3
+q46	recent	Did we finish CSRF protection?	c32m1
+q47	recent	Why did we move the API off Vercel?	c18m1,c18m2
+q48	recent	What did we do about cold starts?	c19m2
+q49	recent	How are Stripe webhook retries handled?	c33m2
+q50	recent	What is the pool size in db.ts now?	c03m2,c03m3

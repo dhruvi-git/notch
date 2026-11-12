@@ -7,6 +7,8 @@ that go against it.
 
 CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
+Search quality: [docs/evaluation.md](docs/evaluation.md). Speed: [docs/benchmarks.md](docs/benchmarks.md).
+
 ## Repository layout
 
 | Path | What it is | Status |

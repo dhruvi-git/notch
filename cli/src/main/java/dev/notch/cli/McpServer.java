@@ -169,28 +169,13 @@ public final class McpServer {
         }
     }
 
-    /** Topic words that name a kind of tool, so "database" finds a decision about Postgres. */
-    private static final Map<String, String> CATEGORY_WORDS = Map.ofEntries(
-            Map.entry("database", "database"), Map.entry("db", "database"), Map.entry("datastore", "database"),
-            Map.entry("storage", "database"), Map.entry("sql", "database"), Map.entry("store", "database"),
-            Map.entry("cache", "cache"), Map.entry("caching", "cache"),
-            Map.entry("auth", "auth"), Map.entry("authentication", "auth"), Map.entry("login", "auth"),
-            Map.entry("session", "auth"), Map.entry("token", "auth"),
-            Map.entry("queue", "queue"), Map.entry("messaging", "queue"), Map.entry("event", "queue"),
-            Map.entry("streaming", "queue"), Map.entry("stream", "queue"), Map.entry("pipeline", "queue"),
-            Map.entry("frontend", "frontend"), Map.entry("ui", "frontend"), Map.entry("api", "api"),
-            Map.entry("orm", "orm"), Map.entry("hosting", "hosting"), Map.entry("deploy", "hosting"),
-            Map.entry("deployment", "hosting"), Map.entry("payment", "payments"), Map.entry("billing", "payments"),
-            Map.entry("test", "testing"), Map.entry("testing", "testing"), Map.entry("css", "styling"),
-            Map.entry("styling", "styling"), Map.entry("ratelimit", "ratelimit"), Map.entry("rate limiting", "ratelimit"));
-
     static boolean matchesTopic(Decision d, String topic) {
         String t = topic.toLowerCase(Locale.ROOT).strip();
         String text = (d.title() + " " + String.join(" ", d.rejectedOptions())).toLowerCase(Locale.ROOT);
         if (text.contains(t)) return true;
         String singular = t.endsWith("s") && t.length() > 3 ? t.substring(0, t.length() - 1) : t;
         if (text.contains(singular)) return true;
-        String category = CATEGORY_WORDS.getOrDefault(t, CATEGORY_WORDS.get(singular));
+        String category = TechCatalog.categoryOfWord(t);
         DecisionFacts f = DecisionFacts.of(d.title(), d.rejectedOptions());
         List<TechCatalog.Tech> techs = new ArrayList<>(f.chosen());
         techs.addAll(f.rejected());

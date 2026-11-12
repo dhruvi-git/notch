@@ -176,6 +176,13 @@ public final class ProjectIndex {
     }
 
     /** Chunks holding an active decision, optionally only those since a time. */
+    /** Every passage from {@code since} on, for questions that are only about a time window. */
+    public List<IndexedChunk> chunksSince(Instant since) {
+        List<IndexedChunk> out = new ArrayList<>();
+        for (IndexedChunk c : chunks) if (!c.sentAt().isBefore(since)) out.add(c);
+        return out;
+    }
+
     public List<IndexedChunk> decisionChunks(Instant since) {
         List<IndexedChunk> out = new ArrayList<>();
         for (IndexedChunk c : chunks) {

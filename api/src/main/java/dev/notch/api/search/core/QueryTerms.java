@@ -26,6 +26,8 @@ public record QueryTerms(List<String> terms, List<String> phrases, List<String> 
                          boolean decisionIntent, Instant since) {
 
     /** Category word (stemmed) to the names developers actually write. */
+    static final int MIN_ALIAS = 4;
+
     static final java.util.Map<String, List<String>> EXPANSIONS = java.util.Map.ofEntries(
             java.util.Map.entry("database", List.of("postgre", "mysql", "mongo", "sqlite", "dynamo", "supabase", "neon")),
             java.util.Map.entry("databas", List.of("postgre", "mysql", "mongo", "sqlite", "dynamo", "supabase", "neon")),
@@ -37,6 +39,25 @@ public record QueryTerms(List<String> terms, List<String> phrases, List<String> 
             java.util.Map.entry("frontend", List.of("react", "next.js", "vue", "svelte", "tailwind")),
             java.util.Map.entry("payment", List.of("stripe", "invoice", "billing")),
             java.util.Map.entry("hosting", List.of("vercel", "netlify", "cloud run", "aws", "gcp")));
+
+    /**
+     * The expansions keyed by stem, because query terms are stemmed before lookup: without
+     * this, "authentication" (stem "authentic") and "hosting" ("host") never matched their entries.
+     */
+    private static final class Stemmed {
+        // A holder class: built on first use, after every static field it relies on (stem's suffix
+        // lists among them) is initialised. A plain static field here would run too early.
+        static final java.util.Map<String, List<String>> EXPANSIONS = stemKeys(QueryTerms.EXPANSIONS);
+    }
+
+    private static java.util.Map<String, List<String>> stemKeys(java.util.Map<String, List<String>> m) {
+        java.util.Map<String, List<String>> out = new java.util.HashMap<>();
+        m.forEach((k, v) -> {
+            out.merge(k, v, (a, b) -> a);
+            out.merge(stem(k), v, (a, b) -> a);
+        });
+        return java.util.Map.copyOf(out);
+    }
 
     private static final Set<String> STOPWORDS = Set.of(
             "a", "an", "the", "and", "or", "but", "of", "to", "in", "on", "at", "for", "with", "by",
@@ -103,8 +124,17 @@ public record QueryTerms(List<String> terms, List<String> phrases, List<String> 
         }
         Set<String> expanded = new LinkedHashSet<>();
         for (String t : terms) {
-            for (String e : EXPANSIONS.getOrDefault(t, List.of())) {
+            for (String e : Stemmed.EXPANSIONS.getOrDefault(t, List.of())) {
                 if (!terms.contains(e)) expanded.add(e);
+            }
+        }
+        // Words naming a kind of tool ("hosting", "styling") also look for the tools themselves.
+        for (String word : SPLIT.split(lower)) {
+            String category = dev.notch.guard.TechCatalog.categoryOfWord(word);
+            if (category == null) continue;
+            for (String alias : dev.notch.guard.TechCatalog.categoryAliases(category)) {
+                // Expansions match as substrings, so very short aliases ("pg", "go") would match inside other words.
+                if (alias.length() >= MIN_ALIAS && !terms.contains(alias)) expanded.add(alias);
             }
         }
         return new QueryTerms(new ArrayList<>(terms), phrases, new ArrayList<>(expanded), decisionIntent, since);

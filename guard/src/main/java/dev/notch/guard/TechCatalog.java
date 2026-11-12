@@ -63,6 +63,7 @@ public final class TechCatalog {
         add("testing", "Jest", "jest");
         add("testing", "Vitest", "vitest");
         add("styling", "Tailwind", "tailwind", "tailwindcss");
+        add("styling", "CSS modules", "css modules", "css module");
         add("ratelimit", "Token bucket", "token bucket");
         add("ratelimit", "In-memory limiter", "in-memory limiter", "in memory limiter");
 
@@ -93,6 +94,47 @@ public final class TechCatalog {
             Tech t = BY_ALIAS.get(m.group().toLowerCase(Locale.ROOT));
             if (t != null && !out.contains(t)) out.add(t);
         }
+        return out;
+    }
+
+    /**
+     * Everyday words for each kind of tool, so "database" or "hosting" can find decisions and
+     * passages about Postgres or Cloud Run that never use the word. Shared by search and the
+     * MCP server's topic filter.
+     */
+    private static final Map<String, String> CATEGORY_WORDS = Map.ofEntries(
+            Map.entry("database", "database"), Map.entry("db", "database"), Map.entry("datastore", "database"),
+            Map.entry("storage", "database"), Map.entry("sql", "database"), Map.entry("store", "database"),
+            Map.entry("cache", "cache"), Map.entry("caching", "cache"),
+            Map.entry("auth", "auth"), Map.entry("authentication", "auth"), Map.entry("login", "auth"),
+            Map.entry("signin", "auth"), Map.entry("session", "auth"), Map.entry("token", "auth"),
+            Map.entry("queue", "queue"), Map.entry("messaging", "queue"), Map.entry("event", "queue"),
+            Map.entry("streaming", "queue"), Map.entry("stream", "queue"), Map.entry("pipeline", "queue"),
+            Map.entry("frontend", "frontend"), Map.entry("ui", "frontend"), Map.entry("api", "api"),
+            Map.entry("orm", "orm"), Map.entry("hosting", "hosting"), Map.entry("host", "hosting"),
+            Map.entry("deploy", "hosting"), Map.entry("deployment", "hosting"), Map.entry("payment", "payments"),
+            Map.entry("billing", "payments"), Map.entry("test", "testing"), Map.entry("testing", "testing"),
+            Map.entry("css", "styling"), Map.entry("styling", "styling"), Map.entry("style", "styling"),
+            Map.entry("ratelimit", "ratelimit"), Map.entry("throttling", "ratelimit"));
+
+    /** The kind of tool an everyday word refers to ("hosting" → "hosting", "styles" → "styling"), or null. */
+    public static String categoryOfWord(String word) {
+        if (word == null) return null;
+        String w = word.toLowerCase(Locale.ROOT).strip();
+        for (String candidate : new String[] {w, strip(w, "s"), strip(w, "es"), strip(w, "ing"), strip(w, "ed")}) {
+            if (candidate != null && CATEGORY_WORDS.containsKey(candidate)) return CATEGORY_WORDS.get(candidate);
+        }
+        return null;
+    }
+
+    private static String strip(String w, String suffix) {
+        return w.length() > suffix.length() + 2 && w.endsWith(suffix) ? w.substring(0, w.length() - suffix.length()) : null;
+    }
+
+    /** Every alias of every tool in a category, for search expansion. */
+    public static List<String> categoryAliases(String category) {
+        List<String> out = new ArrayList<>();
+        for (Tech t : inCategory(category)) for (String a : aliases(t)) if (!out.contains(a)) out.add(a);
         return out;
     }
 
