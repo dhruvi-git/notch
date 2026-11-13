@@ -120,7 +120,9 @@ decisions, and Voyage embeddings make search understand meaning. Private project
 to either.
 
 1. Create an API key at console.anthropic.com (add credits first) and one at
-   dashboard.voyageai.com.
+   dashboard.voyageai.com. Add a payment method in Voyage's billing page too: without one, Voyage
+   allows only 3 requests a minute. Notch waits out those limits and finishes imports anyway, but
+   meaning search then fills in slowly in the background.
 2. Set them in the terminal you start the API from. Never put keys in a file inside the
    repository, a commit, a chat or a screenshot.
 
@@ -134,12 +136,15 @@ to either.
    export ANTHROPIC_API_KEY=sk-ant-... VOYAGE_API_KEY=pa-...   # macOS, Linux
    ```
 
-3. The API's log says what it's using: `Answers and extraction: Claude (claude-haiku-5-5)` and
+3. The API's log says what it's using: `Answers and extraction: Claude (claude-haiku-5-5, effort low)` and
    `Embeddings: voyage-4-lite-1024`. Existing passages are re-embedded in the background; until
    that finishes, meaning search only covers what's been converted.
 
 Choose models with `NOTCH_LLM_MODEL` (default `claude-haiku-5-5`) and `NOTCH_EMBEDDING_MODEL`
-(default `voyage-4-lite`). Force offline with `NOTCH_LLM=offline` or `NOTCH_EMBEDDINGS=offline`.
+(default `voyage-4-lite`). `NOTCH_LLM_EFFORT` (default `low`) sets how much Claude thinks before
+answering; set it empty for models without effort (Haiku 4.5 and older). Force offline with
+`NOTCH_LLM=offline` or `NOTCH_EMBEDDINGS=offline`. If something falls back, the API's log gives
+the provider's reason, for example `returned 400: Your credit balance is too low…`.
 Costs are capped by the daily limits: 30 questions and 20 imports per user.
 
 To compare search with real embeddings, run the evaluation with `VOYAGE_API_KEY` set:

@@ -32,13 +32,19 @@ import java.util.UUID;
  *
  * <p>Private projects are never sent to an external model: they get no embeddings, and their
  * memories always come from the offline extractor.
+ *
+ * <p>An embedding service that stays unavailable (rate limits, an outage) doesn't fail the
+ * import: its passages are searchable by exact match straight away, and a re-embed job adds
+ * their vectors when the service is back.
  */
 @Component
 public class ImportProcessor {
 
     public static final String KIND = "PROCESS_IMPORT";
     static final int EMBED_BATCH = 64;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ImportProcessor.class);
 
+    private final JobRepository jobs;
     private final ImportRepository imports;
     private final ProjectRepository projects;
     private final MessageRepository messages;
@@ -53,7 +59,8 @@ public class ImportProcessor {
     public ImportProcessor(ImportRepository imports, ProjectRepository projects, MessageRepository messages,
                            ChunkRepository chunks, MemoryRepository memories, MemoryCodec codec,
                            ContentCipher cipher, EmbeddingClient embeddings, LlmClient llm,
-                           @Qualifier(LlmConfig.OFFLINE) LlmClient offline) {
+                           @Qualifier(LlmConfig.OFFLINE) LlmClient offline, JobRepository jobs) {
+        this.jobs = jobs;
         this.imports = imports;
         this.projects = projects;
         this.messages = messages;
@@ -77,7 +84,14 @@ public class ImportProcessor {
         Map<UUID, String> text = new HashMap<>();
         for (MessageRepository.StoredMessage m : stored) text.put(m.id(), cipher.decrypt(m.body(), aad));
 
-        if (!project.isPrivate()) embedChunks(job.importId(), userId, text);
+        if (!project.isPrivate()) {
+            try {
+                embedChunks(job.importId(), userId, text);
+            } catch (IllegalStateException e) {
+                log.warn("Import {}: {}; finishing without vectors, re-embedding later", job.importId(), e.getMessage());
+                if (!jobs.hasOpen(ReembedProcessor.KIND, project.id())) jobs.enqueue(ReembedProcessor.KIND, project.id(), null);
+            }
+        }
         memories.deleteForImport(job.importId(), userId);  // makes retries idempotent
         String source = imports.find(job.importId(), job.projectId(), userId).map(dev.notch.api.ingest.ImportReport::format).orElse(null);
         int extracted = extractMemories(project, userId, stored, text, source);

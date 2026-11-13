@@ -84,9 +84,10 @@ class WalkthroughSmokeTest {
     @Test
     @Order(5)
     void extractsDecisionsTasksAndFixes() throws Exception {
-        String decisions = get(p + "/memories?kind=decision", token).body();
-        assertTrue(decisions.contains("Postgres instead of MongoDB"), decisions);
-        assertTrue(decisions.contains("server-side sessions"), decisions);
+        // Offline extraction quotes the sentence; Claude rephrases it. Check the content, not the wording.
+        List<Map<String, Object>> decisions = get(p + "/memories?kind=decision", token).list();
+        idOf(decisions, t -> t.contains("Postgres") && t.contains("MongoDB"), "Postgres over MongoDB");
+        idOf(decisions, t -> t.contains("server-side sessions"), "server-side sessions");
         assertTrue(get(p + "/memories?kind=task", token).list().size() >= 3);
         assertTrue(get(p + "/memories?kind=fix", token).body().contains("ECONNREFUSED"));
     }
@@ -135,12 +136,16 @@ class WalkthroughSmokeTest {
     @Order(10)
     void supersedingResolvesTheConflict() throws Exception {
         List<Map<String, Object>> decisions = get(p + "/memories?kind=decision", token).list();
-        String sessions = idOf(decisions, "server-side sessions");
-        String jwt = idOf(decisions, "use JWT");
+        String sessions = idOf(decisions, t -> t.contains("server-side sessions"), "server-side sessions");
+        String jwt = idOf(decisions, t -> t.contains("JWT") && !t.contains("sessions"), "JWT for the analytics API");
         Res r = call("POST", "/api/memories/" + sessions + "/supersede", token, "{\"replacementId\":\"" + jwt + "\"}");
         assertEquals(200, r.status(), r.body());
         assertEquals(2, get("/api/memories/" + jwt + "/history", token).list().size());
-        assertFalse(get(p + "/drift", token).body().contains("DECISION_CONFLICT"));
+        // That conflict is gone. (Claude may also record the analytics service's MongoDB choice as a
+        // decision, which rightly conflicts with Postgres; that one stays.)
+        List<Map<String, Object>> alerts = get(p + "/drift", token).list();
+        assertTrue(alerts.stream().noneMatch(a -> "DECISION_CONFLICT".equals(a.get("type"))
+                && (sessions.equals(a.get("decisionId")) || jwt.equals(a.get("conflictingDecisionId")))), alerts.toString());
     }
 
     @Test
@@ -172,9 +177,9 @@ class WalkthroughSmokeTest {
         assertTrue(unknown.body().contains("\"code\":\"not_found\""), unknown.body());
     }
 
-    private static String idOf(List<Map<String, Object>> memories, String titleFragment) {
-        return memories.stream().filter(m -> ((String) m.get("title")).contains(titleFragment))
+    private static String idOf(List<Map<String, Object>> memories, java.util.function.Predicate<String> title, String what) {
+        return memories.stream().filter(m -> title.test((String) m.get("title")))
                 .map(m -> (String) m.get("id")).findFirst()
-                .orElseThrow(() -> new AssertionError("no decision containing '" + titleFragment + "' in " + memories));
+                .orElseThrow(() -> new AssertionError("no decision about " + what + " in " + memories));
     }
 }

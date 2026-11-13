@@ -26,16 +26,22 @@ class ModelClientsTest {
     private final AtomicReference<String> lastBody = new AtomicReference<>();
     private final AtomicReference<Map<String, List<String>>> lastHeaders = new AtomicReference<>();
     private final List<String> replies = new ArrayList<>();
+    /** Statuses for the next requests, in order; after that, {@link #status}. */
+    private final List<Integer> statuses = new ArrayList<>();
     private int status = 200;
+    private int requests;
 
-    /** A fake provider: answers each request with the next queued reply. */
+    /** A fake provider: answers each request with the next queued reply. 429s say "retry now". */
     private URI start() throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
+            requests++;
             lastBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             lastHeaders.set(exchange.getRequestHeaders());
+            int code = statuses.isEmpty() ? status : statuses.remove(0);
+            if (code == 429) exchange.getResponseHeaders().add("Retry-After", "0");
             byte[] out = (replies.isEmpty() ? "{}" : replies.remove(0)).getBytes(StandardCharsets.UTF_8);
-            exchange.sendResponseHeaders(status, out.length);
+            exchange.sendResponseHeaders(code, out.length);
             exchange.getResponseBody().write(out);
             exchange.close();
         });
@@ -53,8 +59,10 @@ class ModelClientsTest {
         return Json.write(Map.of("content", List.of(Map.of("type", "text", "text", text)), "stop_reason", "end_turn"));
     }
 
+    /** No retry budget, so error statuses fail at once. */
     private AnthropicLlmClient claudeClient(URI base, LlmClient fallback) {
-        return new AnthropicLlmClient(new AnthropicLlmClient.Config("sk-ant-test", "claude-haiku-5-5", base, Duration.ofSeconds(5)), fallback);
+        return new AnthropicLlmClient(new AnthropicLlmClient.Config("sk-ant-test", "claude-haiku-5-5", base,
+                Duration.ofSeconds(5), "low", Duration.ZERO), fallback);
     }
 
     /** A stand-in for the offline client, so a fallback is easy to see. */
@@ -102,6 +110,8 @@ class ModelClientsTest {
         assertEquals(List.of(AnthropicLlmClient.API_VERSION), lastHeaders.get().get("Anthropic-version"));
         Map<String, Object> body = Json.obj(Json.parse(lastBody.get()));
         assertEquals("claude-haiku-5-5", body.get("model"));
+        assertEquals(Map.of("effort", "low"), body.get("output_config"));
+        assertEquals((double) AnthropicLlmClient.EXTRACT_MAX_TOKENS, body.get("max_tokens"), "room for thinking as well as the reply");
         assertTrue(((String) body.get("system")).contains("DECISION"));
         String user = (String) Json.obj(Json.arr(body.get("messages")).get(0)).get("content");
         assertTrue(user.contains("[2] user: Let's go with Postgres"), user);
@@ -141,6 +151,66 @@ class ModelClientsTest {
         assertEquals("offline", claudeClient(base, FALLBACK).extractMemories(CHAT).get(0).title());
         replies.add(claude("Sorry, I can't produce JSON for that."));
         assertEquals("offline", claudeClient(base, FALLBACK).extractMemories(CHAT).get(0).title());
+        // Thinking used the whole ceiling: no text, stop_reason max_tokens.
+        replies.add(Json.write(Map.of("content", List.of(Map.of("type", "thinking", "thinking", "")), "stop_reason", "max_tokens")));
+        assertEquals("offline", claudeClient(base, FALLBACK).extractMemories(CHAT).get(0).title());
+    }
+
+    @Test
+    void aReplyCutOffAtMaxTokensIsReportedAsSuch() throws Exception {
+        URI base = start();
+        replies.add(Json.write(Map.of("content", List.of(Map.of("type", "thinking", "thinking", "")), "stop_reason", "max_tokens")));
+        ModelHttp.ModelException e = assertThrows(ModelHttp.ModelException.class,
+                () -> claudeClient(base, FALLBACK).complete("system", "user", 300));
+        assertTrue(e.getMessage().contains("max_tokens"), e.getMessage());
+    }
+
+    @Test
+    void effortCanBeLeftOutForModelsWithoutIt() throws Exception {
+        URI base = start();
+        replies.add(claude("{\"memories\": []}"));
+        new AnthropicLlmClient(new AnthropicLlmClient.Config("sk-ant-test", "claude-haiku-4-5", base,
+                Duration.ofSeconds(5), " ", Duration.ZERO), FALLBACK).extractMemories(CHAT);
+        assertFalse(Json.obj(Json.parse(lastBody.get())).containsKey("output_config"));
+    }
+
+    @Test
+    void aFailedWindowDoesNotDiscardTheOthers() throws Exception {
+        URI base = start();
+        List<ExtractionRequest.SourceMessage> long_ = new ArrayList<>();
+        for (int i = 0; i < 12; i++) long_.add(new ExtractionRequest.SourceMessage("user", ("filler " + i + " ").repeat(800)));
+        long_.add(new ExtractionRequest.SourceMessage("user", "Let's go with Postgres instead of MongoDB because we need joins."));
+        ExtractionRequest request = new ExtractionRequest("Long", long_);
+        assertEquals(2, AnthropicLlmClient.windows(request).size());
+        statuses.add(500);  // the first window fails
+        replies.add("{}");
+        replies.add(claude("{\"memories\": [{\"kind\": \"DECISION\", \"message\": 12, "
+                + "\"quote\": \"Let's go with Postgres instead of MongoDB because we need joins.\", \"title\": \"Use Postgres.\"}]}"));
+        List<ExtractedMemory> got = claudeClient(base, FALLBACK).extractMemories(request);
+        assertEquals(List.of("Use Postgres."), got.stream().map(ExtractedMemory::title).toList(), "the second window is kept, no offline fallback");
+    }
+
+    @Test
+    void rateLimitsAreRetriedWithinTheBudgetAndErrorsCarryTheProvidersMessage() throws Exception {
+        URI base = start();
+        AnthropicLlmClient patient = new AnthropicLlmClient(new AnthropicLlmClient.Config("sk-ant-test", "claude-haiku-5-5", base,
+                Duration.ofSeconds(5), "low", Duration.ofSeconds(5)), FALLBACK);
+        statuses.add(429);
+        statuses.add(529);  // overloaded, without Retry-After: our own backoff
+        replies.add("{}");
+        replies.add("{}");
+        replies.add(claude("yes"));
+        assertEquals("yes", patient.complete("system", "user", 100));
+        assertEquals(3, requests);
+
+        status = 400;
+        replies.add("{\"type\": \"error\", \"error\": {\"type\": \"invalid_request_error\", "
+                + "\"message\": \"Your credit balance is too low to access the Anthropic API.\"}}");
+        ModelHttp.ModelException e = assertThrows(ModelHttp.ModelException.class, () -> patient.complete("system", "user", 100));
+        assertEquals(4, requests, "a 400 is not retried");
+        assertTrue(e.getMessage().endsWith("returned 400: Your credit balance is too low to access the Anthropic API."), e.getMessage());
+        assertEquals("Rate limit reached", ModelHttp.providerMessage("{\"detail\": \"Rate limit reached\"}"));
+        assertNull(ModelHttp.providerMessage("<html>Bad gateway</html>"));
     }
 
     private static AnswerRequest question(UUID a, UUID b) {
@@ -187,6 +257,21 @@ class ModelClientsTest {
         assertTrue(claudeClient(base, FALLBACK).confirmsDrift("Use Postgres, not MongoDB.", "Run npm install mongoose."));
         status = 503;
         assertTrue(claudeClient(base, FALLBACK).confirmsDrift("a", "b"), "without a model the rule's alert stands");
+    }
+
+    @Test
+    void driftVerdictsAreRememberedButFailuresAreNot() throws Exception {
+        URI base = start();
+        AnthropicLlmClient client = claudeClient(base, FALLBACK);
+        status = 503;
+        assertTrue(client.confirmsDrift("Use sessions, not JWT.", "The analytics API uses JWT."));
+        status = 200;
+        replies.add(claude("no"));
+        assertFalse(client.confirmsDrift("Use sessions, not JWT.", "The analytics API uses JWT."), "the failure wasn't remembered");
+        int asked = requests;
+        assertFalse(client.confirmsDrift("Use sessions, not JWT.", "The analytics API uses JWT."));
+        assertEquals(asked, requests, "the verdict is reused: the alert doesn't flicker between page loads");
+        assertTrue(((String) Json.obj(Json.parse(lastBody.get())).get("system")).contains("Answer \"no\" only when"));
     }
 
     @Test
@@ -257,10 +342,31 @@ class ModelClientsTest {
     @Test
     void voyageFailuresAreThrownForTheCallerToHandle() throws Exception {
         URI base = start();
-        VoyageEmbeddingClient client = new VoyageEmbeddingClient(new VoyageEmbeddingClient.Config("pa-test", null, 8, base, Duration.ofSeconds(5)));
+        VoyageEmbeddingClient client = new VoyageEmbeddingClient(new VoyageEmbeddingClient.Config("pa-test", null, 8, base,
+                Duration.ofSeconds(5), Duration.ZERO));
         replies.add(voyage(4, 0));  // wrong size
         assertThrows(IllegalStateException.class, () -> client.embed(List.of("text here")));
         status = 429;
         assertThrows(IllegalStateException.class, () -> client.embed(List.of("text here")));
+    }
+
+    @Test
+    void voyageWaitsOutRateLimitsForPassagesButNotForSearch() throws Exception {
+        URI base = start();
+        VoyageEmbeddingClient client = new VoyageEmbeddingClient(new VoyageEmbeddingClient.Config("pa-test", null, 8, base,
+                Duration.ofSeconds(5), Duration.ofSeconds(5)));
+        statuses.add(429);
+        statuses.add(429);
+        replies.add("{\"detail\": \"rate limited\"}");
+        replies.add("{\"detail\": \"rate limited\"}");
+        replies.add(voyage(8, 0));
+        assertEquals(8, client.embed(List.of("a stored passage")).get(0).length);
+        assertEquals(3, requests, "two rate limits, then the vectors");
+
+        statuses.add(429);
+        replies.add("{\"detail\": \"rate limited\"}");
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> client.embedQuery("search text"));
+        assertEquals(4, requests, "a search doesn't wait: exact matching answers meanwhile");
+        assertTrue(e.getMessage().contains("429: rate limited"), e.getMessage());
     }
 }
