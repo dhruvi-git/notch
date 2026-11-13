@@ -28,14 +28,37 @@ public final class AnthropicLlmClient implements LlmClient {
 
     public static final String API_VERSION = "2023-06-01";
 
-    public record Config(String apiKey, String model, URI baseUrl, Duration timeout) {
+    /**
+     * {@code effort} is sent as {@code output_config.effort}; null or blank leaves it out, for
+     * models that don't take it (Haiku 4.5 and older). Current models think before answering by
+     * default and the thinking counts against {@code max_tokens}, so "low" keeps these short,
+     * well-specified requests quick and cheap. {@code retryBudget} is how long a request may wait
+     * out rate limits and overload.
+     */
+    public record Config(String apiKey, String model, URI baseUrl, Duration timeout, String effort, Duration retryBudget) {
         public Config {
             if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("an API key is required");
             if (model == null || model.isBlank()) model = "claude-haiku-5-5";
             if (baseUrl == null) baseUrl = URI.create("https://api.anthropic.com");
-            if (timeout == null) timeout = Duration.ofSeconds(60);
+            if (timeout == null) timeout = Duration.ofSeconds(120);
+            effort = effort == null || effort.isBlank() ? null : effort.strip().toLowerCase(Locale.ROOT);
+            if (retryBudget == null) retryBudget = Duration.ofSeconds(30);
+        }
+
+        public Config(String apiKey, String model, URI baseUrl, Duration timeout) {
+            this(apiKey, model, baseUrl, timeout, DEFAULT_EFFORT, null);
         }
     }
+
+    public static final String DEFAULT_EFFORT = "low";
+
+    /*
+     * Reply ceilings. They include the model's thinking, so they're far above the text we expect
+     * back: a tight ceiling lets thinking use it all and the reply arrives with no text.
+     */
+    static final int EXTRACT_MAX_TOKENS = 16_000;
+    static final int ANSWER_MAX_TOKENS = 8_000;
+    static final int DRIFT_MAX_TOKENS = 2_000;
 
     static final int MAX_MESSAGE_CHARS = 6_000;
     static final int MAX_WINDOW_CHARS = 60_000;
@@ -71,7 +94,9 @@ public final class AnthropicLlmClient implements LlmClient {
             - CONTEXT: a lasting fact about the project (its stack, a constraint, a convention).
             For each, give: "kind"; "message", the number of the message it comes from; "quote", one sentence \
             copied exactly, character for character, from that message, that states it; "title", the point in \
-            one plain sentence; "rationale", the reason if one is given, else null; "rejected", the options \
+            one plain sentence (for a FIX, keep the error's code or message exactly as written, like \
+            "ECONNREFUSED" or "TypeError: Cannot read properties of undefined", because people search for \
+            it); "rationale", the reason if one is given, else null; "rejected", the options \
             explicitly ruled out, as short names (empty if none); "body", for a FIX the solution in one or two \
             sentences, else null.
             Only include what the conversation states. Facts about the conversation itself (which files are \
@@ -82,19 +107,32 @@ public final class AnthropicLlmClient implements LlmClient {
             its reference like "T1", "message": n, "quote": the exact sentence showing it's done}.
             Return only JSON, no other text: {"memories": [ ... ]}. If nothing qualifies, return {"memories": []}.""";
 
+    /**
+     * Each window is its own request. A window that fails is skipped and the rest are kept; only
+     * when every window fails does the whole conversation fall back to offline extraction.
+     */
     @Override
     public List<ExtractedMemory> extractMemories(ExtractionRequest request) {
         List<ExtractedMemory> out = new ArrayList<>();
-        try {
-            for (int[] window : windows(request)) {
+        List<int[]> windows = windows(request);
+        int failed = 0;
+        String lastError = null;
+        for (int[] window : windows) {
+            try {
                 out.addAll(extractWindow(request, window[0], window[1]));
-                if (out.size() >= MAX_MEMORIES) break;
+            } catch (ModelHttp.ModelException | RuntimeException e) {
+                failed++;
+                lastError = e.getMessage();
+                LOG.log(System.Logger.Level.WARNING, "Extraction skipped messages {0}-{1}: {2}",
+                        window[0], window[1] - 1, e.getMessage());
             }
-            return out.size() > MAX_MEMORIES ? out.subList(0, MAX_MEMORIES) : out;
-        } catch (ModelHttp.ModelException | RuntimeException e) {
-            LOG.log(System.Logger.Level.WARNING, "Extraction fell back to offline: {0}", e.getMessage());
+            if (out.size() >= MAX_MEMORIES) break;
+        }
+        if (failed > 0 && failed == windows.size()) {
+            LOG.log(System.Logger.Level.WARNING, "Extraction fell back to offline: {0}", lastError);
             return fallback.extractMemories(request);
         }
+        return out.size() > MAX_MEMORIES ? out.subList(0, MAX_MEMORIES) : out;
     }
 
     /** Groups messages into windows small enough for one request; indices stay the conversation's. */
@@ -133,7 +171,7 @@ public final class AnthropicLlmClient implements LlmClient {
             String text = m.text().length() > MAX_MESSAGE_CHARS ? m.text().substring(0, MAX_MESSAGE_CHARS) : m.text();
             user.append('[').append(i).append("] ").append(m.role()).append(": ").append(text).append("\n\n");
         }
-        Map<String, Object> reply = jsonReply(complete(EXTRACT_SYSTEM, user.toString(), 4_000));
+        Map<String, Object> reply = jsonReply(complete(EXTRACT_SYSTEM, user.toString(), EXTRACT_MAX_TOKENS));
         List<ExtractedMemory> out = new ArrayList<>();
         if (!(reply.get("memories") instanceof List<?> list)) return out;
         for (Object o : list) {
@@ -203,7 +241,7 @@ public final class AnthropicLlmClient implements LlmClient {
                 if (c.decision()) user.append(", a decision");
                 user.append(")\n").append(c.text()).append("\n\n");
             }
-            Map<String, Object> reply = jsonReply(complete(ANSWER_SYSTEM, user.toString(), 1_200));
+            Map<String, Object> reply = jsonReply(complete(ANSWER_SYSTEM, user.toString(), ANSWER_MAX_TOKENS));
             String text = Json.str(reply, "answer");
             if (!Boolean.TRUE.equals(reply.get("answerable")) || text == null || text.isBlank()) return fallback.answer(request);
 
@@ -239,36 +277,72 @@ public final class AnthropicLlmClient implements LlmClient {
 
     // ------------------------------------------------------------------ drift
 
+    /*
+     * "No" only when it's clearly not a conflict. Asked a plain yes/no, the model split evenly on
+     * borderline cases (sessions for the web app, then JWT for the analytics API), so the same
+     * alert came and went between page loads. The developer settles the borderline ones.
+     */
     static final String DRIFT_SYSTEM = """
             A software project made a decision. A later sentence may show the project going against it, by \
-            using or adopting something the decision ruled out. Answer with one word: "yes" if the sentence goes \
-            against the decision, "no" if it doesn't (for example, it only mentions the option, rejects it, or \
-            is about something else).""";
+            using or adopting something the decision ruled out. Answer with one word. Answer "no" only when the \
+            sentence clearly doesn't go against the decision: it only mentions the option, rejects it, or is \
+            plainly about something unrelated. Otherwise, including when it's unclear whether the two apply to \
+            the same part of the project, answer "yes": the developer decides.""";
+
+    static final int DRIFT_CACHE_SIZE = 2_000;
+
+    /**
+     * The model's verdicts, by decision and evidence, so an alert doesn't change between page
+     * loads and the Drift page doesn't wait on the model each time. Failures aren't remembered.
+     */
+    private final Map<String, Boolean> driftVerdicts = java.util.Collections.synchronizedMap(
+            new LinkedHashMap<>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+                    return size() > DRIFT_CACHE_SIZE;
+                }
+            });
 
     @Override
     public boolean confirmsDrift(String decision, String evidence) {
+        String key = decision + "\n" + evidence;
+        Boolean known = driftVerdicts.get(key);
+        if (known != null) return known;
         try {
-            String reply = complete(DRIFT_SYSTEM, "Decision: " + decision + "\nLater sentence: " + evidence, 5)
+            String reply = complete(DRIFT_SYSTEM, "Decision: " + decision + "\nLater sentence: " + evidence, DRIFT_MAX_TOKENS)
                     .strip().toLowerCase(Locale.ROOT);
-            return !reply.startsWith("no");
+            boolean confirmed = !reply.startsWith("no");
+            driftVerdicts.put(key, confirmed);
+            return confirmed;
         } catch (ModelHttp.ModelException | RuntimeException e) {
+            LOG.log(System.Logger.Level.WARNING, "Drift check kept the alert unconfirmed: {0}", e.getMessage());
             return true;  // the rules already flagged it; without a model, keep the alert
         }
     }
 
     // ------------------------------------------------------------------ plumbing
 
-    /** One Messages API call; returns the text of the reply. */
+    /**
+     * One Messages API call; returns the text of the reply. A reply cut off at {@code max_tokens}
+     * is an error: its JSON would be incomplete, and if thinking used the whole ceiling there's no
+     * text at all.
+     */
     String complete(String system, String user, int maxTokens) throws ModelHttp.ModelException {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", config.model());
         body.put("max_tokens", maxTokens);
         body.put("system", system);
         body.put("messages", List.of(Map.of("role", "user", "content", user)));
+        if (config.effort() != null) body.put("output_config", Map.of("effort", config.effort()));
         String raw = http.post(config.baseUrl().resolve("/v1/messages"),
-                Map.of("x-api-key", config.apiKey(), "anthropic-version", API_VERSION), Json.write(body));
+                Map.of("x-api-key", config.apiKey(), "anthropic-version", API_VERSION), Json.write(body),
+                config.retryBudget());
         Map<String, Object> response = Json.obj(Json.parse(raw));
-        if ("refusal".equals(response.get("stop_reason"))) throw new ModelHttp.ModelException("the model declined the request");
+        Object stop = response.get("stop_reason");
+        if ("refusal".equals(stop)) throw new ModelHttp.ModelException("the model declined the request");
+        if ("max_tokens".equals(stop)) {
+            throw new ModelHttp.ModelException("the reply hit max_tokens (" + maxTokens + ") before it was finished");
+        }
         StringBuilder text = new StringBuilder();
         if (response.get("content") instanceof List<?> blocks) {
             for (Object b : blocks) {

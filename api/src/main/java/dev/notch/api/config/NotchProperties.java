@@ -23,8 +23,11 @@ public record NotchProperties(Crypto crypto, Limits limits, Cors cors, Embedding
     public record Embedding(int dimensions, String provider, String model, String apiKey) {
     }
 
-    /** provider: auto (Claude when an API key is set), anthropic, or offline. */
-    public record Llm(String provider, String model, String apiKey) {
+    /**
+     * provider: auto (Claude when an API key is set), anthropic, or offline. effort: Claude's
+     * output_config.effort; blank leaves it out, for models that don't take it.
+     */
+    public record Llm(String provider, String model, String apiKey, String effort) {
     }
 
     public record Ingest(long maxFileBytes, int maxChunkChars) {

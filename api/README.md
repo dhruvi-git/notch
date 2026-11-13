@@ -254,14 +254,24 @@ by default) extracts memories and writes answers; with `VOYAGE_API_KEY`, Voyage 
 
 - **Quotes are checked.** The model must copy an exact quote for every memory and citation; Notch
   finds it in the source text and drops any quote that isn't there, so highlights stay truthful.
-- **Failures fall back.** A network error, error status, refusal or unreadable reply uses the
-  offline result instead. Logs record only status codes, never content.
+- **Failures fall back.** A network error, error status, refusal, reply cut off at `max_tokens`
+  or unreadable reply uses the offline result instead. A long conversation is extracted in
+  windows, and only the windows that failed are lost. Logs record the status and the provider's
+  error message, never content.
+- **Rate limits are waited out.** 429 and overload responses are retried with backoff, honouring
+  `Retry-After`. Search queries never wait: exact matching answers meanwhile. If embeddings stay
+  unavailable, the import still finishes and a `reembed` job adds the vectors later.
+- **Thinking has room.** Current Claude models think before answering, and thinking counts
+  against `max_tokens`, so the ceilings are generous and `output_config.effort` defaults to `low`.
+- **Drift verdicts are stable.** The model only overrules a rule's alert when it's clearly not a
+  conflict, and each verdict is remembered, so alerts don't change between page loads.
 - **Vectors know their model.** Each stored vector records the model that made it; search only
   compares vectors from the current model, and a `reembed` job converts old ones after a change.
 - **Queries and passages are embedded differently** (Voyage's `query` and `document` input types).
 
 Settings: `NOTCH_LLM` / `NOTCH_EMBEDDINGS` (`auto`, a provider, or `offline`),
-`NOTCH_LLM_MODEL`, `NOTCH_EMBEDDING_MODEL`. See RUNNING.md, step 8.
+`NOTCH_LLM_MODEL`, `NOTCH_LLM_EFFORT` (default `low`; empty for models without effort),
+`NOTCH_EMBEDDING_MODEL`. See RUNNING.md, step 8.
 
 ## Search evaluation
 

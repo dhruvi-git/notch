@@ -42,6 +42,7 @@ notch:
   llm:
     provider: ${NOTCH_LLM:auto}                     # auto: Claude when ANTHROPIC_API_KEY is set
     model: ${NOTCH_LLM_MODEL:claude-haiku-5-5}
+    effort: ${NOTCH_LLM_EFFORT:low}                 # blank for models without effort (Haiku 4.5 and older)
     api-key: ${ANTHROPIC_API_KEY:}
   embedding:
     dimensions: 1024   # must match vector(1024) in the schema

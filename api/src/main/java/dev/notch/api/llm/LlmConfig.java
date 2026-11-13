@@ -24,9 +24,10 @@ public class LlmConfig {
         NotchProperties.Llm llm = props.llm();
         String key = llm == null ? null : llm.apiKey();
         if (ProviderChoice.use(llm == null ? null : llm.provider(), "anthropic", key, "ANTHROPIC_API_KEY")) {
-            AnthropicLlmClient client = new AnthropicLlmClient(new AnthropicLlmClient.Config(key, llm.model(), null, null),
-                    new OfflineLlmClient());
-            log.info("Answers and extraction: Claude ({}), offline for private projects", client.name());
+            AnthropicLlmClient.Config config = new AnthropicLlmClient.Config(key, llm.model(), null, null, llm.effort(), null);
+            AnthropicLlmClient client = new AnthropicLlmClient(config, new OfflineLlmClient());
+            log.info("Answers and extraction: Claude ({}, effort {}), offline for private projects",
+                    client.name(), config.effort() == null ? "not set" : config.effort());
             return client;
         }
         log.info("Answers and extraction: offline");

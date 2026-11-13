@@ -12,17 +12,26 @@ import java.util.Map;
 
 /**
  * Voyage AI embeddings for semantic search. Stored passages are embedded as documents and search
- * text as queries, which Voyage recommends for retrieval. Failures are thrown: an import job
- * retries later, and search carries on with exact matching alone.
+ * text as queries, which Voyage recommends for retrieval.
+ *
+ * <p>Rate limits are waited out for stored passages, within {@link Config#retryBudget()}, because
+ * accounts on Voyage's free tier allow only a few requests a minute. Search queries never wait:
+ * search carries on with exact matching alone. Failures that remain are thrown; an import then
+ * finishes without vectors and the re-embed job fills them in later.
  */
 public final class VoyageEmbeddingClient implements EmbeddingClient {
 
-    public record Config(String apiKey, String model, int dimensions, URI baseUrl, Duration timeout) {
+    public record Config(String apiKey, String model, int dimensions, URI baseUrl, Duration timeout, Duration retryBudget) {
         public Config {
             if (apiKey == null || apiKey.isBlank()) throw new IllegalArgumentException("an API key is required");
             if (model == null || model.isBlank()) model = "voyage-4-lite";
             if (baseUrl == null) baseUrl = URI.create("https://api.voyageai.com");
             if (timeout == null) timeout = Duration.ofSeconds(30);
+            if (retryBudget == null) retryBudget = Duration.ofSeconds(90);
+        }
+
+        public Config(String apiKey, String model, int dimensions, URI baseUrl, Duration timeout) {
+            this(apiKey, model, dimensions, baseUrl, timeout, null);
         }
     }
 
@@ -55,15 +64,15 @@ public final class VoyageEmbeddingClient implements EmbeddingClient {
 
     @Override
     public List<float[]> embed(List<String> texts) {
-        return embed(texts, "document");
+        return embed(texts, "document", config.retryBudget());
     }
 
     @Override
     public float[] embedQuery(String text) {
-        return embed(List.of(text), "query").get(0);
+        return embed(List.of(text), "query", Duration.ZERO).get(0);
     }
 
-    private List<float[]> embed(List<String> texts, String inputType) {
+    private List<float[]> embed(List<String> texts, String inputType, Duration retryBudget) {
         float[][] out = new float[texts.size()][];
         List<Integer> todo = new ArrayList<>();
         for (int i = 0; i < texts.size(); i++) if (texts.get(i) != null && !texts.get(i).isBlank()) todo.add(i);
@@ -77,7 +86,7 @@ public final class VoyageEmbeddingClient implements EmbeddingClient {
             String raw;
             try {
                 raw = http.post(config.baseUrl().resolve("/v1/embeddings"),
-                        Map.of("Authorization", "Bearer " + config.apiKey()), Json.write(body));
+                        Map.of("Authorization", "Bearer " + config.apiKey()), Json.write(body), retryBudget);
             } catch (ModelHttp.ModelException e) {
                 throw new IllegalStateException("Embeddings unavailable: " + e.getMessage(), e);
             }
