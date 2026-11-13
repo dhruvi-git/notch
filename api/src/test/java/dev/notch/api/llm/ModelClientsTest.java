@@ -108,6 +108,30 @@ class ModelClientsTest {
     }
 
     @Test
+    void extractionCanReplaceDecisionsAndCompleteTasksOnlyWithEvidence() throws Exception {
+        ExtractionRequest request = new ExtractionRequest("UI work", List.of(
+                new ExtractionRequest.SourceMessage("user", "Let's rebuild it as a decision tool instead of a meeting room."),
+                new ExtractionRequest.SourceMessage("assistant", "The chat assistant is built and wired into the sidebar.")),
+                List.of(new ExtractionRequest.Existing("D1", MemoryKind.DECISION, "The site is a meeting room for the family."),
+                        new ExtractionRequest.Existing("T1", MemoryKind.TASK, "Build an AI chat assistant.")));
+        replies.add(claude("{\"memories\": ["
+                + "{\"kind\": \"DECISION\", \"message\": 0, \"quote\": \"Let's rebuild it as a decision tool instead of a meeting room.\","
+                + " \"title\": \"Rebuild the site as a decision tool.\", \"rejected\": [\"meeting room\"], \"replaces\": \"D1\"},"
+                + "{\"kind\": \"DONE\", \"task\": \"T1\", \"message\": 1, \"quote\": \"The chat assistant is built and wired into the sidebar.\"},"
+                + "{\"kind\": \"DONE\", \"task\": \"T1\", \"message\": 1, \"quote\": \"It's all finished and shipped.\"},"
+                + "{\"kind\": \"DONE\", \"task\": \"T9\", \"message\": 1, \"quote\": \"The chat assistant is built and wired into the sidebar.\"},"
+                + "{\"kind\": \"DECISION\", \"message\": 0, \"quote\": \"Let's rebuild it as a decision tool instead of a meeting room.\","
+                + " \"title\": \"Something else\", \"replaces\": \"T1\"}]}"));
+        List<ExtractedMemory> got = claudeClient(start(), FALLBACK).extractMemories(request);
+        assertEquals("D1", got.get(0).replaces());
+        assertEquals(1, got.stream().filter(m -> m.completes() != null).count(), "only the completion with a real quote and a real task");
+        assertEquals("T1", got.stream().filter(m -> m.completes() != null).findFirst().orElseThrow().completes());
+        assertNull(got.get(got.size() - 1).replaces(), "a decision can't replace a task");
+        String user = (String) Json.obj(Json.arr(Json.obj(Json.parse(lastBody.get())).get("messages")).get(0)).get("content");
+        assertTrue(user.contains("[D1] decision in force: The site is a meeting room") && user.contains("[T1] open task:"), user);
+    }
+
+    @Test
     void failuresFallBackToOffline() throws Exception {  // errors and refusals
         URI base = start();
         status = 500;

@@ -14,7 +14,8 @@ final class GitHistory {
         /** What Notch stores for the commit: enough to find decisions and fixes, without the diff. */
         String text() {
             StringBuilder sb = new StringBuilder("Commit ").append(hash, 0, Math.min(7, hash.length())).append(": ").append(subject);
-            if (!body.isBlank()) sb.append("\n\n").append(body.strip());
+            String cleanBody = TRAILERS.matcher(body).replaceAll("").strip();
+            if (!cleanBody.isBlank()) sb.append("\n\n").append(cleanBody);
             if (!files.isEmpty()) {
                 sb.append("\n\nChanged: ").append(String.join(", ", files.subList(0, Math.min(15, files.size()))));
                 if (files.size() > 15) sb.append(" and ").append(files.size() - 15).append(" more");
@@ -24,6 +25,9 @@ final class GitHistory {
     }
 
     static final int FIRST_SYNC = 100;
+    /** Tool-added trailers (session links, co-authors, sign-offs): bookkeeping, not what the commit was about. */
+    static final java.util.regex.Pattern TRAILERS = java.util.regex.Pattern.compile(
+            "(?im)^(co-authored-by|signed-off-by|claude-session|generated-by|change-id|reviewed-by):.*$");
     private static final char RECORD = '\u001e';
     private static final char FIELD = '\u001f';
     private static final char END = '\u001d';

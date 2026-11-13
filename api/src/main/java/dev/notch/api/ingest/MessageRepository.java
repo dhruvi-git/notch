@@ -45,6 +45,14 @@ public class MessageRepository {
                 .optional();
     }
 
+    /** How many messages the person wrote in a conversation, across every capture of it. */
+    public int userMessages(UUID conversationId) {
+        return jdbc.sql("SELECT count(*) FROM messages WHERE conversation_id = :c AND role = 'user'")
+                .param("c", conversationId)
+                .query(Integer.class)
+                .single();
+    }
+
     public Set<String> externalIds(UUID conversationId) {
         return new HashSet<>(jdbc.sql("SELECT external_id FROM messages WHERE conversation_id = :c")
                 .param("c", conversationId)

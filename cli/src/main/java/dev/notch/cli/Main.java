@@ -330,6 +330,17 @@ public final class Main {
             return ERROR;
         }
         String name = root.getFileName().toString();
+        if (config.project != null) {
+            try {
+                if (!new ApiClient(config, false).projectExists(config.project)) {
+                    out.println("The project in .notch (" + config.project + ") no longer exists on this Notch; linking again.");
+                    config = config.withProject(null);
+                }
+            } catch (NotchBackend.NotchException e) {
+                err.println("notch: " + e.getMessage());
+                return ERROR;
+            }
+        }
         if (config.project == null) {
             try {
                 ApiClient api = new ApiClient(config, false);
@@ -375,7 +386,12 @@ public final class Main {
             return quiet ? OK : ERROR;
         }
         try {
-            Sync.Result r = new Sync(new ApiClient(config, false), config, root, env, home, err).run(!a.has("no-map"));
+            ApiClient syncApi = new ApiClient(config, false);
+            if (!quiet && !syncApi.projectExists(config.project)) {
+                err.println("The project in .notch no longer exists on this Notch. Run notch init to link this repository again.");
+                return ERROR;
+            }
+            Sync.Result r = new Sync(syncApi, config, root, env, home, err).run(!a.has("no-map"));
             if (!quiet) {
                 out.printf("Captured %d new session%s (%,d messages) and %d commit%s%s.%n", r.sessions(), r.sessions() == 1 ? "" : "s",
                         r.sessionMessages(), r.commits(), r.commits() == 1 ? "" : "s", r.mapped() ? ", and refreshed the code map" : "");
@@ -467,7 +483,7 @@ public final class Main {
                     Map<String, Object> src = Json.obj(hit.get("source"));
                     String text = Json.str(hit, "text").replaceAll("\\s+", " ").strip();
                     out.println("  " + Json.str(src, "conversationTitle") + " (" + String.valueOf(Json.str(src, "sentAt")).substring(0, 10) + ")"
-                            + (Boolean.TRUE.equals(hit.get("decision")) ? " [decision]" : ""));
+                            + (Boolean.TRUE.equals(hit.get("decision")) ? ", led to a decision" : ""));
                     out.println("    " + (text.length() > 240 ? text.substring(0, 239) + "\u2026" : text));
                     shown++;
                 }

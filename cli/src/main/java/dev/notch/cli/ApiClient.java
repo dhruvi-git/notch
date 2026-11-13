@@ -166,6 +166,17 @@ public final class ApiClient implements NotchBackend {
         return out;
     }
 
+    /** False when the project is gone (deleted, or a different server or database). */
+    public boolean projectExists(String id) throws NotchException {
+        try {
+            get("/api/projects/" + enc(id));
+            return true;
+        } catch (NotchException e) {
+            if (e.getMessage() != null && e.getMessage().contains("wasn't found")) return false;
+            throw e;
+        }
+    }
+
     public String createProject(String name) throws NotchException {
         return Json.str(Json.obj(Json.parse(send("POST", "/api/projects", Json.write(Map.of("name", name))))), "id");
     }

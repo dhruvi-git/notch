@@ -74,8 +74,13 @@ public final class AnthropicLlmClient implements LlmClient {
             one plain sentence; "rationale", the reason if one is given, else null; "rejected", the options \
             explicitly ruled out, as short names (empty if none); "body", for a FIX the solution in one or two \
             sentences, else null.
-            Only include what the conversation states. Return only JSON, no other text: \
-            {"memories": [ ... ]}. If nothing qualifies, return {"memories": []}.""";
+            Only include what the conversation states. Facts about the conversation itself (which files are \
+            uncommitted, that a tool was set up, git housekeeping) are not worth remembering.
+            If the project already has records (listed before the conversation):
+            - When a DECISION you find replaces one of them, add "replaces": its reference, like "D2".
+            - When the conversation shows an open task was finished, add an item {"kind": "DONE", "task": \
+            its reference like "T1", "message": n, "quote": the exact sentence showing it's done}.
+            Return only JSON, no other text: {"memories": [ ... ]}. If nothing qualifies, return {"memories": []}.""";
 
     @Override
     public List<ExtractedMemory> extractMemories(ExtractionRequest request) {
@@ -111,7 +116,18 @@ public final class AnthropicLlmClient implements LlmClient {
     }
 
     private List<ExtractedMemory> extractWindow(ExtractionRequest request, int from, int to) throws ModelHttp.ModelException {
-        StringBuilder user = new StringBuilder("Conversation: ").append(request.conversationTitle()).append("\n\n");
+        StringBuilder user = new StringBuilder();
+        java.util.Map<String, ExtractionRequest.Existing> refs = new java.util.HashMap<>();
+        if (!request.existing().isEmpty()) {
+            user.append("Already recorded for this project:\n");
+            for (ExtractionRequest.Existing e : request.existing()) {
+                refs.put(e.ref(), e);
+                user.append('[').append(e.ref()).append("] ")
+                        .append(e.kind() == MemoryKind.TASK ? "open task: " : "decision in force: ").append(e.title()).append('\n');
+            }
+            user.append('\n');
+        }
+        user.append("Conversation: ").append(request.conversationTitle()).append("\n\n");
         for (int i = from; i < to; i++) {
             ExtractionRequest.SourceMessage m = request.messages().get(i);
             String text = m.text().length() > MAX_MESSAGE_CHARS ? m.text().substring(0, MAX_MESSAGE_CHARS) : m.text();
@@ -123,9 +139,22 @@ public final class AnthropicLlmClient implements LlmClient {
         for (Object o : list) {
             if (!(o instanceof Map<?, ?>)) continue;
             Map<String, Object> m = Json.obj(o);
+            String kindName = String.valueOf(m.get("kind")).toUpperCase(Locale.ROOT);
+            if (kindName.equals("DONE")) {
+                // A finished task: only with an open task's reference and a quote that's really there.
+                ExtractionRequest.Existing task = refs.get(Json.str(m, "task"));
+                if (task == null || task.kind() != MemoryKind.TASK || !(m.get("message") instanceof Number dn)) continue;
+                int di = dn.intValue();
+                if (di < from || di >= to) continue;
+                int[] evidence = locate(request.messages().get(di).text(), Json.str(m, "quote"));
+                if (evidence == null) continue;
+                out.add(new ExtractedMemory(MemoryKind.TASK, task.title(), null, null, List.of(), di, evidence[0], evidence[1],
+                        null, task.ref()));
+                continue;
+            }
             MemoryKind kind;
             try {
-                kind = MemoryKind.valueOf(String.valueOf(m.get("kind")).toUpperCase(Locale.ROOT));
+                kind = MemoryKind.valueOf(kindName);
             } catch (IllegalArgumentException e) {
                 continue;
             }
@@ -139,8 +168,10 @@ public final class AnthropicLlmClient implements LlmClient {
             if (title == null || title.isBlank()) title = source.substring(span[0], span[1]);
             List<String> rejected = new ArrayList<>();
             if (m.get("rejected") instanceof List<?> r) for (Object x : r) if (x != null && !x.toString().isBlank()) rejected.add(x.toString().strip());
+            ExtractionRequest.Existing replaced = refs.get(Json.str(m, "replaces"));
+            String replaces = kind == MemoryKind.DECISION && replaced != null && replaced.kind() == MemoryKind.DECISION ? replaced.ref() : null;
             out.add(new ExtractedMemory(kind, clip(title.strip(), 300), clip(Json.str(m, "body"), 600),
-                    clip(Json.str(m, "rationale"), 400), rejected, index, span[0], span[1]));
+                    clip(Json.str(m, "rationale"), 400), rejected, index, span[0], span[1], replaces, null));
         }
         return out;
     }

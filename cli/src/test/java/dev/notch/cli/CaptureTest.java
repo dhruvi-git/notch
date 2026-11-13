@@ -37,6 +37,7 @@ class CaptureTest {
     ByteArrayOutputStream err;
 
     static final String PROJECT = "11111111-2222-3333-4444-555555555555";
+    static final String STALE = "99999999-8888-7777-6666-555555555555";
 
     @BeforeEach
     void setUp() throws Exception {
@@ -62,6 +63,7 @@ class CaptureTest {
                     yield Json.write(Map.of("id", PROJECT, "name", "billing-service"));
                 }
                 case "GET /api/projects/" + PROJECT -> Json.write(Map.of("id", PROJECT, "name", "billing-service"));
+                case "GET /api/projects/" + STALE -> "{\"code\":\"not_found\"}";
                 case "GET /api/projects/" + PROJECT + "/memories" -> "[{\"id\":\"d1\",\"kind\":\"DECISION\",\"status\":\"ACTIVE\","
                         + "\"title\":\"Let's go with Postgres instead of MongoDB.\",\"rejectedOptions\":[\"MongoDB\"],\"createdAt\":\"2026-10-05T10:00:00Z\"}]";
                 case "GET /api/projects/" + PROJECT + "/resume" -> "{\"whereYouStopped\":[\"Last session: Fix the pool (yesterday)\","
@@ -73,7 +75,8 @@ class CaptureTest {
                 default -> path.endsWith("/captures") || path.endsWith("/code-maps") ? "{\"id\":\"x\"}" : "{}";
             };
             byte[] bytes = reply.getBytes(StandardCharsets.UTF_8);
-            ex.sendResponseHeaders(ex.getRequestMethod().equals("POST") ? 201 : 200, bytes.length);
+            int status = path.equals("/api/projects/" + STALE) ? 404 : ex.getRequestMethod().equals("POST") ? 201 : 200;
+            ex.sendResponseHeaders(status, bytes.length);
             ex.getResponseBody().write(bytes);
             ex.close();
         });
@@ -196,9 +199,9 @@ class CaptureTest {
         Config.saveRepo(repo, PROJECT);
         transcript("s1", repo.toString());
         assertEquals(Main.OK, run("", "sync"));
-        int before = requests.size();
+        long before = requests.stream().filter(r -> r[0].equals("POST")).count();
         assertEquals(Main.OK, run("", "sync"));
-        assertEquals(before, requests.size(), "nothing new, nothing sent: " + out);
+        assertEquals(before, requests.stream().filter(r -> r[0].equals("POST")).count(), "nothing new, nothing sent: " + out);
         commit("src/pool.ts", "export const max = 20;\n", "Raise the pool size to 20");
         assertEquals(Main.OK, run("", "sync", "--no-map"));
         List<Map<String, Object>> git = captures("git");
@@ -285,5 +288,28 @@ class CaptureTest {
         assertFalse(shared.containsKey("hooks"), "Notch's hooks leave the shared file");
         assertEquals("x", shared.get("model"), "other settings stay");
         assertTrue(Files.readString(repo.resolve(".claude/settings.local.json")).contains("check --claude-hook"));
+    }
+
+    @Test
+    void initRelinksWhenTheLinkedProjectIsGone() throws Exception {
+        Config.saveRepo(repo, STALE);  // e.g. after the database was reset
+        assertEquals(Main.OK, run("", "init"));
+        String said = out.toString(StandardCharsets.UTF_8);
+        assertTrue(said.contains("no longer exists on this Notch; linking again"), said);
+        assertTrue(Files.readString(repo.resolve(".notch")).contains(PROJECT), "linked to the new project");
+        assertFalse(captures("git").isEmpty(), "and the history was captured into it");
+        Config.saveRepo(repo, STALE);
+        assertEquals(Main.ERROR, run("", "sync"), "sync says so instead of capturing nothing");
+        assertTrue(err.toString(StandardCharsets.UTF_8).contains("Run notch init"));
+    }
+
+    @Test
+    void commitTrailersAreLeftOut() {
+        GitHistory.Commit c = new GitHistory.Commit("abcdef1234", null, "Tone down the animations",
+                "Entrance animations felt fluttery.\n\nClaude-Session: https://claude.ai/code/session_x\nCo-Authored-By: Claude <noreply@anthropic.com>",
+                List.of("components/ui/Animated.tsx"));
+        String text = c.text();
+        assertTrue(text.contains("Entrance animations felt fluttery."), text);
+        assertFalse(text.contains("Claude-Session") || text.contains("Co-Authored-By"), text);
     }
 }
