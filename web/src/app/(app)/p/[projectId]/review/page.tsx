@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ApiError, api } from "@/lib/server-api";
 import { fileHref } from "@/lib/code";
-import { plural, relativeTime } from "@/lib/format";
-import type { CodeFileSummary, ReviewDetail, ReviewIssue, ReviewReport, ReviewSeverity, ReviewSummary } from "@/lib/types";
+import { plural, relativeTime, shortDate } from "@/lib/format";
+import type { CodeFileSummary, ReviewDetail, ReviewIssue, ReviewReport, ReviewSeverity, ReviewSummary, SeenBefore } from "@/lib/types";
 import { Pending } from "./Pending";
 import { ReviewUpload } from "./ReviewUpload";
 import styles from "./review.module.css";
@@ -86,7 +86,7 @@ export default async function ReviewPage({
               <p>{detail.error ?? "Something went wrong. Upload the zip again."}</p>
             </section>
           ) : (
-            <Report projectId={projectId} report={detail.report} mapped={mapped} />
+            <Report projectId={projectId} report={detail.report} mapped={mapped} seen={detail.seenBefore ?? []} />
           )}
         </div>
 
@@ -119,7 +119,12 @@ function describe(d: ReviewDetail): string {
   return `${how} ${relativeTime(d.createdAt).toLowerCase()}.`;
 }
 
-function Report({ projectId, report, mapped }: { projectId: string; report: ReviewReport; mapped: Set<string> }) {
+function Report({ projectId, report, mapped, seen }: {
+  projectId: string;
+  report: ReviewReport;
+  mapped: Set<string>;
+  seen: SeenBefore[][];
+}) {
   const counts = { high: 0, medium: 0, low: 0 } as Record<ReviewSeverity, number>;
   report.issues.forEach((i) => counts[i.severity]++);
   const c = report.coverage;
@@ -155,7 +160,7 @@ function Report({ projectId, report, mapped }: { projectId: string; report: Revi
         ) : (
           <ol className={styles.issues}>
             {report.issues.map((issue, n) => (
-              <IssueCard key={n} projectId={projectId} issue={issue} mapped={mapped} />
+              <IssueCard key={n} projectId={projectId} issue={issue} mapped={mapped} seen={seen[n] ?? []} />
             ))}
           </ol>
         )}
@@ -209,7 +214,12 @@ function Report({ projectId, report, mapped }: { projectId: string; report: Revi
   );
 }
 
-function IssueCard({ projectId, issue, mapped }: { projectId: string; issue: ReviewIssue; mapped: Set<string> }) {
+function IssueCard({ projectId, issue, mapped, seen }: {
+  projectId: string;
+  issue: ReviewIssue;
+  mapped: Set<string>;
+  seen: SeenBefore[];
+}) {
   const where = issue.file ? `${issue.file}${issue.line ? `:${issue.line}` : ""}` : null;
   return (
     <li className={styles.issue} data-severity={issue.severity}>
@@ -233,6 +243,28 @@ function IssueCard({ projectId, issue, mapped }: { projectId: string; issue: Rev
         <p className={styles.fix}>
           <strong>Fix:</strong> {issue.recommendation}
         </p>
+      ) : null}
+      {seen.length > 0 ? (
+        <div className={styles.seen}>
+          <p className={styles.seenHead}>
+            {issue.category === "decision" ? "Where this was decided" : "Seen before in this project"}
+          </p>
+          <ul>
+            {seen.map((s) => (
+              <li key={s.conversationId}>
+                <p className={styles.seenMeta}>
+                  <strong>{s.conversationTitle ?? "A conversation"}</strong>, {shortDate(s.sentAt)}
+                  {s.decision ? <span className={styles.seenDecision}>Decision</span> : null}
+                  {s.related > 0 ? <span className={styles.seenRelated}>{plural(s.related, "related session")}</span> : null}
+                </p>
+                <p className={styles.seenExcerpt}>{s.excerpt}</p>
+                <Link href={`/p/${projectId}/recall?q=${encodeURIComponent(s.term)}`} className={styles.seenLink}>
+                  Matched <code>{s.term}</code> exactly. See every mention
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </li>
   );

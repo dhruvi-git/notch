@@ -1,5 +1,6 @@
 package dev.notch.api.review.core;
 
+import dev.notch.engine.select.RandomizedSelect;
 import dev.notch.engine.text.SecretScanner;
 import dev.notch.explain.CodeMap;
 import dev.notch.explain.Role;
@@ -20,6 +21,9 @@ public final class ReviewSelection {
     /** About 60K tokens of code: a thorough read that stays quick and cheap on a small model. */
     public static final int DEFAULT_BUDGET_CHARS = 220_000;
     static final int MAX_FILE_CHARS = 30_000;
+    /** More than the budget can ever hold: the budget fits at most a few hundred small files. */
+    static final int MAX_CANDIDATES = 400;
+    private static final RandomizedSelect SELECT = new RandomizedSelect(7);
 
     /** A file as sent: {@code numbered} is the (redacted) code with line numbers. */
     public record Picked(String path, String numbered, int lines, boolean truncated) {
@@ -35,16 +39,20 @@ public final class ReviewSelection {
     public static Selection select(CodeMap map, Map<String, String> contents, int budgetChars) {
         Map<String, Integer> rank = new HashMap<>();
         for (int i = 0; i < map.startHere().size(); i++) rank.put(map.startHere().get(i), i);
-        List<CodeMap.FileInfo> candidates = new ArrayList<>(map.files().stream()
-                .filter(f -> contents.containsKey(f.path()) && reviewable(f)).toList());
-        candidates.sort(Comparator
+        List<CodeMap.FileInfo> reviewable = map.files().stream()
+                .filter(f -> contents.containsKey(f.path()) && reviewable(f)).toList();
+        Comparator<CodeMap.FileInfo> mostImportantFirst = Comparator
                 .comparingInt((CodeMap.FileInfo f) -> rank.getOrDefault(f.path(), Integer.MAX_VALUE))
                 .thenComparing(f -> !map.entryPoints().contains(f.path()))
                 .thenComparing(f -> f.role() == Role.TEST)
                 .thenComparing(Comparator.comparingInt((CodeMap.FileInfo f) -> f.importedBy().size()).reversed())
                 .thenComparing(Comparator.comparingInt(CodeMap.FileInfo::lines).reversed())
-                .thenComparing(CodeMap.FileInfo::path));
-        long codeFiles = candidates.size();
+                .thenComparing(CodeMap.FileInfo::path);
+        // Only the files that can fit the budget matter, so take the top ones with Quickselect
+        // (expected linear time) instead of sorting thousands of files to read a few dozen.
+        List<CodeMap.FileInfo> candidates = reviewable.isEmpty() ? List.of()
+                : SELECT.topK(reviewable, Math.min(reviewable.size(), MAX_CANDIDATES), mostImportantFirst.reversed());
+        long codeFiles = reviewable.size();
 
         SecretScanner scanner = new SecretScanner();
         List<Picked> out = new ArrayList<>();

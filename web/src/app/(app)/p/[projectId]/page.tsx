@@ -207,6 +207,11 @@ export default async function Overview({ params }: { params: Promise<{ projectId
           ) : null}
         </section>
       </div>
+
+      <p className={styles.hood}>
+        Curious how it works? <Link href={`${base}/lab`}>Under the hood</Link> shows the algorithm behind each feature and
+        what it&rsquo;s doing in this project.
+      </p>
     </div>
   );
 }

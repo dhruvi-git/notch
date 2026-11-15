@@ -129,6 +129,49 @@ public class CodeMapService {
         return store(project, "zip", label, map, false);
     }
 
+    /**
+     * {@code @} suggestions for files in the code: a radix tree of each file's path and name,
+     * weighted by how many files import it, built once per map. Typing "@store" finds
+     * src/events/store.ts without scanning every path.
+     */
+    public List<dev.notch.api.search.core.ProjectIndex.Suggestion> fileSuggestions(Project project, String prefix, int k) {
+        var stored = repo.latest(project.id(), currentUser.id());
+        if (stored.isEmpty() || prefix == null || prefix.isBlank()) return List.of();
+        FileTree tree = fileTrees.computeIfAbsent(stored.get().id(), id -> FileTree.of(open(stored.get())));
+        java.util.LinkedHashMap<String, Double> best = new java.util.LinkedHashMap<>();
+        for (dev.notch.engine.text.RadixTree.Entry e : tree.tree().complete(prefix.strip().toLowerCase(Locale.ROOT), k * 2)) {
+            String path = tree.pathOf().get(e.key());
+            if (path != null) best.merge(path, e.weight(), Math::max);
+        }
+        return best.entrySet().stream().limit(k)
+                .map(e -> new dev.notch.api.search.core.ProjectIndex.Suggestion(e.getKey(), e.getValue())).toList();
+    }
+
+    /** A radix tree over a map's file paths and names; {@code pathOf} turns a key back into its path. */
+    record FileTree(dev.notch.engine.text.RadixTree tree, Map<String, String> pathOf) {
+        static FileTree of(CodeMap map) {
+            var tree = new dev.notch.engine.text.RadixTree(new dev.notch.engine.select.RandomizedSelect());
+            Map<String, String> pathOf = new java.util.HashMap<>();
+            for (CodeMap.FileInfo f : map.files()) {
+                double weight = 1 + f.importedBy().size();
+                String full = f.path().toLowerCase(Locale.ROOT);
+                String name = full.substring(full.lastIndexOf('/') + 1);
+                for (String key : List.of(full, name)) {
+                    if (pathOf.putIfAbsent(key, f.path()) == null || pathOf.get(key).equals(f.path())) tree.insert(key, weight);
+                }
+            }
+            return new FileTree(tree, pathOf);
+        }
+    }
+
+    /** Built trees by map id; maps are immutable, and a project keeps at most a few. */
+    private final Map<UUID, FileTree> fileTrees = java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<UUID, FileTree> eldest) {
+            return size() > 64;
+        }
+    });
+
     /** The project's latest map, if it has one. */
     public java.util.Optional<CodeMap> latestMap(Project project) {
         return repo.latest(project.id(), currentUser.id()).map(this::open);

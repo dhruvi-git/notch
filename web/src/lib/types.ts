@@ -338,4 +338,15 @@ export type ReviewSummary = {
   finishedAt: string | null;
 };
 
-export type ReviewDetail = ReviewSummary & { report: ReviewReport | null };
+/** A past session, commit or chat about the same thing as a review issue. */
+export type SeenBefore = {
+  term: string;
+  conversationId: string;
+  conversationTitle: string | null;
+  sentAt: string;
+  excerpt: string;
+  decision: boolean;
+  related: number;
+};
+
+export type ReviewDetail = ReviewSummary & { report: ReviewReport | null; seenBefore: SeenBefore[][] };

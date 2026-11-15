@@ -421,3 +421,14 @@
     font-size: 1.9rem;
   }
 }
+
+.reasonTag {
+  margin-left: auto;
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}

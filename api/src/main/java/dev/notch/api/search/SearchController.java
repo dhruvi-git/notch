@@ -61,7 +61,11 @@ public class SearchController {
     private final IndexRegistry indexes;
     private final ProjectService projects;
 
-    public SearchController(SearchService search, AskService ask, IndexRegistry indexes, ProjectService projects) {
+    private final dev.notch.api.explain.CodeMapService codeMaps;
+
+    public SearchController(SearchService search, AskService ask, IndexRegistry indexes, ProjectService projects,
+                            dev.notch.api.explain.CodeMapService codeMaps) {
+        this.codeMaps = codeMaps;
         this.search = search;
         this.ask = ask;
         this.indexes = indexes;
@@ -103,7 +107,16 @@ public class SearchController {
                                                       @RequestParam(defaultValue = "") String prefix,
                                                       @RequestParam(defaultValue = "8") int k) {
         Project p = projects.require(projectId);
-        return indexes.get(p).autocomplete(prefix, Math.max(1, Math.min(k, 20)));
+        int limit = Math.max(1, Math.min(k, 20));
+        // Files from the code map first (a radix tree over paths), then names from conversations.
+        List<ProjectIndex.Suggestion> out = new ArrayList<>(codeMaps.fileSuggestions(p, prefix, (limit + 1) / 2));
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        out.forEach(s -> seen.add(s.key().toLowerCase(java.util.Locale.ROOT)));
+        for (ProjectIndex.Suggestion s : indexes.get(p).autocomplete(prefix, limit)) {
+            if (out.size() >= limit) break;
+            if (seen.add(s.key().toLowerCase(java.util.Locale.ROOT))) out.add(s);
+        }
+        return out;
     }
 
     /** Conversations linked into threads because they share files or errors. */
