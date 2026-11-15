@@ -49,7 +49,7 @@ export type Usage = {
   limits: { import: number; question: number };
 };
 
-export type AuthConfig = { github: boolean; devLogin: boolean };
+export type AuthConfig = { github: boolean; google: boolean; devLogin: boolean };
 
 export type Session = { token: string; expiresAt: string; user: User };
 

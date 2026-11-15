@@ -36,7 +36,16 @@ public record NotchProperties(Crypto crypto, Limits limits, Cors cors, Embedding
     public record Jobs(long pollDelayMs) {
     }
 
-    public record Auth(String stateSecret, int sessionDays, boolean devFallback, Github github) {
+    public record Auth(String stateSecret, int sessionDays, boolean devFallback, Github github, Google google) {
+        public Google google() {
+            return google == null ? new Google(null, null, null) : google;
+        }
+    }
+
+    public record Google(String clientId, String clientSecret, String callbackUrl) {
+        public boolean configured() {
+            return clientId != null && !clientId.isBlank() && clientSecret != null && !clientSecret.isBlank();
+        }
     }
 
     public record Github(String clientId, String clientSecret, String callbackUrl) {

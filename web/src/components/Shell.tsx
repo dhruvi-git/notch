@@ -20,19 +20,27 @@ type Props = {
 /** The frame around every project page: a rail with the project, its sections and the person. */
 export function Shell({ project, projects, user, usage, theme, driftCount, children }: Props) {
   const base = `/p/${project.id}`;
-  const nav: NavItem[] = [
-    { href: `${base}/recall`, label: "Recall" },
-    { href: `${base}/resume`, label: "Where you stopped" },
-    { href: `${base}/explain`, label: "Explain" },
+  // Grouped by what the person is doing: their code, the project's memory, adding to it.
+  const home: NavItem[] = [{ href: base, label: "Overview", exact: true }];
+  const code: NavItem[] = [
     { href: `${base}/review`, label: "Review" },
-    { href: `${base}/compare`, label: "Compare" },
+    { href: `${base}/explain`, label: "Explain" },
+  ];
+  const memory: NavItem[] = [
+    { href: `${base}/resume`, label: "Where you stopped" },
+    { href: `${base}/recall`, label: "Ask" },
     { href: `${base}/ledger`, label: "Ledger" },
     { href: `${base}/drift`, label: "Drift", badge: driftCount },
-    { href: `${base}/sync`, label: "Sync" },
-    { href: `${base}/imports`, label: "Imports" },
     { href: `${base}/conversations`, label: "Conversations" },
   ];
-  const more: NavItem[] = [{ href: `${base}/lab`, label: "Lab" }];
+  const add: NavItem[] = [
+    { href: `${base}/imports`, label: "Upload" },
+    { href: `${base}/sync`, label: "Connect repo" },
+  ];
+  const more: NavItem[] = [
+    { href: `${base}/compare`, label: "Compare options" },
+    { href: `${base}/lab`, label: "Lab" },
+  ];
   return (
     <div className={styles.shell}>
       <aside className={`${styles.rail} on-brand`}>
@@ -41,11 +49,14 @@ export function Shell({ project, projects, user, usage, theme, driftCount, child
           <ProjectSwitcher current={project} projects={projects} />
           {project.isPrivate ? <p className={styles.private}>Private: never sent to an AI model</p> : null}
         </div>
-        <NavLinks items={nav} />
-        <NavLinks items={more} label="More" />
+        <NavLinks items={home} label="Project" />
+        <NavLinks items={code} label="Your code" heading="Your code" />
+        <NavLinks items={memory} label="Project memory" heading="Project memory" />
+        <NavLinks items={add} label="Add to it" heading="Add to it" />
+        <NavLinks items={more} label="More" heading="More" />
         <div className={styles.railBottom}>
           <p className={styles.usage}>
-            {plural(usage.remaining.import, "import")} and {plural(usage.remaining.question, "question")} left today
+            {plural(usage.remaining.import, "upload")} and {plural(usage.remaining.question, "question")} left today
           </p>
           <UserMenu user={user} theme={theme} />
         </div>

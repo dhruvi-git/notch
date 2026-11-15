@@ -31,6 +31,15 @@ class ZipSourceTest {
     }
 
     @Test
+    void dependencyAndBuildFoldersAreNeverUnpacked() throws Exception {
+        ZipSource.Result r = ZipSource.read(zip("app/src/a.ts", "export const a = 1;",
+                "app/node_modules/react/index.js", "x".repeat(1000), "app/.git/HEAD", "ref", "app/dist/out.js", "y"));
+        assertEquals(List.of("src/a.ts"), r.files().stream().map(SourceFile::path).toList());
+        assertTrue(CodeMapBuilder.inSkippedFolder("web/node_modules/x/index.js"));
+        assertFalse(CodeMapBuilder.inSkippedFolder("src/builder.ts"));
+    }
+
+    @Test
     void keepsPathsWhenThereIsNoSingleWrapper() throws Exception {
         ZipSource.Result r = ZipSource.read(zip("src/a.ts", "x", "web/b.ts", "y"));
         assertEquals(List.of("src/a.ts", "web/b.ts"), r.files().stream().map(SourceFile::path).toList());

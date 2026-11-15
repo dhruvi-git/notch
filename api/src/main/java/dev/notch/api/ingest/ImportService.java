@@ -191,7 +191,8 @@ public class ImportService {
             throw ApiException.badRequest("empty_file", "Choose a non-empty file to import.");
         }
         if (file.getSize() > props.ingest().maxFileBytes()) {
-            throw ApiException.tooLarge("Files can be up to 5 MB. Split larger exports into smaller files.");
+            throw ApiException.tooLarge("Files can be up to " + (props.ingest().maxFileBytes() >> 20)
+                    + " MB. Split larger exports into smaller files.");
         }
         try {
             return file.getBytes();

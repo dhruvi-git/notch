@@ -56,4 +56,17 @@ class FileSnifferTest {
         assertThrows(IllegalArgumentException.class, () -> FileSniffer.decodeText(new byte[] {'a', 0, 'b'}));
         assertEquals("hi", FileSniffer.decodeText(utf8("\uFEFFhi")));
     }
+
+    @Test
+    void aZipOfCodeIsRecognisedAsCode() throws Exception {
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        try (ZipOutputStream z = new ZipOutputStream(bytes)) {
+            for (String name : new String[] {"app/src/a.ts", "app/src/b.tsx", "app/lib/c.py"}) {
+                z.putNextEntry(new java.util.zip.ZipEntry(name));
+                z.write("x".getBytes());
+                z.closeEntry();
+            }
+        }
+        assertThrows(FileSniffer.CodeArchiveException.class, () -> FileSniffer.extractConversationsJson(bytes.toByteArray()));
+    }
 }

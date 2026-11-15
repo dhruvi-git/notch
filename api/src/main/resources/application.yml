@@ -9,9 +9,10 @@ spring:
     password: ${DATABASE_PASSWORD:notch}
   servlet:
     multipart:
-      # Code zips for Explain can be up to 25 MB; chat imports keep their own 5 MB limit (ImportService).
-      max-file-size: 25MB
-      max-request-size: 26MB
+      # Real chat exports (with images and audio) and code zips can be large; only what's needed
+      # is read from them: conversations.json from an export, source files from a codebase.
+      max-file-size: 100MB
+      max-request-size: 101MB
   mvc:
     problemdetails:
       enabled: true
@@ -50,7 +51,7 @@ notch:
     model: ${NOTCH_EMBEDDING_MODEL:voyage-4-lite}
     api-key: ${VOYAGE_API_KEY:}
   ingest:
-    max-file-bytes: 5242880
+    max-file-bytes: 104857600   # 100 MB; an export's conversations.json may unzip to 64 MB
     max-chunk-chars: 1200
   jobs:
     poll-delay-ms: 2000
@@ -62,3 +63,7 @@ notch:
       client-id: ${GITHUB_CLIENT_ID:}
       client-secret: ${GITHUB_CLIENT_SECRET:}
       callback-url: ${GITHUB_CALLBACK_URL:http://localhost:8090/auth/github/callback}
+    google:   # an OAuth client from Google Cloud (APIs & Services > Credentials), type "Web application"
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      callback-url: ${GOOGLE_CALLBACK_URL:http://localhost:8090/auth/google/callback}

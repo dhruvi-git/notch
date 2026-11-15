@@ -34,7 +34,19 @@ public class AuthController {
     /** Lets the web app show only the sign-in options this server supports. */
     @GetMapping("/auth/config")
     public Map<String, Object> config() {
-        return Map.of("github", auth.githubConfigured(), "devLogin", props.auth().devFallback());
+        return Map.of("github", auth.githubConfigured(), "google", auth.googleConfigured(),
+                "devLogin", props.auth().devFallback());
+    }
+
+    @GetMapping("/auth/google/start")
+    public void googleStart(@RequestParam String redirect, HttpServletResponse response) throws IOException {
+        response.sendRedirect(auth.googleStartUrl(redirect));
+    }
+
+    @GetMapping("/auth/google/callback")
+    public void googleCallback(@RequestParam(required = false) String code, @RequestParam(required = false) String state,
+                               @RequestParam(required = false) String error, HttpServletResponse response) throws IOException {
+        response.sendRedirect(auth.googleFinish(code, state, error));
     }
 
     @GetMapping("/auth/github/start")

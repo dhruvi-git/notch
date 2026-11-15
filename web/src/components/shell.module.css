@@ -13,7 +13,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   padding: 1.4rem 0.9rem 1rem;
   overflow-y: auto;
 }
@@ -43,8 +43,15 @@
 }
 
 .rail nav + nav {
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--line);
+  padding-top: 0.25rem;
+}
+
+.navHeading {
+  padding: 0 0.85rem 0.3rem;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--brand-soft);
+  opacity: 0.8;
 }
 
 .nav {

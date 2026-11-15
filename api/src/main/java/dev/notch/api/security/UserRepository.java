@@ -33,9 +33,28 @@ public class UserRepository {
                 .single();
     }
 
+    /**
+     * Creates the user on first Google sign-in; afterwards keeps name, email and picture current.
+     * The account is matched by Google's subject id, which never changes, not by email.
+     */
+    public UUID upsertGoogle(String sub, String handle, String email, String avatarUrl) {
+        return jdbc.sql("""
+                INSERT INTO users (id, google_sub, handle, email, avatar_url) VALUES (:id, :sub, :handle, :email, :avatar)
+                ON CONFLICT (google_sub) DO UPDATE SET handle = EXCLUDED.handle, email = EXCLUDED.email,
+                       avatar_url = EXCLUDED.avatar_url
+                RETURNING id""")
+                .param("id", UUID.randomUUID())
+                .param("sub", sub)
+                .param("handle", handle)
+                .param("email", email)
+                .param("avatar", avatarUrl)
+                .query(UUID.class)
+                .single();
+    }
+
     /** Local development only: a test user by handle, created if needed. */
     public UUID findOrCreateDev(String handle) {
-        Optional<UUID> existing = jdbc.sql("SELECT id FROM users WHERE github_id IS NULL AND handle = :h ORDER BY created_at LIMIT 1")
+        Optional<UUID> existing = jdbc.sql("SELECT id FROM users WHERE github_id IS NULL AND google_sub IS NULL AND handle = :h ORDER BY created_at LIMIT 1")
                 .param("h", handle)
                 .query(UUID.class)
                 .optional();

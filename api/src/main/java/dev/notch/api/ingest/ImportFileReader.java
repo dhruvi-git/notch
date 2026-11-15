@@ -56,6 +56,8 @@ public class ImportFileReader {
             ImportFormat format = requested != null ? requested : isMarkdown(filename)
                     ? ImportFormat.MARKDOWN : ImportFormat.TEXT;
             return new Result(format, List.of(transcript.parse(filename, text)));
+        } catch (FileSniffer.CodeArchiveException e) {
+            throw ApiException.badRequest("code_zip", "This zip is a codebase, not a chat export. Review it on the Review page.");
         } catch (IllegalArgumentException e) {
             throw ApiException.badRequest("unreadable_file", capitalize(e.getMessage()) + ".");
         }

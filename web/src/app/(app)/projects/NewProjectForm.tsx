@@ -33,7 +33,7 @@ export function NewProjectForm({ first }: { first: boolean }) {
   return (
     <form className={styles.form} onSubmit={submit} noValidate>
       <label htmlFor="project-name" className={styles.formLabel}>
-        {first ? "Name your first project" : "New project"}
+        {first ? "Name your first project, usually after the repository" : "New project"}
       </label>
       <div className={styles.formRow}>
         <input
@@ -47,13 +47,14 @@ export function NewProjectForm({ first }: { first: boolean }) {
           aria-describedby={error ? "project-error" : undefined}
         />
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? "Creating…" : "Create project"}
+          {busy ? "Creating…" : "Create and add code"}
         </button>
       </div>
       <label className={styles.check}>
         <input type="checkbox" checked={isPrivate} onChange={(e) => setPrivate(e.target.checked)} />
         <span>
-          Keep private. Nothing from this project is sent to an AI model; search and decisions still work.
+          Keep private. Nothing from this project is sent to an AI model; the review&rsquo;s automated checks, search and
+          decisions still work.
         </span>
       </label>
       {error ? (

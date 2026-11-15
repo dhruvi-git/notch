@@ -162,6 +162,13 @@ public final class CodeMapBuilder {
 
     // ------------------------------------------------------------------ filtering
 
+    /** True for paths inside dependency, VCS or build folders, which are never part of a map. */
+    public static boolean inSkippedFolder(String path) {
+        String[] segs = path.replace('\\', '/').split("/");
+        for (int i = 0; i < segs.length - 1; i++) if (SKIPPED_DIRS.contains(segs[i])) return true;
+        return false;
+    }
+
     static boolean keep(SourceFile f) {
         String p = f.path();
         String[] segs = p.split("/");

@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { sessionToken } from "@/lib/server-api";
 import { Landing } from "./_landing/Landing";
 
 export const metadata: Metadata = {
-  title: { absolute: "Notch: the project brain every coding agent plugs into" },
+  title: { absolute: "Notch: understand your code, and remember why it's built that way" },
 };
 
 export default async function Home() {
-  if (await sessionToken()) redirect("/projects");
-  return <Landing />;
+  // Everyone lands here first; signed-in people get a way straight into their projects.
+  return <Landing signedIn={Boolean(await sessionToken())} />;
 }

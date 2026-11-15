@@ -244,7 +244,7 @@ export function Recall({ projectId, initialQuery, questionsLeft: initialLeft, ha
           <h2>Nothing to search yet</h2>
           <p className="muted">
             Recall searches this project&rsquo;s sessions, commits and chats. Connect the repository and they arrive by
-            themselves, or <Link href={`/p/${projectId}/imports`}>import a chat export</Link>.
+            themselves, or <Link href={`/p/${projectId}/imports`}>upload your code or chats</Link>.
           </p>
           <ConnectRepo projectId={projectId} compact />
         </section>

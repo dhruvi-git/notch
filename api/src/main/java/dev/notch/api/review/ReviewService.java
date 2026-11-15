@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 @Service
 public class ReviewService {
 
-    static final long MAX_ZIP_BYTES = 25L * 1024 * 1024;
+    static final long MAX_ZIP_BYTES = 100L * 1024 * 1024;
     static final String CLAUDE_CODE = "claude-code";
     static final String ZIP = "zip";
 
@@ -109,7 +109,7 @@ public class ReviewService {
         Project project = projects.require(projectId);
         if (file == null || file.isEmpty()) throw ApiException.badRequest("empty_file", "Choose a .zip of your code.");
         if (file.getSize() > MAX_ZIP_BYTES) {
-            throw ApiException.tooLarge("The zip is over 25 MB. Leave out node_modules and build folders.");
+            throw ApiException.tooLarge("The zip is over 100 MB. Leave out node_modules and build folders.");
         }
         ZipSource.Result read;
         try {

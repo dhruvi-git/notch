@@ -50,6 +50,9 @@ public final class ZipSource {
                     skipped++;
                     continue;
                 }
+                if (CodeMapBuilder.inSkippedFolder(path)) {
+                    continue;  // node_modules, .git, build output: never unpacked, so they don't count
+                }
                 byte[] data = readCapped(in, CodeMapBuilder.MAX_FILE_BYTES + 1);
                 total += data.length;
                 if (total > MAX_TOTAL_BYTES) throw new TooLargeException("The zip unpacks to more than 100 MB.");

@@ -49,11 +49,14 @@ public class AuthService {
     private final StateCodec state;
     private final RedirectPolicy redirects;
     private final GitHubClient github;
+    private final GoogleClient google;
     private final UserRepository users;
     private final TokenRepository tokens;
     private final SecureRandom random = new SecureRandom();
 
-    public AuthService(NotchProperties props, GitHubClient github, UserRepository users, TokenRepository tokens) {
+    public AuthService(NotchProperties props, GitHubClient github, UserRepository users, TokenRepository tokens,
+                       GoogleClient google) {
+        this.google = google;
         this.props = props;
         this.state = new StateCodec(props.auth().stateSecret());
         this.redirects = new RedirectPolicy(props.cors().allowedOrigins());
@@ -101,6 +104,56 @@ public class AuthService {
             log.warn("GitHub sign-in failed: {}", e.getMessage());
             return withParam(redirect, "error", "github_failed");
         }
+    }
+
+    // ------------------------------------------------------------------ Google
+
+    public boolean googleConfigured() {
+        return props.auth().google().configured();
+    }
+
+    public String googleStartUrl(String redirect) {
+        if (!redirects.allows(redirect)) {
+            throw ApiException.badRequest("invalid_redirect", "That redirect address is not allowed.");
+        }
+        if (!googleConfigured()) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "google_not_configured",
+                    "Google sign-in isn't set up on this server.");
+        }
+        byte[] nonce = new byte[16];
+        random.nextBytes(nonce);
+        String s = state.encode(redirect, Instant.now().plus(STATE_TTL),
+                Base64.getUrlEncoder().withoutPadding().encodeToString(nonce));
+        NotchProperties.Google g = props.auth().google();
+        return HttpGoogleClient.AUTHORIZE + "?client_id=" + enc(g.clientId()) + "&redirect_uri=" + enc(g.callbackUrl())
+                + "&response_type=code&scope=" + enc("openid email profile") + "&prompt=select_account&state=" + enc(s);
+    }
+
+    /** Where to send the browser after Google returns: the web app, with a code or an error. */
+    public String googleFinish(String code, String stateParam, String error) {
+        String redirect = state.verify(stateParam, Instant.now())
+                .orElseThrow(() -> ApiException.badRequest("invalid_state",
+                        "This sign-in link has expired or was tampered with. Start again from the app."));
+        if (!redirects.allows(redirect)) throw ApiException.badRequest("invalid_redirect", "That redirect address is not allowed.");
+        if (error != null && !error.isBlank()) return withParam(redirect, "error", error);
+        if (code == null || code.isBlank()) return withParam(redirect, "error", "missing_code");
+        try {
+            GoogleClient.GoogleUser g = google.signIn(code);
+            UUID userId = users.upsertGoogle(g.sub(), handleFor(g), g.email(), g.pictureUrl());
+            TokenCodec.Issued oneTime = TokenCodec.issue(TokenCodec.CODE_PREFIX, random);
+            tokens.insertAuthCode(oneTime.hash(), userId, Instant.now().plus(CODE_TTL));
+            return withParam(redirect, "code", oneTime.token());
+        } catch (RuntimeException e) {
+            log.warn("Google sign-in failed: {}", e.getMessage());
+            return withParam(redirect, "error", "google_failed");
+        }
+    }
+
+    /** The name shown in the app: the person's name, else the part of their email before the @. */
+    static String handleFor(GoogleClient.GoogleUser g) {
+        if (g.name() != null && !g.name().isBlank()) return g.name().strip();
+        if (g.email() != null && g.email().contains("@")) return g.email().substring(0, g.email().indexOf('@'));
+        return "Google user";
     }
 
     public Session exchange(String code) {
