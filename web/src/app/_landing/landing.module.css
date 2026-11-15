@@ -544,3 +544,9 @@
     margin-bottom: 0.5rem;
   }
 }
+
+.fixLine {
+  grid-column: 1 / -1;
+  color: var(--ink);
+  font-weight: 600;
+}

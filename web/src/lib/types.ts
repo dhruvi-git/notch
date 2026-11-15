@@ -350,3 +350,22 @@ export type SeenBefore = {
 };
 
 export type ReviewDetail = ReviewSummary & { report: ReviewReport | null; seenBefore: SeenBefore[][] };
+
+// ------------------------------------------------------------------ health
+
+export type HealthLevel = "ok" | "watch" | "risk" | "none";
+export type HealthRisk = {
+  key: string;
+  title: string;
+  level: HealthLevel;
+  headline: string;
+  evidence: { text: string; detail: string | null; link: string | null }[];
+  action: string;
+  actionLink: string;
+};
+export type RecapItem = { text: string; when: string; detail: string | null };
+export type Health = {
+  risks: HealthRisk[];
+  recap: { done: RecapItem[]; open: RecapItem[]; forgotten: RecapItem[] };
+  computedAt: string;
+};
