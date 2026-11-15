@@ -112,6 +112,10 @@ curl -s localhost:8090/api/usage
 | GET | `/api/projects/{id}/code-map` | Overview: stats, modules, areas, start here, entry points, possibly unused, conflicts, tools |
 | GET | `/api/projects/{id}/code-map/files` | Every file with its role and summary |
 | GET | `/api/projects/{id}/code-map/file?path=` | One file: what, how (imports, used by, affected) and why (decisions, chats) |
+| POST | `/api/projects/{id}/reviews/zip` | Review a zipped codebase (25 MB) in the background; returns the pending review (202) |
+| POST | `/api/projects/{id}/reviews` | Save a review written by Claude Code (`{"label", "filesReviewed", "report"}`) |
+| GET | `/api/projects/{id}/reviews` | The project's reviews, newest first (20 kept) |
+| GET, DELETE | `/api/projects/{id}/reviews/{reviewId}` | One review with its report (`PENDING`, `DONE` or `FAILED`), or delete it |
 | GET, POST | `/api/projects/{id}/comparisons` | List or start comparisons (`{"question", "options": [...]}`) |
 | GET, PUT, DELETE | `/api/comparisons/{id}` | Read, autosave (returns a fresh analysis) or delete a comparison |
 | POST | `/api/comparisons/{id}/decide` | Record the chosen option as a decision; the others become "ruled out" |
@@ -302,6 +306,29 @@ is viewed: decisions whose chosen or ruled-out tools the file imports (a file im
 ruled-out tool is a conflict), and conversation passages that mention the file's path, its
 name, or one of its folders (folders are looked up in the radix tree of keys first, so only
 mentioned folders are searched).
+
+## How Review works
+
+A review has one shape wherever it comes from: an overall summary, a breakdown by area (rated
+good, fair or weak), strengths, issues (severity, category, file, line, detail, fix) and
+recommendations (now, soon, later).
+
+- **A zip** is read into memory and mapped (Explain gets the same map). Notch's own checks run
+  first: code that imports a tool a decision ruled out, secrets, committed `.env` files, very
+  long files, no tests, unused files, leftover TODOs, no README. For a project that isn't
+  private, Claude then reads the most central code within a budget of about 220K characters
+  (what the rest depends on and the entry points first), with secrets redacted, `.env` files
+  left out, and every line numbered, plus the decisions in force. Its reply is checked: an issue
+  citing a file it wasn't shown is dropped, impossible line numbers are removed, and severities
+  and categories are normalised. Where the checks and Claude found the same decision or security
+  problem, the check's certain version is kept. The code is discarded when the review is
+  written; only the report is stored, encrypted. A private project, no API key, or a failed
+  model call gives the checks' report alone, with a note saying why.
+- **Claude Code** (`/notch review`) reads the repository itself and sends its review through the
+  MCP tool. It's cleaned the same way, and the checks run on the project's latest code map.
+
+Reviews run on a small worker pool; a review that was running when the server stopped is
+marked failed on the next start, because its code was only ever in memory.
 
 ## How Compare works
 

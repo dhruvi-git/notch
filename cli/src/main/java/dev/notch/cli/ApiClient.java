@@ -159,6 +159,34 @@ public final class ApiClient implements NotchBackend {
         return Json.obj(Json.parse(send("POST", "/api/projects/" + enc(config.project) + "/captures", Json.write(body))));
     }
 
+    @Override
+    public String submitReview(String label, Map<String, Object> report, Integer filesReviewed) throws NotchException {
+        requireProject();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("label", label);
+        body.put("report", report);
+        if (filesReviewed != null) body.put("filesReviewed", filesReviewed);
+        Map<String, Object> r = Json.obj(Json.parse(send("POST", "/api/projects/" + enc(config.project) + "/reviews", Json.write(body))));
+        int issues = r.get("issues") instanceof Number n ? n.intValue() : 0;
+        int high = r.get("highIssues") instanceof Number n ? n.intValue() : 0;
+        String where = webUrl() == null ? "the project's Review page in the Notch web app"
+                : webUrl() + "/p/" + config.project + "/review?r=" + Json.str(r, "id");
+        return "Saved the review “" + Json.str(r, "label") + "” to Notch with " + issues + (issues == 1 ? " issue" : " issues")
+                + (high > 0 ? " (" + high + " high)" : "") + ", including Notch's own checks for decisions and secrets. "
+                + "See it at " + where + ".";
+    }
+
+    /**
+     * Where the web app is, for links: NOTCH_WEB_URL, or for a local API on 8090 the local web
+     * app on 3000. Null when it can't be told.
+     */
+    String webUrl() {
+        String env = System.getenv("NOTCH_WEB_URL");
+        if (env != null && !env.isBlank()) return env.replaceAll("/+$", "");
+        if (config.api.matches("https?://(localhost|127\\.0\\.0\\.1):8090")) return "http://localhost:3000";
+        return null;
+    }
+
     /** The account's projects as id and name. */
     public List<Map<String, Object>> projects() throws NotchException {
         List<Map<String, Object>> out = new ArrayList<>();

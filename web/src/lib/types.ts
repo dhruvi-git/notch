@@ -299,3 +299,43 @@ export type CodeFileView = {
 };
 
 export type CodeUpload = { id: string; label: string; source: string; createdAt: string; stats: CodeStats };
+
+// ------------------------------------------------------------------ review
+
+export type ReviewSeverity = "high" | "medium" | "low";
+export type ReviewCategory = "bug" | "security" | "performance" | "maintainability" | "testing" | "decision" | "other";
+
+export type ReviewIssue = {
+  severity: ReviewSeverity;
+  category: ReviewCategory;
+  title: string;
+  file: string | null;
+  line: number | null;
+  detail: string | null;
+  recommendation: string | null;
+  /** "model": written by Claude; "agent": by Claude Code; "rules": Notch's automated checks. */
+  source: "model" | "agent" | "rules";
+};
+
+export type ReviewReport = {
+  summary: string | null;
+  areas: { name: string; rating: "good" | "fair" | "weak"; assessment: string }[];
+  strengths: string[];
+  issues: ReviewIssue[];
+  recommendations: { priority: "now" | "soon" | "later"; title: string; detail: string | null }[];
+  coverage: { reviewer: string; filesTotal: number; filesReviewed: number; linesReviewed: number; note: string | null } | null;
+};
+
+export type ReviewSummary = {
+  id: string;
+  label: string;
+  source: "zip" | "claude-code";
+  status: "PENDING" | "DONE" | "FAILED";
+  error: string | null;
+  issues: number;
+  highIssues: number;
+  createdAt: string;
+  finishedAt: string | null;
+};
+
+export type ReviewDetail = ReviewSummary & { report: ReviewReport | null };

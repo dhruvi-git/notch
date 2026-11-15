@@ -97,7 +97,7 @@ public class CodeMapService {
 
     /** A map built by the CLI on the developer's machine. */
     public Uploaded upload(UUID projectId, String label, CodeMap map) {
-        return store(projects.require(projectId), "cli", label, map);
+        return store(projects.require(projectId), "cli", label, map, true);
     }
 
     /** A zipped codebase: mapped here, then the code is discarded; only the map is kept. */
@@ -118,15 +118,28 @@ public class CodeMapService {
         CodeMap map = new CodeMapBuilder().build(read.files());
         if (map.files().isEmpty()) throw ApiException.badRequest("no_source", "The zip has no source files Notch can read.");
         String name = file.getOriginalFilename() == null ? "code.zip" : file.getOriginalFilename();
-        return store(project, "zip", name.replaceAll("\\.zip$", ""), map);
+        return store(project, "zip", name.replaceAll("\\.zip$", ""), map, true);
     }
 
-    private Uploaded store(Project project, String source, String label, CodeMap map) {
+    /**
+     * Keeps the map of a zip that was uploaded for a review, so Explain shows the same code. The
+     * review already counted as the day's import, so this doesn't count again.
+     */
+    public Uploaded storeReviewed(Project project, String label, CodeMap map) {
+        return store(project, "zip", label, map, false);
+    }
+
+    /** The project's latest map, if it has one. */
+    public java.util.Optional<CodeMap> latestMap(Project project) {
+        return repo.latest(project.id(), currentUser.id()).map(this::open);
+    }
+
+    private Uploaded store(Project project, String source, String label, CodeMap map, boolean counts) {
         String problem = MapLimits.problem(map);
         if (problem != null) throw ApiException.badRequest("invalid_map", problem);
         UUID userId = currentUser.id();
         // A zip is a manual upload; maps from the CLI arrive automatically on every commit.
-        usage.consume(userId, "cli".equals(source) ? UsageService.CAPTURE : UsageService.IMPORT);
+        if (counts) usage.consume(userId, "cli".equals(source) ? UsageService.CAPTURE : UsageService.IMPORT);
         String cleanLabel = label == null || label.isBlank() ? "codebase" : label.strip();
         if (cleanLabel.length() > 120) cleanLabel = cleanLabel.substring(0, 120);
         UUID id = UUID.randomUUID();
@@ -219,7 +232,8 @@ public class CodeMapService {
         return (start > 0 ? "\u2026" : "") + text.substring(start, end).strip() + (end < text.length() ? "\u2026" : "");
     }
 
-    private List<CodeDecisionLinks.Decision> decisions(Project project) {
+    /** The project's decisions in force, for linking code to them. */
+    public List<CodeDecisionLinks.Decision> decisions(Project project) {
         UUID userId = currentUser.id();
         List<CodeDecisionLinks.Decision> out = new ArrayList<>();
         for (MemoryRepository.StoredMemory m : memories.list(project.id(), userId, "DECISION", "ACTIVE", 500)) {

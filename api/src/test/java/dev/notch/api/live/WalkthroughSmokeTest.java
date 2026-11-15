@@ -177,6 +177,41 @@ class WalkthroughSmokeTest {
         assertTrue(unknown.body().contains("\"code\":\"not_found\""), unknown.body());
     }
 
+    @Test
+    @Order(14)
+    void aZippedCodebaseIsReviewedWithIssuesThatCiteRealFiles() throws Exception {
+        java.nio.file.Path root = sample("billing-service");
+        java.nio.file.Path zip = java.nio.file.Files.createTempFile("billing-service", ".zip");
+        try (var out = new java.util.zip.ZipOutputStream(java.nio.file.Files.newOutputStream(zip));
+             var files = java.nio.file.Files.walk(root)) {
+            for (java.nio.file.Path f : files.filter(java.nio.file.Files::isRegularFile).toList()) {
+                out.putNextEntry(new java.util.zip.ZipEntry("billing-service/" + root.relativize(f).toString().replace('\\', '/')));
+                out.write(java.nio.file.Files.readAllBytes(f));
+                out.closeEntry();
+            }
+        }
+        Res started = upload(p + "/reviews/zip", token, zip);
+        assertEquals(202, started.status(), started.body());
+        assertEquals("PENDING", started.json().get("status"));
+        String id = (String) started.json().get("id");
+        Res done = waitFor("the code review to finish", 180, () -> get(p + "/reviews/" + id, token),
+                x -> x.status() == 200 && !"PENDING".equals(x.json().get("status")));
+        assertEquals("DONE", done.json().get("status"), done.body());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> report = (Map<String, Object>) done.json().get("report");
+        assertNotNull(report.get("summary"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> issues = (List<Map<String, Object>>) report.get("issues");
+        assertFalse(issues.isEmpty(), "the sample has known problems");
+        for (Map<String, Object> issue : issues) {
+            assertTrue(List.of("high", "medium", "low").contains(issue.get("severity")), issue.toString());
+            Object file = issue.get("file");
+            if (file != null) assertTrue(java.nio.file.Files.exists(root.resolve((String) file)), "cites a real file: " + issue);
+        }
+        assertTrue(get(p + "/reviews", token).body().contains(id));
+        assertEquals(200, get(p + "/code-map", token).status(), "Explain gets the reviewed code's map too");
+    }
+
     private static String idOf(List<Map<String, Object>> memories, java.util.function.Predicate<String> title, String what) {
         return memories.stream().filter(m -> title.test((String) m.get("title")))
                 .map(m -> (String) m.get("id")).findFirst()

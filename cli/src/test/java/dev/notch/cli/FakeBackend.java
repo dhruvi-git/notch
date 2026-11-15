@@ -50,6 +50,14 @@ class FakeBackend implements NotchBackend {
         return path + "\nWhat it does: Shared Postgres pool.";
     }
 
+    final List<java.util.Map<String, Object>> reviews = new ArrayList<>();
+
+    @Override
+    public String submitReview(String label, java.util.Map<String, Object> report, Integer filesReviewed) {
+        reviews.add(java.util.Map.of("label", label, "report", report, "filesReviewed", filesReviewed == null ? -1 : filesReviewed));
+        return "Saved the review “" + label + "” to Notch.";
+    }
+
     @Override
     public String projectName() {
         return "Billing service";

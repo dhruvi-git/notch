@@ -26,6 +26,13 @@ public interface NotchBackend {
     /** What a file does, how it fits and why it's like this, from the project's code map. */
     String explainFile(String path) throws NotchException;
 
+    /**
+     * Saves a code review the agent wrote (/notch review) to the project. {@code report} has the
+     * review's shape: summary, areas, strengths, issues, recommendations. Returns a confirmation
+     * to show the user, with where to see it.
+     */
+    String submitReview(String label, java.util.Map<String, Object> report, Integer filesReviewed) throws NotchException;
+
     final class NotchException extends Exception {
         public NotchException(String message) {
             super(message);

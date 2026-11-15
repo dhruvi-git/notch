@@ -67,6 +67,16 @@ class SecretScannerTest {
     }
 
     @Test
+    void anAssignmentIsJudgedByItsValueAlone() {
+        assertTrue(scanner.scan("ANTHROPIC_MODEL=claude-sonnet-4-6\nNEXT_PUBLIC_SITE_NAME=TheWorldDecision2026").findings().isEmpty(),
+                "ordinary settings in an env file aren't secrets");
+        var r = scanner.scan("API_TOKEN=Zx9Kq2Lm7Np4Rt8Vw1Ys6Bc3Df5Gh0JkQ");
+        assertEquals(1, r.findings().size());
+        assertTrue(r.redacted().startsWith("API_TOKEN="), "the variable's name stays readable: " + r.redacted());
+        assertFalse(r.redacted().contains("Zx9Kq2Lm7Np4"));
+    }
+
+    @Test
     void shortKeyLikeStringsAreNotRedacted() {
         assertTrue(scanner.scan("sk-short").findings().isEmpty());
     }

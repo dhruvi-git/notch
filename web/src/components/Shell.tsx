@@ -24,6 +24,7 @@ export function Shell({ project, projects, user, usage, theme, driftCount, child
     { href: `${base}/recall`, label: "Recall" },
     { href: `${base}/resume`, label: "Where you stopped" },
     { href: `${base}/explain`, label: "Explain" },
+    { href: `${base}/review`, label: "Review" },
     { href: `${base}/compare`, label: "Compare" },
     { href: `${base}/ledger`, label: "Ledger" },
     { href: `${base}/drift`, label: "Drift", badge: driftCount },

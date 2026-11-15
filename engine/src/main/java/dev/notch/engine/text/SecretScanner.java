@@ -110,6 +110,14 @@ public final class SecretScanner {
             }
             int start = i;
             while (i < text.length() && (isTokenChar(text.charAt(i)) || isBase64Extra(text.charAt(i)))) i++;
+            // "NAME=value" (an env file, a shell export) is a name and a value, not one token: judge
+            // only the value, so ANTHROPIC_MODEL=claude-haiku-5-5 isn't a "secret" and a real one is
+            // redacted without hiding which variable it was.
+            int eq = text.indexOf('=', start);
+            if (eq > start && eq < i - 1 && text.charAt(eq + 1) != '='
+                    && text.substring(start, eq).matches("[A-Za-z_][A-Za-z0-9_.]*")) {
+                start = eq + 1;
+            }
             String token = text.substring(start, i);
             boolean inUrlPath = false;
             for (int[] p : paths) inUrlPath |= start >= p[0] && start < p[1];
