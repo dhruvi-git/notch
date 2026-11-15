@@ -36,8 +36,19 @@ public final class FileSniffer {
         return Container.TEXT;
     }
 
+    /** A zip of source code rather than a chat export: it belongs in a code review. */
+    public static final class CodeArchiveException extends IllegalArgumentException {
+        public CodeArchiveException() {
+            super("the zip holds source code, not a chat export");
+        }
+    }
+
+    private static final java.util.regex.Pattern SOURCE = java.util.regex.Pattern.compile(
+            "(?i).+\\.(ts|tsx|js|jsx|mjs|py|java|kt|go|rs|rb|php|cs|swift|c|cc|cpp|h|vue|svelte)$");
+
     /** Reads {@code conversations.json} from a ChatGPT or Claude export archive. */
     public static byte[] extractConversationsJson(byte[] zip) {
+        int sourceFiles = 0;
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip))) {
             ZipEntry entry;
             while ((entry = in.getNextEntry()) != null) {
@@ -46,11 +57,13 @@ public final class FileSniffer {
                         || name.endsWith("/conversations.json"))) {
                     return readLimited(in);
                 }
+                if (!entry.isDirectory() && SOURCE.matcher(name).matches()) sourceFiles++;
             }
         } catch (IOException e) {
             throw new IllegalArgumentException("the zip file could not be read", e);
         }
-        throw new IllegalArgumentException("the zip file has no conversations.json");
+        if (sourceFiles >= 3) throw new CodeArchiveException();
+        throw new IllegalArgumentException("the zip has no conversations.json, so it isn't a ChatGPT or Claude export");
     }
 
     private static byte[] readLimited(ZipInputStream in) throws IOException {

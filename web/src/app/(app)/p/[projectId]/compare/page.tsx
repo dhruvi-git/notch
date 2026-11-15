@@ -6,7 +6,7 @@ import type { ComparisonSummary } from "@/lib/types";
 import { NewComparison } from "./NewComparison";
 import styles from "./compare.module.css";
 
-export const metadata: Metadata = { title: "Compare" };
+export const metadata: Metadata = { title: "Compare options" };
 
 export default async function ComparePage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;

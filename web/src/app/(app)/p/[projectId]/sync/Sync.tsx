@@ -65,7 +65,7 @@ export function Sync({ projectId }: { projectId: string }) {
   const current = TARGETS.find((t) => t.id === target)!;
   return (
     <div className={styles.page}>
-      <h1>Sync</h1>
+      <h1>Connect repo</h1>
       <p className={styles.intro}>
         Give your coding assistant this project&rsquo;s decisions, so it follows them instead of starting from zero. Each
         version is written fresh from the Ledger: decisions first, then open tasks, where you stopped, and known fixes.

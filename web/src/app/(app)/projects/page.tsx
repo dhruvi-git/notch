@@ -24,7 +24,7 @@ export default async function Projects() {
       <main className={styles.main}>
         <h1>Projects</h1>
         <p className={styles.intro}>
-          A project holds the conversations, decisions and notes for one codebase or piece of work.
+          One project per codebase. Create one, add your code, and Notch reviews it, maps it and keeps its decisions.
         </p>
         {projects.length > 0 ? (
           <ul className={styles.list}>

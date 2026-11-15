@@ -39,7 +39,7 @@ import java.util.UUID;
 @Service
 public class CodeMapService {
 
-    static final long MAX_ZIP_BYTES = 25L * 1024 * 1024;
+    static final long MAX_ZIP_BYTES = 100L * 1024 * 1024;
 
     public record Uploaded(UUID id, String label, String source, Instant createdAt, CodeMap.Stats stats) {
     }
@@ -105,7 +105,7 @@ public class CodeMapService {
         Project project = projects.require(projectId);
         if (file == null || file.isEmpty()) throw ApiException.badRequest("empty_file", "Choose a .zip of your code.");
         if (file.getSize() > MAX_ZIP_BYTES) {
-            throw ApiException.tooLarge("The zip is over 25 MB. Leave out node_modules and build folders, or use notch map.");
+            throw ApiException.tooLarge("The zip is over 100 MB. Leave out node_modules and build folders, or use notch map.");
         }
         ZipSource.Result read;
         try {

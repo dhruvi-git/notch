@@ -3,7 +3,7 @@ import { api } from "@/lib/server-api";
 import type { ConversationSummary, Usage } from "@/lib/types";
 import { Recall } from "./Recall";
 
-export const metadata: Metadata = { title: "Recall" };
+export const metadata: Metadata = { title: "Ask" };
 
 export default async function RecallPage({
   params,

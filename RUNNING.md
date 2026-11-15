@@ -114,8 +114,9 @@ Postgres decision from the other samples it shows up as code that goes against a
 
 ## 9. Review a codebase
 
-Open **Review** in a project and drop a zip (the same `billing-service.zip` works). In under a
-minute you get an overall assessment, a breakdown by area, the issues with file and line, what's
+Open **Upload** (or **Review**) in a project and choose your project folder; no need to zip it,
+because `node_modules`, `.git`, build output and local `.env` files are left out in the browser.
+A zip works too (the same `billing-service.zip`), up to 100 MB. In under a minute you get an overall assessment, a breakdown by area, the issues with file and line, what's
 done well, and recommendations. Notch's own checks always run; with `ANTHROPIC_API_KEY` set
 (step 10), Claude also reads the code. The sample's events module uses MongoDB, so with a
 Postgres decision recorded it's flagged as going against it.
@@ -125,7 +126,25 @@ In a repository set up with `notch init`, the same review comes from Claude Code
 Review page. (`notch init` adds the `/notch` command; in a repository set up earlier, run
 `notch setup claude` once.)
 
-## 10. Optional: use real AI models
+## 10. Optional: sign in with Google
+
+Without this, local sign-in uses the test user under "Local development". To add **Continue with
+Google** (about 5 minutes, free):
+
+1. Open console.cloud.google.com, create a project (or pick one), then **APIs & Services → OAuth
+   consent screen**: choose **External**, fill in the app name and your email, and under **Test
+   users** add the Google accounts that may sign in while the app is in testing.
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web
+   application**. Under **Authorized redirect URIs** add exactly
+   `http://localhost:8090/auth/google/callback`.
+3. Put the client ID and secret in the repository's `.env` (it's gitignored) as
+   `GOOGLE_CLIENT_ID=...` and `GOOGLE_CLIENT_SECRET=...`, and start the API with them loaded, the
+   same way as the AI keys in step 11. `curl localhost:8090/auth/config` then says `"google":true`.
+
+When you deploy, add the deployed API's `/auth/google/callback` address as a second redirect URI
+and set `GOOGLE_CALLBACK_URL` to it.
+
+## 11. Optional: use real AI models
 
 Without keys, Notch runs fully offline: answers quote the passages that match, decisions are found
 by patterns, and "meaning" search compares words. With keys, Claude writes answers and finds
@@ -168,7 +187,7 @@ mvn -q -pl api test -Dtest=SearchEvaluationTest -Dnotch.eval.out=../docs/evaluat
 
 `docs/evaluation.md` then gains a section comparing Voyage with the offline embeddings.
 
-## 11. Try the guard and the MCP server
+## 12. Try the guard and the MCP server
 
 ```bash
 mvn -q -pl cli -am package

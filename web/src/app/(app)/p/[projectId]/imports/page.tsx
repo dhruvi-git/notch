@@ -7,7 +7,7 @@ import type { ImportReport, Usage } from "@/lib/types";
 import { ImportPanel } from "./ImportPanel";
 import styles from "./imports.module.css";
 
-export const metadata: Metadata = { title: "Imports" };
+export const metadata: Metadata = { title: "Upload" };
 
 export default async function Imports({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -17,21 +17,21 @@ export default async function Imports({ params }: { params: Promise<{ projectId:
   ]);
   return (
     <div className={styles.page}>
-      <h1>Imports</h1>
+      <h1>Upload</h1>
       <p className={styles.intro}>
-        Notch captures your Claude Code sessions and commits by itself once a repository is connected. Here you can also
-        bring in ChatGPT or Claude exports and notes. Secrets are hidden before anything is saved, and passages you&rsquo;ve
-        already got are skipped.
+        Start with your code: drop the project folder and Notch reviews it and maps how it works. Add chats whenever you
+        like, or connect the repository and Notch captures your Claude Code sessions and commits by itself. Secrets are
+        hidden before anything is saved.
       </p>
-
-      <ConnectRepo projectId={projectId} compact />
 
       <ImportPanel projectId={projectId} remaining={usage.remaining.import} limit={usage.limits.import} />
 
+      <ConnectRepo projectId={projectId} compact />
+
       <section className={styles.history} aria-labelledby="history-title">
-        <h2 id="history-title">Earlier imports</h2>
+        <h2 id="history-title">Chats and notes added</h2>
         {imports.length === 0 ? (
-          <p className="muted">Nothing imported yet. Your first file will appear here.</p>
+          <p className="muted">No chats or notes yet. They&rsquo;re optional; reviews of your code are under Review.</p>
         ) : (
           <ol className={styles.list}>
             {imports.map((r) => {

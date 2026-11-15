@@ -16,7 +16,7 @@ export default async function Conversations({ params }: { params: Promise<{ proj
       {conversations.length === 0 ? (
         <p className={styles.empty}>
           No conversations yet. Connect the repository to capture Claude Code sessions and commits automatically, or{" "}
-          <Link href={`/p/${projectId}/imports`}>import a chat export</Link>.
+          <Link href={`/p/${projectId}/imports`}>add a chat or notes</Link> (optional).
         </p>
       ) : (
         <>

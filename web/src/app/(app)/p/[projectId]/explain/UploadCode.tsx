@@ -6,7 +6,7 @@ import { call, ClientApiError } from "@/lib/client-api";
 import type { CodeUpload } from "@/lib/types";
 import styles from "./explain.module.css";
 
-const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_BYTES = 100 * 1024 * 1024;
 
 /** Upload a zipped codebase; the server maps it and keeps only the map. */
 export function UploadCode({ projectId, compact = false }: { projectId: string; compact?: boolean }) {
@@ -20,7 +20,7 @@ export function UploadCode({ projectId, compact = false }: { projectId: string; 
     if (!file) return;
     setError(null);
     if (!file.name.toLowerCase().endsWith(".zip")) return setError("Choose a .zip of your code.");
-    if (file.size > MAX_BYTES) return setError("That zip is over 25 MB. Leave out node_modules and build folders, or use notch map.");
+    if (file.size > MAX_BYTES) return setError("That zip is over 100 MB. Leave out node_modules and build folders, or use notch map.");
     setState("uploading");
     const body = new FormData();
     body.append("file", file);
@@ -70,7 +70,7 @@ export function UploadCode({ projectId, compact = false }: { projectId: string; 
       {picker}
       <h2 id="zip-title" className={styles.dropTitle}>Drop a zip of your code</h2>
       <p>
-        GitHub&rsquo;s &ldquo;Download ZIP&rdquo; works as is. Up to 25 MB; <code>node_modules</code> and build folders are
+        GitHub&rsquo;s &ldquo;Download ZIP&rdquo; works as is. Up to 100 MB; <code>node_modules</code>, <code>.git</code> and build folders are
         skipped. The code is mapped and then discarded.
       </p>
       <div>
