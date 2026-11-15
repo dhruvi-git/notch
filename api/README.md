@@ -112,6 +112,7 @@ curl -s localhost:8090/api/usage
 | GET | `/api/projects/{id}/code-map` | Overview: stats, modules, areas, start here, entry points, possibly unused, conflicts, tools |
 | GET | `/api/projects/{id}/code-map/files` | Every file with its role and summary |
 | GET | `/api/projects/{id}/code-map/file?path=` | One file: what, how (imports, used by, affected) and why (decisions, chats) |
+| GET | `/api/projects/{id}/health` | The health check (understanding, decisions, spread across sessions, unfinished work, quality, each with evidence and an action) and the recap: done recently, still to do, probably forgotten |
 | POST | `/api/projects/{id}/uploads` | Anything at all: a codebase zip is reviewed and mapped (`{"kind": "code", "review"}`), a chat export, note or transcript is imported (`{"kind": "chats", "imported"}`) |
 | POST | `/api/projects/{id}/reviews/zip` | Review a zipped codebase (25 MB) in the background; returns the pending review (202) |
 | POST | `/api/projects/{id}/reviews` | Save a review written by Claude Code (`{"label", "filesReviewed", "report"}`) |

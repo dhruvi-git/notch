@@ -3,6 +3,29 @@ import { NotchMark } from "@/components/Brand";
 import { HeroDemo } from "./HeroDemo";
 import styles from "./landing.module.css";
 
+const WHY = [
+  {
+    name: "You don't know what's in your code",
+    text: "Agents wrote it faster than you read it. You can't debug it and you're afraid to change it.",
+    fix: "Notch lists the files agents changed that you've never looked at, most depended-on first, and Explain walks you through them.",
+  },
+  {
+    name: "Nobody remembers why",
+    text: "Decisions and pivots happened in chats that are gone. Half the code still follows the old plan, and a new session undoes last week's choice.",
+    fix: "Every decision and pivot is kept with its reason and source, and code that still follows the old plan is flagged.",
+  },
+  {
+    name: "Your agents pull in different directions",
+    text: "Claude Code here, Codex there, quick fixes in Cursor. The same file changes again and again, in different styles.",
+    fix: "Notch groups sessions into work streams and shows the files being pulled between them. Every agent reads the same decisions.",
+  },
+  {
+    name: "You forget what's done and what isn't",
+    text: "You come back after a week and can't tell where you were, so you start over, or stop.",
+    fix: "Each project opens on where things stand: done recently, still to do, and what you've probably forgotten.",
+  },
+];
+
 const FEATURES = [
   {
     name: "Review your code",
@@ -66,6 +89,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
             notch
           </Link>
           <nav aria-label="On this page" className={styles.navLinks}>
+            <a href="#why">Why Notch</a>
             <a href="#features">What it does</a>
             <a href="#how">How it works</a>
             <a href="#claude-code">Claude Code</a>
@@ -78,10 +102,10 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
 
         <section className={styles.hero}>
           <div className={styles.heroText}>
-            <h1 className={styles.title}>Understand your code, and remember why it&rsquo;s built that way.</h1>
+            <h1 className={styles.title}>The second brain for projects you build with AI.</h1>
             <p className={styles.lede}>
-              Drop in a project folder. Notch reviews it, maps how the pieces fit together, and keeps the decisions behind
-              it, so neither you nor your coding agent starts from zero.
+              Agents write code faster than you can follow it. Notch remembers what was decided, what&rsquo;s done and what
+              isn&rsquo;t, shows you the code you&rsquo;ve never read, and warns you before the project drifts apart.
             </p>
             <div className={styles.ctas}>
               <Link href={start} className="btn btn-yellow">
@@ -98,6 +122,25 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
       </div>
 
       <main>
+        <section id="why" className={styles.section} aria-labelledby="why-title">
+          <h2 id="why-title" className={styles.sectionTitle}>
+            Why projects fall apart
+          </h2>
+          <p className={styles.sectionLede}>
+            Rarely because the code couldn&rsquo;t be written. Usually because the developer lost track of it. Notch checks
+            every project for these four, with the evidence.
+          </p>
+          <ul className={styles.features}>
+            {WHY.map((w) => (
+              <li key={w.name} className={styles.feature}>
+                <h3>{w.name}</h3>
+                <p>{w.text}</p>
+                <p className={styles.fixLine}>{w.fix}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <section id="features" className={styles.section} aria-labelledby="features-title">
           <h2 id="features-title" className={styles.sectionTitle}>
             What Notch does

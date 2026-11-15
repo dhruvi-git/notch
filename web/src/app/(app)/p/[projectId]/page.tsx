@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ApiError, api } from "@/lib/server-api";
 import { plural, relativeTime } from "@/lib/format";
-import type { CodeOverview, ConversationSummary, Project, ResumeView, ReviewDetail, ReviewSummary } from "@/lib/types";
+import type {
+  CodeOverview, ConversationSummary, Health, HealthRisk, Project, RecapItem, ResumeView, ReviewDetail, ReviewSummary,
+} from "@/lib/types";
 import styles from "./overview.module.css";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -23,12 +25,13 @@ async function optional<T>(path: string): Promise<T | null> {
 export default async function Overview({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
   const p = `/api/projects/${projectId}`;
-  const [project, reviews, map, resume, conversations] = await Promise.all([
+  const [project, reviews, map, resume, conversations, health] = await Promise.all([
     api<Project>(p),
     api<ReviewSummary[]>(`${p}/reviews`),
     optional<CodeOverview>(`${p}/code-map`),
     api<ResumeView>(`${p}/resume`),
     api<ConversationSummary[]>(`${p}/conversations`),
+    api<Health>(`${p}/health`),
   ]);
   const latestDone = reviews.find((r) => r.status === "DONE");
   const running = reviews.find((r) => r.status === "PENDING");
@@ -107,6 +110,22 @@ export default async function Overview({ params }: { params: Promise<{ projectId
         </section>
       ) : null}
 
+      <Recap recap={health.recap} />
+
+      <section className={styles.health} aria-labelledby="health-title">
+        <h2 id="health-title">Health check</h2>
+        <p className={styles.healthIntro}>
+          The ways projects built with AI agents fall apart, checked against this one. Each comes with the evidence and one
+          thing to do.
+        </p>
+        <ul className={styles.risks}>
+          {health.risks.map((r) => (
+            <RiskRow key={r.key} risk={r} base={base} />
+          ))}
+        </ul>
+      </section>
+
+      <h2 className={styles.glanceTitle}>At a glance</h2>
       <div className={styles.grid}>
         <section className={`${styles.panel} ${styles.wide}`} aria-labelledby="review-title">
           <div className={styles.panelHead}>
@@ -213,6 +232,70 @@ export default async function Overview({ params }: { params: Promise<{ projectId
         what it&rsquo;s doing in this project.
       </p>
     </div>
+  );
+}
+
+const LEVEL: Record<string, string> = { ok: "Fine", watch: "Worth a look", risk: "At risk", none: "Not enough yet" };
+
+function RiskRow({ risk, base }: { risk: HealthRisk; base: string }) {
+  return (
+    <li className={styles.risk} data-level={risk.level}>
+      <div className={styles.riskHead}>
+        <span className={styles.level} data-level={risk.level}>{LEVEL[risk.level] ?? risk.level}</span>
+        <h3>{risk.title}</h3>
+      </div>
+      <p className={styles.riskHeadline}>{risk.headline}</p>
+      {risk.evidence.length > 0 ? (
+        <ul className={styles.evidence}>
+          {risk.evidence.map((e) => (
+            <li key={e.text}>
+              {e.link ? <Link href={`${base}/${e.link}`}>{e.text}</Link> : <span>{e.text}</span>}
+              {e.detail ? <span className={styles.evidenceDetail}> {e.detail}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {risk.level !== "ok" ? (
+        <Link href={`${base}/${risk.actionLink}`} className={styles.riskAction}>
+          {risk.action}
+        </Link>
+      ) : null}
+    </li>
+  );
+}
+
+/** The second brain: what's done, what isn't, and what's been forgotten, for coming back to a project. */
+function Recap({ recap }: { recap: Health["recap"] }) {
+  if (recap.done.length + recap.open.length + recap.forgotten.length === 0) return null;
+  const column = (title: string, items: RecapItem[], empty: string, tone: string) => (
+    <div className={styles.recapCol} data-tone={tone}>
+      <h3>{title}</h3>
+      {items.length === 0 ? (
+        <p className={styles.empty}>{empty}</p>
+      ) : (
+        <ul>
+          {items.map((i, n) => (
+            <li key={n}>
+              <span>{i.text}</span>
+              <span className={styles.recapMeta}>
+                {i.detail ? `${i.detail}, ` : ""}
+                {relativeTime(i.when).toLowerCase()}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+  return (
+    <section className={styles.recap} aria-labelledby="recap-title">
+      <h2 id="recap-title">Where things stand</h2>
+      <div className={styles.recapGrid}>
+        {column("Done recently", recap.done, "Nothing finished in the last three weeks.", "done")}
+        {column("Still to do", recap.open, "No recent open tasks.", "open")}
+        {column("You may have forgotten", recap.forgotten, "Nothing left hanging.", "forgotten")}
+      </div>
+    </section>
   );
 }
 
