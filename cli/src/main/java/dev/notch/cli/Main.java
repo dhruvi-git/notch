@@ -802,10 +802,38 @@ public final class Main {
         Files.createDirectories(file.toAbsolutePath().getParent());
         Files.writeString(file, Json.pretty(config), StandardCharsets.UTF_8);
         out.println("Connected " + agent + " to Notch through " + root.relativize(file) + ".");
+        if ("claude".equals(agent)) claudeSkill(root);
         if ("claude".equals(agent) && !a.has("quiet-tip")) {
             out.println("Also stop edits that break decisions: notch hook claude");
         }
         return OK;
+    }
+
+    static final String SKILL_MARKER = "Installed by Notch";
+
+    /**
+     * The /notch command for Claude Code: review the codebase, resume, why, decisions. It uses
+     * Notch's MCP tools and names no paths on this machine, so the file can be committed and
+     * shared. A skill of the same name that Notch didn't write is left alone.
+     */
+    private void claudeSkill(Path root) throws IOException {
+        Path file = claudeSkillFile(root);
+        if (Files.exists(file) && !Files.readString(file, StandardCharsets.UTF_8).contains(SKILL_MARKER)) {
+            out.println("Left " + root.relativize(file) + " as it is: it wasn't written by Notch.");
+            return;
+        }
+        String skill;
+        try (var in = Main.class.getResourceAsStream("notch-skill.md")) {
+            if (in == null) throw new IOException("the /notch skill is missing from this build of Notch");
+            skill = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, skill, StandardCharsets.UTF_8);
+        out.println("Added the /notch command for Claude Code: /notch review, /notch resume, /notch why, /notch decisions.");
+    }
+
+    static Path claudeSkillFile(Path root) {
+        return root.resolve(".claude").resolve("skills").resolve("notch").resolve("SKILL.md");
     }
 
     // ------------------------------------------------------------------ helpers

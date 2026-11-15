@@ -26,6 +26,16 @@ public interface LlmClient {
         return true;
     }
 
+    /**
+     * Reviews code and returns the review as parsed JSON in {@code ReviewReport}'s shape
+     * (summary, areas, strengths, issues, recommendations), still to be checked by the caller.
+     * Null when this client can't review code (offline). Throws {@link IllegalStateException}
+     * with the reason when a model was asked and didn't deliver. Only called for non-private projects.
+     */
+    default java.util.Map<String, Object> reviewCode(CodeReviewRequest request) {
+        return null;
+    }
+
     /** A short name for logs and the UI, such as "offline" or a provider name. */
     String name();
 }

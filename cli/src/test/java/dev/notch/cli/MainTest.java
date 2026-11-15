@@ -202,6 +202,16 @@ class MainTest {
         assertEquals(Main.OK, run("", "setup", "claude"));
         Map<String, Object> mcp = Json.obj(Json.obj(Json.parse(Files.readString(repo.resolve(".mcp.json")))).get("mcpServers"));
         assertEquals("notch", Json.obj(mcp.get("notch")).get("command"));
+
+        Path skill = Main.claudeSkillFile(repo);
+        String text = Files.readString(skill).replace("\r", "");
+        assertTrue(text.startsWith("---\nname: notch\n"), "a Claude Code skill, so /notch works");
+        assertTrue(text.contains("notch_submit_review") && text.contains(Main.SKILL_MARKER));
+        assertFalse(text.contains(repo.toString()) || text.contains("-jar"), "no paths from this machine: the skill can be committed");
+        String mine = "---\nname: notch\n---\nMy own.";
+        Files.writeString(skill, mine);
+        assertEquals(Main.OK, run("", "setup", "claude"));
+        assertEquals(mine, Files.readString(skill), "a skill the user wrote is left alone");
     }
 
     @Test

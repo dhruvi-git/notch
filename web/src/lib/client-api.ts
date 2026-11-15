@@ -14,12 +14,12 @@ export class ClientApiError extends Error {
 
 /**
  * Calls the API from the browser through the app's own /api/n proxy, which adds the session
- * token. An expired session reloads into the sign-in page.
+ * token. An expired session clears the cookie and reloads into the sign-in page.
  */
 export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch("/api/n" + path, init);
   if (res.status === 401) {
-    window.location.href = "/sign-in?expired=1";
+    window.location.href = "/auth/expired";
     throw new ClientApiError(401, "sign_in_required", "Sign in to continue.");
   }
   if (!res.ok) {

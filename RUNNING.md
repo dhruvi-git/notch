@@ -58,10 +58,10 @@ Windows (PowerShell):
 $env:NOTCH_API_URL="http://localhost:8090"; mvn -pl api test "-Dtest=WalkthroughSmokeTest,CrossUserIsolationTest"
 ```
 
-- **WalkthroughSmokeTest** (13 steps) imports every sample, waits for background processing,
+- **WalkthroughSmokeTest** (14 steps) imports every sample, waits for background processing,
   then checks redaction, duplicate skipping, decision extraction, search, cited answers,
   autocomplete, drift alerts, superseding, "where you stopped", context packs, agent files,
-  daily limits and error responses. Each step is its own test, so a failure names the feature.
+  daily limits, error responses and code review. Each step is its own test, so a failure names the feature.
 - **CrossUserIsolationTest** (7 tests) proves one user gets 404 for everything belonging to another.
 
 Both create fresh test users, so you can run them as often as you like.
@@ -112,7 +112,20 @@ Import `samples/code-review-chat.md` too, and the file views show the conversati
 `src/lib/db.ts` and `src/events/store.ts`. The events module imports MongoDB, so with the
 Postgres decision from the other samples it shows up as code that goes against a decision.
 
-## 9. Optional: use real AI models
+## 9. Review a codebase
+
+Open **Review** in a project and drop a zip (the same `billing-service.zip` works). In under a
+minute you get an overall assessment, a breakdown by area, the issues with file and line, what's
+done well, and recommendations. Notch's own checks always run; with `ANTHROPIC_API_KEY` set
+(step 10), Claude also reads the code. The sample's events module uses MongoDB, so with a
+Postgres decision recorded it's flagged as going against it.
+
+In a repository set up with `notch init`, the same review comes from Claude Code: type
+`/notch review`. Claude Code reads the repository, saves the review, and it appears on the
+Review page. (`notch init` adds the `/notch` command; in a repository set up earlier, run
+`notch setup claude` once.)
+
+## 10. Optional: use real AI models
 
 Without keys, Notch runs fully offline: answers quote the passages that match, decisions are found
 by patterns, and "meaning" search compares words. With keys, Claude writes answers and finds
@@ -155,7 +168,7 @@ mvn -q -pl api test -Dtest=SearchEvaluationTest -Dnotch.eval.out=../docs/evaluat
 
 `docs/evaluation.md` then gains a section comparing Voyage with the offline embeddings.
 
-## 10. Try the guard and the MCP server
+## 11. Try the guard and the MCP server
 
 ```bash
 mvn -q -pl cli -am package

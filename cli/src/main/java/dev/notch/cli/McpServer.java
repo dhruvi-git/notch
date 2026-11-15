@@ -141,10 +141,56 @@ public final class McpServer {
                         + "changing code you didn't write.",
                 Map.of("path", prop("string", "The file's path from the repository root, such as src/db/pool.ts.")),
                 List.of("path")));
+        t.add(tool("notch_submit_review",
+                "Save a code review you wrote of this repository to Notch, so it appears on the project's Review page "
+                        + "next to the project's decisions. Notch adds its own checks (code that goes against a recorded "
+                        + "decision, secrets). Use after reviewing the code for /notch review.",
+                Map.of("label", prop("string", "A name for the review, usually the repository's name."),
+                        "files_reviewed", prop("integer", "How many files you read for the review."),
+                        "report", reviewSchema()),
+                List.of("report")));
         t.add(tool("notch_add_task",
                 "Add an open task to the project, such as follow-up work agreed with the user.",
                 Map.of("task", prop("string", "The task in one sentence.")), List.of("task")));
         return t;
+    }
+
+    /** The review's shape, as JSON Schema, so the agent sends exactly what the Review page shows. */
+    static Map<String, Object> reviewSchema() {
+        Map<String, Object> str = Map.of("type", "string");
+        Map<String, Object> area = Map.of("type", "object", "properties", Map.of(
+                "name", prop("string", "A major part of the codebase: a module, layer or feature."),
+                "rating", Map.of("type", "string", "enum", List.of("good", "fair", "weak")),
+                "assessment", prop("string", "1-3 sentences on how it's built and its quality.")),
+                "required", List.of("name", "rating", "assessment"));
+        Map<String, Object> issue = Map.of("type", "object", "properties", Map.of(
+                "severity", Map.of("type", "string", "enum", List.of("high", "medium", "low"),
+                        "description", "high: breaks, loses data or is exploitable; medium: likely to cause trouble; low: worth tidying."),
+                "category", Map.of("type", "string", "enum", List.of("bug", "security", "performance", "maintainability", "testing", "decision", "other"),
+                        "description", "decision: the code goes against a decision from notch_decisions."),
+                "title", prop("string", "The problem in one plain sentence."),
+                "file", prop("string", "Path from the repository root, or omit for the codebase as a whole."),
+                "line", prop("integer", "Line number in the file, if it's one place."),
+                "detail", prop("string", "What's wrong and why it matters."),
+                "recommendation", prop("string", "How to fix it, concretely.")),
+                "required", List.of("severity", "category", "title", "detail", "recommendation"));
+        Map<String, Object> recommendation = Map.of("type", "object", "properties", Map.of(
+                "priority", Map.of("type", "string", "enum", List.of("now", "soon", "later")),
+                "title", str,
+                "detail", str),
+                "required", List.of("priority", "title", "detail"));
+        Map<String, Object> props = new LinkedHashMap<>();
+        props.put("summary", prop("string", "The overall assessment in 3-5 sentences: what it is, how it's built, its quality, the most important thing to fix."));
+        props.put("areas", Map.of("type", "array", "items", area, "description", "The breakdown by part of the codebase."));
+        props.put("strengths", Map.of("type", "array", "items", str, "description", "2-6 things done well, one sentence each."));
+        props.put("issues", Map.of("type", "array", "items", issue, "description", "Real problems found, most severe first; at most 25."));
+        props.put("recommendations", Map.of("type", "array", "items", recommendation, "description", "3-6 next steps for the codebase as a whole."));
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        schema.put("description", "The review.");
+        schema.put("properties", props);
+        schema.put("required", List.of("summary", "issues"));
+        return schema;
     }
 
     private Map<String, Object> call(Map<String, Object> params) {
@@ -158,6 +204,7 @@ public final class McpServer {
                 case "notch_where_we_stopped" -> backend.whereWeStopped();
                 case "notch_record_decision" -> recordDecision(args);
                 case "notch_add_task" -> "Added task " + backend.record("TASK", require(args, "task"), null, List.of()) + ".";
+                case "notch_submit_review" -> submitReview(args);
                 case "notch_explain_file" -> backend.explainFile(require(args, "path").replace('\\', '/'));
                 case "notch_replace_decision" -> "Replaced the decision. The new one is " + backend.replace(require(args, "decision_id"),
                         require(args, "new_decision"), Json.str(args, "why"), listArg(args, "ruled_out"))
@@ -219,6 +266,16 @@ public final class McpServer {
         List<String> out = new ArrayList<>();
         if (args.get(key) instanceof List<?> l) for (Object o : l) if (o != null && !o.toString().isBlank()) out.add(o.toString());
         return out;
+    }
+
+    private String submitReview(Map<String, Object> args) throws NotchBackend.NotchException {
+        Object report = args.get("report");
+        // Some clients send nested objects as a JSON string.
+        if (report instanceof String text && text.strip().startsWith("{")) report = Json.parse(text);
+        if (!(report instanceof Map<?, ?>)) throw new IllegalArgumentException("Missing argument: report (the review as an object)");
+        Integer files = args.get("files_reviewed") instanceof Number n ? n.intValue() : null;
+        String label = Json.str(args, "label");
+        return backend.submitReview(label == null || label.isBlank() ? backend.projectName() : label.strip(), Json.obj(report), files);
     }
 
     private String recordDecision(Map<String, Object> args) throws NotchBackend.NotchException {

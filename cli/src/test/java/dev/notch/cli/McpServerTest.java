@@ -44,12 +44,28 @@ class McpServerTest {
     }
 
     @Test
-    void listsTheEightTools() {
+    void listsTheNineTools() {
         List<Object> tools = Json.arr(Json.obj(reply("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}").get("result")).get("tools"));
         assertEquals(List.of("notch_decisions", "notch_check_change", "notch_search", "notch_where_we_stopped",
-                "notch_record_decision", "notch_replace_decision", "notch_explain_file", "notch_add_task"),
+                "notch_record_decision", "notch_replace_decision", "notch_explain_file", "notch_submit_review", "notch_add_task"),
                 tools.stream().map(t -> Json.obj(t).get("name")).toList());
         for (Object t : tools) assertEquals("object", Json.obj(Json.obj(t).get("inputSchema")).get("type"));
+    }
+
+    @Test
+    void reviewsAreSavedWhetherTheReportArrivesAsAnObjectOrAString() {
+        String text = toolText("notch_submit_review", "{\"label\":\"billing\",\"files_reviewed\":12,"
+                + "\"report\":{\"summary\":\"Solid.\",\"issues\":[]}}");
+        assertTrue(text.startsWith("Saved the review"), text);
+        assertEquals("billing", backend.reviews.get(0).get("label"));
+        assertEquals(12, backend.reviews.get(0).get("filesReviewed"));
+        assertEquals("Solid.", Json.obj(backend.reviews.get(0).get("report")).get("summary"));
+
+        toolText("notch_submit_review", "{\"report\":\"{\\\"summary\\\":\\\"From a string.\\\"}\"}");
+        assertEquals("Billing service", backend.reviews.get(1).get("label"), "the project's name when no label is given");
+        assertEquals("From a string.", Json.obj(backend.reviews.get(1).get("report")).get("summary"));
+
+        assertTrue(toolText("notch_submit_review", "{\"label\":\"x\"}").contains("Missing argument: report"));
     }
 
     @Test

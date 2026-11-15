@@ -6,6 +6,8 @@ written:
 - **Guard:** stops commits, Claude Code edits and pull requests that go against a decision.
 - **MCP server:** gives Claude Code, Codex and Cursor the project's decisions and history,
   and lets them record new decisions as you make them.
+- **`/notch` in Claude Code:** `/notch review` reviews the whole codebase and saves the review
+  to Notch; `/notch resume`, `/notch why` and `/notch decisions` bring the project's memory in.
 
 Decisions are downloaded and checked **on your machine**: your code is never sent to Notch.
 The last download is kept, so checks still work offline.
@@ -121,6 +123,22 @@ When something goes against a decision, Notch prints a `permissionDecision: "den
 decision: Claude Code cancels the call and shows Claude the reason, so it raises the conflict
 with you instead of working around it.
 
+## /notch in Claude Code
+
+`notch init` (and `notch setup claude`) adds `.claude/skills/notch/SKILL.md`, so typing `/notch`
+in Claude Code in that repository works:
+
+| Command | What happens |
+|---|---|
+| `/notch review` | Claude Code reads the codebase (entry points, data layer, auth, the most-imported modules), checks it against the decisions in force, and writes a review: an overall assessment, a breakdown by area, strengths, issues with file and line, and recommendations. It's saved with `notch_submit_review` and appears on the project's **Review** page, with Notch's own checks added (code that goes against a decision, secrets). Nothing is changed until you ask |
+| `/notch resume` | Where work stopped, open tasks and drift alerts |
+| `/notch why <error>` | What happened the last time this error came up, or a plain "not seen before" |
+| `/notch decisions [topic]` | The decisions in force: what was chosen, why, what was ruled out |
+
+The skill uses only Notch's MCP tools and names no paths on your machine, so it can be
+committed and shared with the team. A `notch` skill you wrote yourself is never overwritten.
+Claude Code reads your code as it always does; only the written review is sent to Notch.
+
 ## Explain: map your codebase
 
 ```bash
@@ -143,7 +161,7 @@ notch setup cursor     # writes .cursor/mcp.json
 notch setup codex      # prints the ~/.codex/config.toml entry
 ```
 
-The agent starts `notch mcp` itself and gets eight tools:
+The agent starts `notch mcp` itself and gets nine tools:
 
 | Tool | What the agent uses it for |
 |---|---|
@@ -154,6 +172,7 @@ The agent starts `notch mcp` itself and gets eight tools:
 | `notch_record_decision` | Record a decision the user just made, with why and what was ruled out |
 | `notch_replace_decision` | Replace a decision in force, once the user confirms; the old one stays in history |
 | `notch_explain_file` | What a file does, how it fits, what a change could affect, and the decisions and chats behind it |
+| `notch_submit_review` | Save a code review the agent wrote (used by `/notch review`) |
 | `notch_add_task` | Record follow-up work |
 
 The server speaks MCP's newline-delimited JSON-RPC over stdio. Recording decisions from inside

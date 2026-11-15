@@ -31,7 +31,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   } catch {
     throw new ApiError(503, "api_unreachable", `Can't reach the Notch API at ${API_URL}.`);
   }
-  if (res.status === 401) redirect("/sign-in?expired=1");
+  if (res.status === 401) redirect("/auth/expired");
   if (!res.ok) throw await toApiError(res);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

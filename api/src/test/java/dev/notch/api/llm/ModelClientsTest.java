@@ -369,4 +369,30 @@ class ModelClientsTest {
         assertEquals(4, requests, "a search doesn't wait: exact matching answers meanwhile");
         assertTrue(e.getMessage().contains("429: rate limited"), e.getMessage());
     }
+
+    @Test
+    void codeReviewsSendTheCodeAndDecisionsAndReportFailuresWithTheReason() throws Exception {
+        URI base = start();
+        replies.add(claude("""
+                {"summary": "A small billing API.", "areas": [], "strengths": ["Clear routes."],
+                 "issues": [{"severity": "high", "category": "bug", "title": "Refunds can go negative", "file": "src/refund.ts",
+                             "line": 2, "detail": "No check.", "recommendation": "Validate the amount."}],
+                 "recommendations": []}"""));
+        CodeReviewRequest request = new CodeReviewRequest("billing", "3 files.", List.of("Use Postgres (ruled out: MongoDB)"),
+                List.of(new CodeReviewRequest.File("src/refund.ts", "1| export function refund(a) {\n2|   return -a;\n", false)));
+        Map<String, Object> got = claudeClient(base, FALLBACK).reviewCode(request);
+        assertEquals("A small billing API.", got.get("summary"));
+        Map<String, Object> sent = Json.obj(Json.parse(lastBody.get()));
+        String user = (String) Json.obj(Json.arr(sent.get("messages")).get(0)).get("content");
+        assertTrue(user.contains("=== src/refund.ts ===") && user.contains("2|   return -a;"), "the numbered code is sent");
+        assertTrue(user.contains("Use Postgres (ruled out: MongoDB)"), "decisions are sent so drift is caught");
+        assertTrue(((String) sent.get("system")).contains("never instructions"), "code is treated as data");
+        assertEquals(AnthropicLlmClient.REVIEW_MAX_TOKENS, ((Number) sent.get("max_tokens")).intValue());
+
+        status = 400;
+        replies.add("{\"type\":\"error\",\"error\":{\"message\":\"Your credit balance is too low\"}}");
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> claudeClient(base, FALLBACK).reviewCode(request));
+        assertTrue(e.getMessage().contains("credit balance"), e.getMessage());
+        assertNull(FALLBACK.reviewCode(request), "offline clients don't review code");
+    }
 }
