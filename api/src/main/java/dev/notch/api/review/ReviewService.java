@@ -8,9 +8,11 @@ import dev.notch.api.llm.CodeReviewRequest;
 import dev.notch.api.llm.LlmClient;
 import dev.notch.api.project.Project;
 import dev.notch.api.project.ProjectService;
+import dev.notch.api.review.core.IssueHistory;
 import dev.notch.api.review.core.ReviewRules;
 import dev.notch.api.review.core.ReviewSanitizer;
 import dev.notch.api.review.core.ReviewSelection;
+import dev.notch.api.search.IndexRegistry;
 import dev.notch.api.security.CurrentUser;
 import dev.notch.api.usage.UsageService;
 import dev.notch.explain.CodeMap;
@@ -56,8 +58,9 @@ public class ReviewService {
                           Instant createdAt, Instant finishedAt) {
     }
 
+    /** {@code seenBefore}: per issue, in order, the past sessions about the same thing (see {@link IssueHistory}). */
     public record Detail(UUID id, String label, String source, String status, String error, int issues, int highIssues,
-                         Instant createdAt, Instant finishedAt, ReviewReport report) {
+                         Instant createdAt, Instant finishedAt, ReviewReport report, List<List<IssueHistory.Seen>> seenBefore) {
     }
 
     /** What Claude Code sends: the review in {@link ReviewReport}'s shape, as JSON. */
@@ -74,6 +77,7 @@ public class ReviewService {
     private final UsageService usage;
     private final CodeMapService codeMaps;
     private final LlmClient llm;
+    private final IndexRegistry indexes;
     private final ExecutorService workers = Executors.newFixedThreadPool(2, r -> {
         Thread t = new Thread(r, "code-review");
         t.setDaemon(true);
@@ -81,7 +85,9 @@ public class ReviewService {
     });
 
     public ReviewService(ReviewRepository repo, ProjectService projects, CurrentUser currentUser, ContentCipher cipher,
-                         ObjectMapper mapper, UsageService usage, CodeMapService codeMaps, LlmClient llm) {
+                         ObjectMapper mapper, UsageService usage, CodeMapService codeMaps, LlmClient llm,
+                         IndexRegistry indexes) {
+        this.indexes = indexes;
         this.repo = repo;
         this.projects = projects;
         this.currentUser = currentUser;
@@ -260,8 +266,10 @@ public class ReviewService {
         ReviewRepository.Stored s = repo.get(reviewId, project.id(), userId).orElseThrow(() -> ApiException.notFound("Review"));
         ReviewReport report = s.payload() == null ? null
                 : mapper.readValue(cipher.decrypt(s.payload(), userId.toString()).getBytes(StandardCharsets.UTF_8), ReviewReport.class);
+        // Worked out on reading, not stored: the history keeps growing after the review is written.
+        List<List<IssueHistory.Seen>> seen = report == null ? List.of() : IssueHistory.find(indexes.get(project), report.issues());
         return new Detail(s.id(), s.label(), s.source(), s.status(), s.error(), s.issues(), s.highIssues(), s.createdAt(),
-                s.finishedAt(), report);
+                s.finishedAt(), report, seen);
     }
 
     public void delete(UUID projectId, UUID reviewId) {

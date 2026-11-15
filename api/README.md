@@ -328,6 +328,13 @@ recommendations (now, soon, later).
 - **Claude Code** (`/notch review`) reads the repository itself and sends its review through the
   MCP tool. It's cleaned the same way, and the checks run on the project's latest code map.
 
+When a review is opened, each issue is linked to the project's history: the specific names in it
+(error codes, function calls, identifiers, the tool a decision ruled out, the file's path) are
+looked up exactly in the project's suffix array, and the newest matching sessions or commits are
+shown with how many related sessions union-find groups with them. It's worked out on reading, so
+it includes history captured after the review. The files Claude reads are the top of the
+priority order taken with Quickselect, not a full sort.
+
 Reviews run on a small worker pool; a review that was running when the server stopped is
 marked failed on the next start, because its code was only ever in memory.
 

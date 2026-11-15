@@ -9,14 +9,14 @@ in the rest of the project provide infrastructure and never replace these classe
 | Class | Technique | Unit | Used for | Time | Space |
 |---|---|---|---|---|---|
 | `text.SuffixArray` | Suffix array, prefix doubling with counting sort | 4 | Exact search over all conversations | Build O(n log n), query O(m log n) | O(n) |
-| `text.CorpusIndex` | Suffix array over joined documents | 4 | Error codes, identifiers, paths; per-document offsets | As above, plus O(log d) per hit to find its document | O(n) |
+| `text.CorpusIndex` | Suffix array over joined documents | 4 | Error codes, identifiers, paths; per-document offsets; a review issue's "seen before" history | As above, plus O(log d) per hit to find its document | O(n) |
 | `text.Kmp` | Knuth–Morris–Pratt | 4 | Highlighting cited spans; secret detection | O(n + m) | O(m) |
 | `text.SecretScanner` | KMP on key prefixes + Shannon entropy | 4 | Redacting credentials before storage | O(n · r) for r rules | O(n) |
-| `text.RadixTree` | Compressed trie with weighted keys | 4 | `@` autocomplete for projects, files, symbols | Insert/lookup O(L); complete O(p + s) expected for s matches | O(total key length) |
+| `text.RadixTree` | Compressed trie with weighted keys | 4 | `@` autocomplete for files (from the code map), symbols and chats | Insert/lookup O(L); complete O(p + s) expected for s matches | O(total key length) |
 | `probabilistic.BloomFilter` | Bloom filter, double hashing | 6 (CO5) | Skipping duplicate chunks before embedding | O(k) per add/check | m bits |
-| `select.RandomizedSelect` | Randomized Quickselect, 3-way partition | 6 (CO5) | Top-k results; context-budget selection; percentiles | Expected O(n + k log k) | O(n) copy |
+| `select.RandomizedSelect` | Randomized Quickselect, 3-way partition | 6 (CO5) | Top-k results; the files a code review reads; start-here files; percentiles | Expected O(n + k log k) | O(n) copy |
 | `graph.DisjointSetUnion` | Union by rank + path halving | 2 | Thread stitching | O(α(n)) amortized | O(n) |
-| `graph.ThreadStitcher` | Union-find over shared link keys | 2 | Grouping conversations about the same work | O(keys · α(n)) per conversation | O(n + keys) |
+| `graph.ThreadStitcher` | Union-find over shared link keys | 2 | Grouping sessions about the same work ("related sessions" on review issues) | O(keys · α(n)) per conversation | O(n + keys) |
 | `rank.HybridRanker` | Weighted signal fusion + Quickselect | 6 | Final ranking with per-signal explanations | Expected O(n + k log k) | O(n) |
 
 `baseline.Baselines` holds the straightforward versions (naive scan, linear prefix scan, full

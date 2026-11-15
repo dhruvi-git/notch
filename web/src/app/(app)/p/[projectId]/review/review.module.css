@@ -476,3 +476,58 @@
   font-size: var(--t-sm);
   overflow-x: auto;
 }
+
+/* Seen before: the project's history about the same thing */
+.seen {
+  margin-top: 0.35rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: var(--r-control);
+  background: var(--surface-sunken);
+}
+
+.seenHead {
+  font-size: var(--t-xs);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.seen ul {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seenMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--t-sm);
+}
+
+.seenDecision,
+.seenRelated {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.seenDecision {
+  color: var(--ok);
+}
+
+.seenExcerpt {
+  margin-top: 0.2rem;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  overflow-wrap: anywhere;
+}
+
+.seenLink {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: var(--t-xs);
+  font-weight: 600;
+}

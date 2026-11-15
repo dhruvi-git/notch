@@ -63,6 +63,20 @@ export function Results({ results, searching }: { results: SearchResponse; searc
   );
 }
 
+/** The main reason a passage came up, in plain words, so nobody has to open the details to know. */
+function reason(why: Why): string {
+  if (why.exact > 0 && why.exact >= why.semantic) return "Exact match";
+  if (why.semantic > 0) return why.exact > 0 ? "Similar meaning and some exact words" : "Similar meaning";
+  if (why.decision > 0) return "A decision in force";
+  return "Recent";
+}
+
+function reasonHelp(why: Why): string {
+  if (why.exact > 0 && why.exact >= why.semantic) return "Contains exactly what you typed, found in the project's text index.";
+  if (why.semantic > 0) return "Doesn't use your exact words but means something close.";
+  return "Ranked by how recent it is.";
+}
+
 function Hit({ hit }: { hit: SearchHit }) {
   const total = hit.why.exact + hit.why.semantic + hit.why.recency + hit.why.decision;
   return (
@@ -71,6 +85,7 @@ function Hit({ hit }: { hit: SearchHit }) {
         <span className={styles.hitTitle}>{hit.source.conversationTitle}</span>
         <span>{shortDate(hit.source.sentAt)}</span>
         {hit.decision ? <span className={styles.decisionTag}>Decision</span> : null}
+        <span className={styles.reasonTag} title={reasonHelp(hit.why)}>{reason(hit.why)}</span>
       </div>
       <p className={styles.hitText}>
         <span className={styles.role}>{ROLE_LABEL[hit.source.role] ?? hit.source.role}: </span>

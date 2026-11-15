@@ -229,3 +229,30 @@
     overflow-x: auto;
   }
 }
+
+/* Under the hood: one card per thing Notch does */
+.feature {
+  font-size: var(--t-xl);
+  letter-spacing: -0.02em;
+}
+
+.usedIn {
+  margin-top: 0.3rem;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.live {
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 var(--r-control) var(--r-control) 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  max-width: 70ch;
+}
+
+.what {
+  margin-top: 0.6rem;
+}

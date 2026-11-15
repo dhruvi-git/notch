@@ -213,15 +213,6 @@ function Result({ report }: { report: ImportReport }) {
           <li key={n}>{n}</li>
         ))}
       </ul>
-      <details className={styles.details}>
-        <summary>How the repeat check went</summary>
-        <p>
-          Each passage was checked against everything already in this project. A fast filter flagged{" "}
-          {plural(report.duplicateChunks + report.bloomFalsePositives, "passage")} as possibly seen; an exact check
-          confirmed {plural(report.duplicateChunks, "repeat")} and cleared{" "}
-          {plural(report.bloomFalsePositives, "false alarm")}. {plural(report.chunksAdded, "new passage")} were stored.
-        </p>
-      </details>
     </div>
   );
 }

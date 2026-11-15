@@ -221,3 +221,9 @@
     justify-self: start;
   }
 }
+
+.hood {
+  margin-top: 1.5rem;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
