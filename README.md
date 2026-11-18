@@ -2,26 +2,38 @@
 
 [![CI](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml/badge.svg)](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml)
 
-Notch is the project brain every coding agent plugs into. `git blame` tells you who changed a
-line; Notch tells you why. It keeps a ledger of your project's decisions from your chats and
-coding sessions, gives every agent that ledger over MCP, and stops commits and agent edits
-that go against it.
+**Show, don't claim.** Notch is a portfolio for tech students and freshers in which every skill
+is backed by evidence: their own commits on GitHub, projects, and (optionally) what they have
+been learning in AI chats. Recruiters paste a job description, get a ranked shortlist with the
+proof attached, and fill every seat across several roles at once.
 
 CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
-Search quality: [docs/evaluation.md](docs/evaluation.md). Speed: [docs/benchmarks.md](docs/benchmarks.md).
+## The algorithms
+
+All self-implemented in plain Java 21 (`engine/`), called by the API; the web app never computes
+a score or an assignment.
+
+| Decision | Algorithm | Syllabus |
+|---|---|---|
+| Who fills which seat across several roles, filling as many as possible | Edmonds–Karp max-flow, warm-started from greedy (`flow/MaxFlow`, `flow/SeatAssigner`) | Unit 5 · CO4 |
+| Percentile cut-offs behind "Top 10% in SQL" badges; top-k shortlists | Randomized Quickselect, three-way partition (`select/RandomizedSelect`, `score/PercentileBands`) | Unit 6 · CO5 |
+| Is a connected repository a copy of someone else's? | Bloom filter, then an exact check (`probabilistic/BloomFilter`, `api/.../DuplicateScreen`) | Unit 6 · CO5 |
+| Skill names and autocomplete | Radix tree (`text/RadixTree`, `api/.../SkillCatalog`) | Unit 4 |
+
+On a synthetic campus drive, max-flow fills 100% of seats where best-score-first greedy fills
+81%; a 10,000-candidate drive takes about 60 ms. Results and method: [docs/benchmarks.md](docs/benchmarks.md).
 
 ## Repository layout
 
-| Path | What it is | Status |
-|---|---|---|
-| `engine/` | Self-implemented algorithms, tests and benchmarks. Plain Java 21, no framework | Done |
-| `guard/` | Understands decisions and checks code changes against them. Shared by the API and CLI | Done |
-| `explain/` | Maps a codebase: roles, summaries, imports, modules, entry points, what to read first, unused files. Shared by the API and CLI | Done |
-| `cli/` | `notch`: pre-commit, Claude Code and pull-request guards, plus an MCP server for coding agents | Done |
-| `api/` | Spring Boot REST API: GitHub sign-in, imports, hybrid search, cited answers, decision ledger, drift alerts, agent files | Done (phase 2) |
-| `web/` | Next.js web app: landing, Recall, Where you stopped, Ledger, Drift, Sync, Imports, Lab, Settings | Done (phase 3) |
-| `docs/` | Benchmark results and design notes | Ongoing |
+| Path | What it is |
+|---|---|
+| `engine/` | Self-implemented algorithms, tests and benchmarks. Plain Java 21, no framework |
+| `api/` | Spring Boot REST API: portfolios, GitHub and chat-export evidence, public profiles, hiring drives, shortlists, seat assignment ([api/README.md](api/README.md)) |
+| `web/` | Next.js web app: landing, profile builder, public profiles, recruiter drives and assignments ([web/README.md](web/README.md)) |
+| `guard/`, `explain/`, `cli/` | Earlier code-review and decision-ledger features, still available under `/projects` in the web app |
+| `docs/` | Benchmark results and design notes |
+| `samples/` | Sample ChatGPT and Claude exports |
 
 **First time?** Follow [`RUNNING.md`](RUNNING.md): setup, tests, and what to do if something fails.
 
@@ -30,21 +42,29 @@ Search quality: [docs/evaluation.md](docs/evaluation.md). Speed: [docs/benchmark
 - JDK 21
 - Maven 3.9 or newer
 - Docker Desktop (for the local database)
+- Node 20.9 or newer (for the web app)
+- Optional: `GITHUB_TOKEN` (any personal token, no scopes) to read up to 30 repositories per sync instead of 12
 
-## Run the API
+## Run it
 
 ```bash
-docker compose up -d
+docker compose up -d                              # PostgreSQL
 mvn -q install -DskipTests
-mvn -pl api spring-boot:run
+mvn -pl api spring-boot:run                       # API on :8090
+
+curl -X POST "localhost:8090/api/dev/demo-pool?size=300"   # 300 sample public candidates (local profile)
+
+cd web && npm ci && npm run dev                   # http://localhost:3000
 ```
 
-See [`api/README.md`](api/README.md) for a walkthrough with the sample data in `samples/`.
+Without Java, `npm run mock-api` and `npm run dev` in `web/` run the whole interface against an
+in-memory stand-in with a sample candidate pool.
 
 ## Run the tests
 
 ```bash
-mvn test
+mvn test                  # Java: engine and API
+cd web && npm run typecheck && npm run build
 ```
 
 ## Run the benchmarks

@@ -79,7 +79,26 @@ npm run dev
 Open http://localhost:3000 and use **Sign in** under "Local development". Import the files
 in `samples/` to see the flow end to end.
 
-## 7. Use Notch on a real project
+## 7. Try the portfolio and hiring flow
+
+This is the main product and what the CIA 3 demo shows. With the API (step 4) and the web app
+(step 6) running:
+
+1. Seed sample candidates, so recruiters have people to rank:
+   `curl -X POST "localhost:8090/api/dev/demo-pool?size=300"` should return `{"created":300,"skipped":0}`.
+2. Open http://localhost:3000, choose **Build my profile** and sign in (the test sign-in works locally).
+3. On **My profile**, enter your GitHub username and choose **Connect**. Your public repositories
+   with your own commits appear as evidence. Then upload `samples/chatgpt-conversations.json` under
+   AI chat history, approve or reject the suggested skills, pick a handle and publish.
+4. Open your public profile at `/u/<handle>` (no sign-in needed) and download the share card.
+5. Go to **Hire**, create a drive and paste a job description such as
+   "Must have strong SQL and Python. Dashboards in Power BI. Statistics is a plus."
+   Add a second role (for example Backend: Java must-have, 2 seats), save, and read the shortlist.
+6. Choose **Assign all seats**. The assignment page compares max-flow with best-score-first.
+
+If a step fails, note the step number and the error the page shows, and send it with the API log.
+
+## 8. Use Notch on a real project
 
 This is how Notch is meant to be used: once per repository, then it captures by itself.
 
@@ -96,7 +115,7 @@ This is how Notch is meant to be used: once per repository, then it captures by 
 5. Open Claude Code in the repository: it starts with a Notch briefing, and each session is
    captured when it ends.
 
-## 8. Try Explain with the sample
+## 9. Try Explain with the sample
 
 Zip the sample codebase and upload it under **Explain** in the web app:
 
@@ -112,7 +131,7 @@ Import `samples/code-review-chat.md` too, and the file views show the conversati
 `src/lib/db.ts` and `src/events/store.ts`. The events module imports MongoDB, so with the
 Postgres decision from the other samples it shows up as code that goes against a decision.
 
-## 9. Review a codebase
+## 10. Review a codebase
 
 Open **Upload** (or **Review**) in a project and choose your project folder; no need to zip it,
 because `node_modules`, `.git`, build output and local `.env` files are left out in the browser.
@@ -126,7 +145,7 @@ In a repository set up with `notch init`, the same review comes from Claude Code
 Review page. (`notch init` adds the `/notch` command; in a repository set up earlier, run
 `notch setup claude` once.)
 
-## 10. Optional: sign in with Google
+## 11. Optional: sign in with Google
 
 Without this, local sign-in uses the test user under "Local development". To add **Continue with
 Google** (about 5 minutes, free):
@@ -144,7 +163,7 @@ Google** (about 5 minutes, free):
 When you deploy, add the deployed API's `/auth/google/callback` address as a second redirect URI
 and set `GOOGLE_CALLBACK_URL` to it.
 
-## 11. Optional: use real AI models
+## 12. Optional: use real AI models
 
 Without keys, Notch runs fully offline: answers quote the passages that match, decisions are found
 by patterns, and "meaning" search compares words. With keys, Claude writes answers and finds
@@ -187,7 +206,7 @@ mvn -q -pl api test -Dtest=SearchEvaluationTest -Dnotch.eval.out=../docs/evaluat
 
 `docs/evaluation.md` then gains a section comparing Voyage with the offline embeddings.
 
-## 12. Try the guard and the MCP server
+## 13. Try the guard and the MCP server
 
 ```bash
 mvn -q -pl cli -am package
