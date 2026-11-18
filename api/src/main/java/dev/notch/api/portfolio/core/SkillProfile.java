@@ -25,7 +25,7 @@ public final class SkillProfile {
     /** One piece of evidence as stored, with the skills it backs (only approved links). */
     public record EvidenceItem(UUID id, SkillScoring.Kind kind, String title, String url, int ownCommits,
                                int activeWeeks, boolean fork, boolean duplicate, Instant lastActive,
-                               double chatDepth, Set<Integer> skillIds) {
+                               double chatDepth, Set<Integer> skillIds, boolean defended) {
         public EvidenceItem {
             Objects.requireNonNull(id, "id");
             Objects.requireNonNull(kind, "kind");
@@ -33,10 +33,16 @@ public final class SkillProfile {
             skillIds = Set.copyOf(skillIds);
         }
 
+        public EvidenceItem(UUID id, SkillScoring.Kind kind, String title, String url, int ownCommits, int activeWeeks,
+                            boolean fork, boolean duplicate, Instant lastActive, double chatDepth, Set<Integer> skillIds) {
+            this(id, kind, title, url, ownCommits, activeWeeks, fork, duplicate, lastActive, chatDepth, skillIds, false);
+        }
+
         Evidence toScoring(Instant now) {
             double months = monthsBetween(lastActive, now);
             return switch (kind) {
-                case GITHUB_REPO -> Evidence.repo(ownCommits, activeWeeks, fork, duplicate, months);
+                case GITHUB_REPO -> new Evidence(SkillScoring.Kind.GITHUB_REPO, ownCommits, activeWeeks, fork, duplicate,
+                        months, 0, defended && !fork && !duplicate);
                 case PROJECT -> Evidence.project(months);
                 case CHAT_EXPORT -> Evidence.chat(chatDepth, months);
             };

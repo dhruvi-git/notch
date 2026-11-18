@@ -88,9 +88,11 @@ public class PortfolioService {
             }
             // The public sees evidence only once it backs at least one approved skill.
             if (!owner && approved.isEmpty()) continue;
+            PortfolioRepository.Ownership o = e.ownership();
             evidence.add(new EvidenceView(e.id(), e.kind().name(), e.title(), e.url(), e.description(), e.ownCommits(),
                     e.activeWeeks(), e.fork(), e.duplicateOf() != null, e.lastActive(), approved,
-                    owner ? pending : List.of()));
+                    owner ? pending : List.of(),
+                    o == null ? null : new ProfileView.OwnershipView(o.checkId(), o.score(), o.defended(), o.finishedAt(), o.attempts())));
         }
 
         int poolSize = snap.members().size();
@@ -158,7 +160,7 @@ public class PortfolioService {
         List<SkillRef> refs = skillIds.stream().map(sid -> cat.get(sid).orElseThrow())
                 .map(s -> new SkillRef(s.id(), s.name())).toList();
         return new EvidenceView(id, SkillScoring.Kind.PROJECT.name(), title.strip(), link, blankToNull(description), 0, 0,
-                false, false, active, refs, List.of());
+                false, false, active, refs, List.of(), null);
     }
 
     public void deleteEvidence(UUID evidenceId) {

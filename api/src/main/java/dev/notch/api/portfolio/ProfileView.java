@@ -24,9 +24,15 @@ public record ProfileView(boolean hasProfile, String handle, String headline, St
     public record SkillRef(int id, String name) {
     }
 
-    /** @param pendingSkills skills proposed from a chat export, not yet approved (owner's view only) */
+    /**
+     * @param pendingSkills skills proposed from a chat export, not yet approved (owner's view only)
+     * @param ownership     the best finished Ownership Check on this repository, or null
+     */
     public record EvidenceView(UUID id, String kind, String title, String url, String description, int ownCommits,
                                int activeWeeks, boolean fork, boolean duplicate, Instant lastActive,
-                               List<SkillRef> skills, List<SkillRef> pendingSkills) {
+                               List<SkillRef> skills, List<SkillRef> pendingSkills, OwnershipView ownership) {
+    }
+
+    public record OwnershipView(UUID checkId, int score, boolean defended, Instant finishedAt, int attempts) {
     }
 }

@@ -27,18 +27,22 @@ public class PortfolioRepository {
     public record Profile(UUID userId, String handle, String headline, String domain, boolean isPublic) {
     }
 
+    /** The latest finished Ownership Check on a repository. */
+    public record Ownership(UUID checkId, int score, boolean defended, Instant finishedAt, int attempts) {
+    }
+
     /** Evidence as stored, plus every skill link and whether the candidate approved it. */
     public record StoredEvidence(UUID id, UUID userId, SkillScoring.Kind kind, String title, String url, String description,
                                  int ownCommits, int activeWeeks, boolean fork, UUID duplicateOf, double chatDepth,
-                                 Instant lastActive, Map<Integer, Boolean> skills) {
-        /** For scoring: only approved links count. */
+                                 Instant lastActive, Map<Integer, Boolean> skills, Ownership ownership) {
+        /** For scoring: only approved links count. A repository is defended once any check on it was passed. */
         public EvidenceItem toItem() {
             Set<Integer> approved = new HashSet<>();
             skills.forEach((id, ok) -> {
                 if (ok) approved.add(id);
             });
             return new EvidenceItem(id, kind, title, url, ownCommits, activeWeeks, fork, duplicateOf != null,
-                    lastActive, chatDepth, approved);
+                    lastActive, chatDepth, approved, ownership != null && ownership.defended());
         }
     }
 
@@ -161,6 +165,19 @@ public class PortfolioRepository {
                 .query((rs, n) -> new Link(Db.uuid(rs, "evidence_id"), rs.getInt("skill_id"), rs.getBoolean("approved")))
                 .list()
                 .forEach(l -> links.computeIfAbsent(l.evidenceId(), k -> new LinkedHashMap<>()).put(l.skillId(), l.approved()));
+        // Per repository: the best finished check (a pass outranks a later failed retake), and how many were taken.
+        Map<UUID, Ownership> ownership = new HashMap<>();
+        jdbc.sql("""
+                SELECT DISTINCT ON (c.evidence_id) c.evidence_id, c.id, c.score, c.defended, c.finished_at,
+                       COUNT(*) OVER (PARTITION BY c.evidence_id) AS attempts
+                FROM ownership_checks c JOIN evidence e ON e.id = c.evidence_id
+                WHERE e.user_id IN (:users) AND c.status = 'FINISHED'
+                ORDER BY c.evidence_id, c.defended DESC, c.score DESC, c.finished_at DESC""")
+                .param("users", userIds)
+                .query((rs, n) -> Map.entry(Db.uuid(rs, "evidence_id"), new Ownership(Db.uuid(rs, "id"), rs.getInt("score"),
+                        rs.getBoolean("defended"), Db.instant(rs, "finished_at"), rs.getInt("attempts"))))
+                .list()
+                .forEach(e -> ownership.put(e.getKey(), e.getValue()));
         List<StoredEvidence> rows = jdbc.sql("""
                 SELECT id, user_id, kind, title, url, description, own_commits, active_weeks, is_fork, duplicate_of,
                        chat_depth, last_active_at
@@ -172,7 +189,7 @@ public class PortfolioRepository {
                             rs.getString("title"), rs.getString("url"), rs.getString("description"),
                             rs.getInt("own_commits"), rs.getInt("active_weeks"), rs.getBoolean("is_fork"),
                             Db.uuid(rs, "duplicate_of"), rs.getDouble("chat_depth"), Db.instant(rs, "last_active_at"),
-                            links.getOrDefault(id, Map.of()));
+                            links.getOrDefault(id, Map.of()), ownership.get(id));
                 })
                 .list();
         for (StoredEvidence e : rows) out.computeIfAbsent(e.userId(), k -> new ArrayList<>()).add(e);
