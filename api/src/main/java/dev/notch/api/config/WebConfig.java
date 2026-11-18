@@ -21,5 +21,10 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE")
                 .allowCredentials(true)
                 .maxAge(3600);
+        // Public profiles: read-only, no sign-in, so any site may show them.
+        registry.addMapping("/public/**")
+                .allowedOrigins("*")
+                .allowedMethods("GET")
+                .maxAge(3600);
     }
 }

@@ -148,6 +148,46 @@ Errors use the RFC 9457 problem format with a stable `code`, for example:
   "detail": "You've used today's 20 imports. Search still works, and the allowance resets at midnight UTC." }
 ```
 
+## Portfolios and hiring drives
+
+Candidates build a portfolio where every skill is backed by evidence; recruiters paste a job
+description, get a ranked shortlist, and assign a drive's seats with max-flow. Try it locally:
+
+```bash
+# 300 synthetic public candidates (local profile only; same pool on every machine)
+curl -s -X POST "localhost:8090/api/dev/demo-pool?size=300"
+
+# A drive from a job description: the requirements are read from it
+D=$(curl -s -X POST localhost:8090/api/drives -H 'Content-Type: application/json' -d '{
+  "title": "Data analyst intern",
+  "description": "Must have strong SQL and Python. Dashboards in Power BI. Machine learning is a plus."}' | jq -r .id)
+R=$(curl -s localhost:8090/api/drives/$D | jq -r '.roles[0].id')
+
+curl -s "localhost:8090/api/drives/$D/roles/$R/shortlist?k=5" | jq '.candidates[] | {handle, score}'
+curl -s -X POST localhost:8090/api/drives/$D/assign | jq '{totalSeats, filled, greedyFilled}'
+```
+
+| Method | Path | Does |
+|---|---|---|
+| GET, PUT | `/api/portfolio/me` | Your portfolio (with skills awaiting approval), or save handle, headline, domain, `isPublic` |
+| POST | `/api/portfolio/evidence` | Add a project (`{"title", "url", "description", "skills": [...], "lastActive"}`); skills in the text are found too |
+| DELETE | `/api/portfolio/evidence/{id}` | Remove evidence |
+| PUT | `/api/portfolio/skills/{skillId}` | Claim or hide a skill (`{"claimed", "hidden"}`) |
+| PATCH | `/api/portfolio/evidence/{id}/skills/{skillId}` | Approve or reject a suggested skill (`{"approved"}`) |
+| GET | `/api/skills/autocomplete?q=` | Skills by prefix from the radix tree |
+| GET | `/public/profiles/{handle}` | A public profile: skills with score, level and percentile band, and the evidence (no sign-in) |
+| GET, POST | `/api/drives` | List your drives, or create one from `{"title", "description"}` with a draft role |
+| GET, DELETE | `/api/drives/{id}` | A drive with its roles and requirements, or delete it |
+| PUT | `/api/drives/{id}/roles` | Replace the roles: `name`, `seats`, `threshold` (0–100), `requirements` (`skillId`, `weight`, `mustHave`, `minLevel`) |
+| GET | `/api/drives/{id}/roles/{roleId}/shortlist?k=` | Top k eligible candidates with each requirement's share of the score |
+| POST | `/api/drives/{id}/assign` | Assign every seat with max-flow; reports what greedy would have filled |
+| GET | `/api/drives/{id}/assignment` | The latest assignment |
+| POST | `/api/dev/demo-pool?size=` | Local profile only: seed synthetic public candidates |
+
+Skill scores are computed from evidence on every read (engine `SkillScoring`), so they never go
+stale. The pool of public candidates and their percentile bands is cached for 30 seconds and
+rebuilt when any portfolio changes.
+
 ## How an import works
 
 1. **Read** the file: zip archives are unpacked (with a 64 MB unzipped cap against zip bombs),
