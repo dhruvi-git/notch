@@ -179,6 +179,66 @@ public class PortfolioRepository {
         return out;
     }
 
+    // ------------------------------------------------------------------ GitHub sync and chat exports
+
+    /** The user's synced repositories by URL. */
+    public Map<String, UUID> githubEvidence(UUID userId) {
+        Map<String, UUID> out = new HashMap<>();
+        jdbc.sql("SELECT id, url FROM evidence WHERE user_id = :u AND kind = 'GITHUB_REPO' AND url IS NOT NULL")
+                .param("u", userId)
+                .query((rs, n) -> Map.entry(rs.getString("url"), Db.uuid(rs, "id")))
+                .list()
+                .forEach(e -> out.put(e.getKey(), e.getValue()));
+        return out;
+    }
+
+    public void updateRepoEvidence(UUID id, UUID userId, String title, String description, int ownCommits, int activeWeeks,
+                                   UUID duplicateOf, String rootSha, String treeSha, Instant lastActive) {
+        jdbc.sql("""
+                UPDATE evidence SET title = :title, description = :description, own_commits = :commits,
+                    active_weeks = :weeks, duplicate_of = :dup, root_sha = :root, tree_sha = :tree, last_active_at = :last
+                WHERE id = :id AND user_id = :u""")
+                .param("title", title).param("description", description).param("commits", ownCommits)
+                .param("weeks", activeWeeks).param("dup", duplicateOf).param("root", rootSha).param("tree", treeSha)
+                .param("last", Db.ts(lastActive)).param("id", id).param("u", userId)
+                .update();
+    }
+
+    /** Replaces an evidence item's skill links (all approved: they come from the code itself). */
+    public void replaceLinks(UUID evidenceId, Collection<Integer> skillIds) {
+        jdbc.sql("DELETE FROM evidence_skills WHERE evidence_id = :e").param("e", evidenceId).update();
+        linkSkills(evidenceId, skillIds, true);
+    }
+
+    public int deleteEvidence(UUID userId, Collection<UUID> ids) {
+        if (ids.isEmpty()) return 0;
+        return jdbc.sql("DELETE FROM evidence WHERE user_id = :u AND id IN (:ids)")
+                .param("u", userId).param("ids", ids).update();
+    }
+
+    public int deleteChatEvidence(UUID userId) {
+        return jdbc.sql("DELETE FROM evidence WHERE user_id = :u AND kind = 'CHAT_EXPORT'").param("u", userId).update();
+    }
+
+    /** Every repository fingerprint on Notch, to build the duplicate screen. */
+    public List<String> allFingerprints() {
+        return jdbc.sql("""
+                SELECT root_sha AS sha FROM evidence WHERE root_sha IS NOT NULL
+                UNION SELECT tree_sha FROM evidence WHERE tree_sha IS NOT NULL""")
+                .query(String.class).list();
+    }
+
+    /** Exact lookup behind the duplicate screen: evidence carrying this fingerprint. */
+    public List<dev.notch.api.portfolio.core.DuplicateScreen.Owner> fingerprintOwners(String sha) {
+        return jdbc.sql("""
+                SELECT id, user_id, created_at FROM evidence
+                WHERE (root_sha = :sha OR tree_sha = :sha) AND duplicate_of IS NULL""")
+                .param("sha", sha)
+                .query((rs, n) -> new dev.notch.api.portfolio.core.DuplicateScreen.Owner(Db.uuid(rs, "id"),
+                        Db.uuid(rs, "user_id"), Db.instant(rs, "created_at")))
+                .list();
+    }
+
     // ------------------------------------------------------------------ claimed and hidden skills
 
     public UserSkills userSkills(UUID userId) {
