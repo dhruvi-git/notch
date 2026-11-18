@@ -1,6 +1,6 @@
 // Shapes returned by the portfolio and hiring-drive endpoints (api/README.md, "Portfolios and hiring drives").
 
-export type Level = "CLAIMED" | "SHOWN" | "VERIFIED";
+export type Level = "CLAIMED" | "SHOWN" | "VERIFIED" | "DEFENDED";
 
 export type SkillRef = { id: number; name: string };
 
@@ -29,6 +29,50 @@ export type EvidenceView = {
   skills: SkillRef[];
   /** Suggested from a chat export and not yet approved (owner's view only). */
   pendingSkills: SkillRef[];
+  /** The best finished Ownership Check on this repository, if any. */
+  ownership?: OwnershipView | null;
+};
+
+export type OwnershipView = { checkId: string; score: number; defended: boolean; finishedAt: string; attempts: number };
+
+/** One question of an Ownership Check. Score, feedback and flags appear once the check is finished. */
+export type CheckQuestion = {
+  position: number;
+  path: string;
+  startLine: number;
+  endLine: number;
+  language: string;
+  code: string;
+  concept: string | null;
+  prompt: string;
+  covers: string[];
+  answer: string | null;
+  millis: number | null;
+  score: number | null;
+  feedback: string | null;
+  flags: string[];
+};
+
+export type CheckView = {
+  id: string;
+  evidenceId: string;
+  /** Set on the public transcript. */
+  handle: string | null;
+  repo: string;
+  repoUrl: string;
+  status: "OPEN" | "FINISHED";
+  startedAt: string;
+  deadline: string;
+  finishedAt: string | null;
+  secondsLeft: number;
+  score: number | null;
+  defended: boolean;
+  summary: string | null;
+  questionsBy: "model" | "templates";
+  gradedBy: "model" | "rubric" | "mixed" | null;
+  planElements: number;
+  planCovered: number;
+  questions: CheckQuestion[];
 };
 
 export type ProfileView = {
@@ -97,4 +141,7 @@ export type Assignment = {
   roles: RoleResult[];
 };
 
-export const LEVEL_LABEL: Record<Level, string> = { CLAIMED: "Claimed", SHOWN: "Shown", VERIFIED: "Verified" };
+export const LEVEL_LABEL: Record<Level, string> = { CLAIMED: "Claimed", SHOWN: "Shown", VERIFIED: "Verified", DEFENDED: "Defended" };
+
+/** Without a defended repository, a skill tops out here (engine SkillScoring: one repository caps at 0.85). */
+export const UNDEFENDED_CAP = 85;

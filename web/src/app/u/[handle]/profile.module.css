@@ -88,32 +88,113 @@
   letter-spacing: -0.02em;
 }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: 1rem;
-  margin-top: 1.25rem;
+/* Proof of work reads as a record, one entry per piece of evidence, not a grid of cards. */
+.record {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line-strong);
 }
 
-.cards article {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem 2.5rem;
+  align-items: center;
+  padding: 1.6rem 0.25rem;
+  border-bottom: 1px solid var(--line);
   scroll-margin-top: 1rem;
 }
 
-.cards article:target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+.entry:target {
+  background: var(--mark-wash);
 }
 
-.kind {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--t-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.entryDefended {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  margin: 0 -1rem;
+  border-radius: var(--r-panel);
+  background: var(--surface-raised);
+  border-bottom-color: transparent;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.entryMain {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  max-width: 46rem;
+}
+
+.entrySeal {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   color: var(--ink-soft);
+  font-size: var(--t-sm);
+  text-decoration: none;
+}
+
+.entrySeal span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.entrySeal strong {
+  color: var(--accent);
+}
+
+.entrySeal:hover strong {
+  text-decoration: underline;
+}
+
+.seals {
+  list-style: none;
+  display: flex;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+}
+
+.sealLink {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  max-width: 7.5rem;
+  color: var(--ink-soft);
+  font-size: var(--t-xs);
+  font-family: var(--font-mono);
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.sealLink svg {
+  transition: transform 180ms ease;
+}
+
+.sealLink:hover svg,
+.sealLink:focus-visible svg {
+  transform: rotate(-8deg) scale(1.04);
+}
+
+.sealLink:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 40rem) {
+  .entry {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .entryDefended {
+    margin: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .seals {
+    width: 100%;
+  }
 }
 
 .cardTitle {

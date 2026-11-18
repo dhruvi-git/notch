@@ -16,14 +16,14 @@ const SKILLS = [
 ].map(([id, name, domain]) => ({ id, name, domain }));
 const byName = new Map(SKILLS.map((s) => [s.name.toLowerCase(), s]));
 const byId = new Map(SKILLS.map((s) => [s.id, s]));
-const LEVELS = ["CLAIMED", "SHOWN", "VERIFIED"];
+const LEVELS = ["CLAIMED", "SHOWN", "VERIFIED", "DEFENDED"];
 
 /** A sample pool of public candidates: handle, headline, and skill → [score, level]. */
 const POOL = [
-  ["asha-r", "Data analyst · Pune", { SQL: [91, "VERIFIED"], Python: [84, "VERIFIED"], pandas: [78, "VERIFIED"], "Power BI": [58, "SHOWN"], Statistics: [46, "SHOWN"] }],
+  ["asha-r", "Data analyst · Pune", { SQL: [93, "DEFENDED"], Python: [88, "DEFENDED"], pandas: [78, "VERIFIED"], "Power BI": [58, "SHOWN"], Statistics: [46, "SHOWN"] }],
   ["kabir-dev", "Data + backend", { SQL: [88, "VERIFIED"], Python: [82, "VERIFIED"], Java: [70, "VERIFIED"], "Spring Boot": [61, "VERIFIED"], Statistics: [60, "SHOWN"] }],
   ["meera-s", "Analytics, BI", { SQL: [72, "VERIFIED"], Python: [63, "SHOWN"], "Power BI": [81, "VERIFIED"], Statistics: [52, "SHOWN"] }],
-  ["rohan-k", "ML engineer", { Python: [90, "VERIFIED"], SQL: [66, "VERIFIED"], "scikit-learn": [77, "VERIFIED"], "Machine Learning": [74, "VERIFIED"], Statistics: [80, "SHOWN"] }],
+  ["rohan-k", "ML engineer", { Python: [92, "DEFENDED"], SQL: [66, "VERIFIED"], "scikit-learn": [77, "VERIFIED"], "Machine Learning": [74, "VERIFIED"], Statistics: [80, "SHOWN"] }],
   ["tanvi-j", "Data analyst", { SQL: [75, "VERIFIED"], Python: [57, "VERIFIED"], "Power BI": [45, "SHOWN"], Statistics: [36, "SHOWN"] }],
   ["arjun-m", "Backend developer", { Java: [74, "VERIFIED"], "Spring Boot": [60, "VERIFIED"], PostgreSQL: [55, "SHOWN"], Docker: [40, "SHOWN"] }],
   ["zoya-a", "Frontend developer", { JavaScript: [86, "VERIFIED"], React: [83, "VERIFIED"], TypeScript: [70, "VERIFIED"], CSS: [65, "SHOWN"] }],
@@ -42,7 +42,7 @@ function score(evidence) {
   for (const e of evidence) {
     const months = (Date.now() - Date.parse(e.lastActive)) / (30.44 * 86_400_000);
     const strength = e.kind === "GITHUB_REPO"
-      ? (e.fork || e.duplicate ? 0 : 0.85 * (0.5 * Math.min(1, e.ownCommits / 50) + 0.5 * Math.min(1, e.activeWeeks / 12)))
+      ? (e.fork || e.duplicate ? 0 : (e.ownership?.defended ? 1 : 0.85) * (0.5 * Math.min(1, e.ownCommits / 50) + 0.5 * Math.min(1, e.activeWeeks / 12)))
       : e.kind === "PROJECT" ? 0.4 : 0.2 * (e.depth ?? 0.5);
     miss *= 1 - strength * Math.pow(0.5, Math.max(0, months) / 12);
   }
@@ -58,13 +58,14 @@ function profileView(p, owner) {
   const skills = [...bySkill.entries()].filter(([id]) => !p.hidden.has(id)).map(([id, ev]) => {
     const sk = byId.get(id);
     const verified = ev.some((e) => e.kind === "GITHUB_REPO" && !e.fork && !e.duplicate && e.ownCommits >= 5 && e.activeWeeks >= 2);
+    const defended = ev.some((e) => e.kind === "GITHUB_REPO" && !e.duplicate && e.ownership?.defended);
     const s = score(ev);
-    return { id, name: sk.name, domain: sk.domain, score: s, level: verified ? "VERIFIED" : "SHOWN",
+    return { id, name: sk.name, domain: sk.domain, score: s, level: defended ? "DEFENDED" : verified ? "VERIFIED" : "SHOWN",
       topPercent: s >= 90 ? 10 : s >= 75 ? 25 : null, evidenceIds: ev.map((e) => e.id) };
   }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
   const evidence = p.evidence
     .filter((e) => owner || e.skills.length > 0)
-    .map((e) => ({ ...e, pendingSkills: owner ? e.pendingSkills : [] }));
+    .map(({ depth, ...e }) => ({ ...e, ownership: e.ownership ?? null, pendingSkills: owner ? e.pendingSkills : [] }));
   const pr = p.profile;
   return { hasProfile: Boolean(pr), handle: pr?.handle ?? null, headline: pr?.headline ?? null, domain: null,
     isPublic: pr?.isPublic ?? false, skills, evidence, poolSize: POOL.length + 1 };
@@ -149,8 +150,158 @@ function parseJd(text) {
 
 const driveView = ({ ownerId, run, ...d }) => d;
 
+
+// ------------------------------------------------------------------ Ownership Checks
+
+const checks = new Map();
+
+/** Sample regions from the mock repositories, with the concept and rubric the real planner would attach. */
+const QUESTIONS = {
+  "sales-dashboard": [
+    { path: "etl/monthly_sales.py", startLine: 18, endLine: 41, language: "python", concept: "Joins", covers: ["SQL", "pandas", "etl/monthly_sales.py"],
+      prompt: "In monthly_sales, you merge orders with stores. Why is it a left merge on store_id, and what would the report show if you made it an inner merge?",
+      rubric: [["left", "keep"], ["missing", "unmatched", "nan", "null"], ["inner", "drop", "lose"], ["store_id", "key"]],
+      code: `def monthly_sales(orders: pd.DataFrame, stores: pd.DataFrame) -> pd.DataFrame:
+    """Revenue per store per month, including stores that sold nothing."""
+    orders = orders.assign(month=orders["ordered_at"].dt.to_period("M"))
+    merged = stores.merge(orders, on="store_id", how="left")
+    merged["revenue"] = merged["quantity"].fillna(0) * merged["unit_price"].fillna(0)
+
+    by_month = (
+        merged.groupby(["store_id", "store_name", "month"], dropna=False)["revenue"]
+        .sum()
+        .reset_index()
+    )
+    # A store with no orders still gets a row, so the dashboard shows a zero, not a gap.
+    by_month["month"] = by_month["month"].fillna(orders["month"].max())
+    return by_month.sort_values(["month", "revenue"], ascending=[True, False])` },
+    { path: "sql/top_products.sql", startLine: 1, endLine: 17, language: "sql", concept: "Aggregation", covers: ["SQL", "sql/top_products.sql"],
+      prompt: "Walk me through top_products.sql. Why does the ranking use a window function instead of ORDER BY with LIMIT?",
+      rubric: [["window", "over", "partition"], ["per category", "each category", "category"], ["limit", "whole table", "only"], ["rank", "dense_rank", "ties"]],
+      code: `WITH product_revenue AS (
+    SELECT p.category, p.name, SUM(oi.quantity * oi.unit_price) AS revenue
+    FROM order_items oi
+    JOIN products p ON p.id = oi.product_id
+    WHERE oi.ordered_at >= date_trunc('quarter', now())
+    GROUP BY p.category, p.name
+),
+ranked AS (
+    SELECT *, DENSE_RANK() OVER (PARTITION BY category ORDER BY revenue DESC) AS place
+    FROM product_revenue
+)
+SELECT category, name, revenue
+FROM ranked
+WHERE place <= 3
+ORDER BY category, place;` },
+    { path: "etl/clean.py", startLine: 7, endLine: 25, language: "python", concept: "Null handling", covers: ["Python", "etl/clean.py"],
+      prompt: "clean_orders drops some rows and fills others. How did you decide which missing values to drop and which to fill?",
+      rubric: [["drop", "dropna"], ["fill", "fillna", "default"], ["price", "quantity", "store"], ["why", "because", "otherwise"]],
+      code: `def clean_orders(raw: pd.DataFrame) -> pd.DataFrame:
+    df = raw.copy()
+    # An order without a store or a timestamp can't be placed on the report at all.
+    df = df.dropna(subset=["store_id", "ordered_at"])
+    df["ordered_at"] = pd.to_datetime(df["ordered_at"], errors="coerce", utc=True)
+    df = df[df["ordered_at"].notna()]
+
+    # Quantity missing means the till didn't record it: one item is the safe default.
+    df["quantity"] = df["quantity"].fillna(1).astype(int)
+    df = df[df["quantity"] > 0]
+
+    # Price comes from the catalogue when the till didn't send it.
+    df["unit_price"] = df["unit_price"].fillna(df["sku"].map(CATALOGUE_PRICE))
+    return df.drop_duplicates(subset=["order_id", "sku"])` },
+    { path: "etl/load.py", startLine: 30, endLine: 44, language: "python", concept: "Error handling", covers: ["Python", "etl/load.py"],
+      prompt: "In load_month, what happens if the upload to the warehouse fails halfway, and why did you write it that way?",
+      rubric: [["transaction", "rollback", "commit"], ["retry", "again"], ["partial", "halfway", "duplicate"], ["log", "raise"]],
+      code: `def load_month(conn, frame: pd.DataFrame, month: str) -> int:
+    with conn.begin():  # all or nothing: a half-loaded month is worse than none
+        conn.execute(text("DELETE FROM sales_monthly WHERE month = :m"), {"m": month})
+        rows = frame.to_dict("records")
+        for attempt in range(3):
+            try:
+                conn.execute(insert(sales_monthly), rows)
+                break
+            except OperationalError as err:
+                log.warning("load %s failed (attempt %d): %s", month, attempt + 1, err)
+                time.sleep(2 ** attempt)
+        else:
+            raise LoadError(f"could not load {month}")
+    return len(rows)` },
+    { path: "dashboard/measures.py", startLine: 5, endLine: 16, language: "python", concept: "Lookups", covers: ["Power BI", "dashboard/measures.py"],
+      prompt: "growth_vs_last_year looks up last year's revenue. What does it return for a store that opened this year, and why?",
+      rubric: [["none", "null", "nan", "missing"], ["new store", "opened", "no history"], ["divide", "division", "zero"], ["lookup", "dict", "get"]],
+      code: `def growth_vs_last_year(current: dict[str, float], previous: dict[str, float]) -> dict[str, float | None]:
+    growth = {}
+    for store, revenue in current.items():
+        before = previous.get(store)
+        if not before:  # new stores and stores with no sales have nothing to compare with
+            growth[store] = None
+            continue
+        growth[store] = round((revenue - before) / before * 100, 1)
+    return growth` },
+  ],
+};
+QUESTIONS["churn-model"] = QUESTIONS["sales-dashboard"];
+
+function gradeAnswer(q) {
+  const a = (q.answer ?? "").toLowerCase();
+  const words = a.split(/\s+/).filter(Boolean).length;
+  if (words === 0) return { score: 0, feedback: "Not answered.", flags: [] };
+  const hit = q.rubric.filter((g) => g.some((t) => a.includes(t)));
+  const ids = q.code.match(/[A-Za-z_]\w{3,}/g) ?? [];
+  const named = new Set(ids.filter((id) => a.includes(id.toLowerCase()))).size;
+  let score = Math.round(50 * hit.length / q.rubric.length + 30 * Math.min(1, named / 2) + 20 * Math.min(1, words / 70));
+  if (words < 8) score = Math.min(score, 10);
+  const missed = q.rubric.filter((g) => !hit.includes(g)).map((g) => g[0]);
+  const feedback = score >= 70
+    ? `Clear and specific: covered ${hit.map((g) => g[0]).join(", ")} and referred to the code by name.`
+    : `Covered ${hit.length ? hit.map((g) => g[0]).join(", ") : "none of the key ideas"}. Missing: ${missed.join(", ")}.`;
+  const flags = [];
+  if (q.pastes) flags.push(q.pastes === 1 ? "Pasted text once" : `Pasted text ${q.pastes} times`);
+  if (q.focusLost >= 2) flags.push(`Left the page ${q.focusLost} times`);
+  if (words >= 40 && q.millis && words / (q.millis / 60000) > 120) flags.push("Answered at over 120 words a minute");
+  return { score, feedback, flags };
+}
+
+function finishCheck(c, p) {
+  let pasted = 0;
+  for (const q of c.questions) {
+    Object.assign(q, gradeAnswer(q));
+    if (q.pastes) pasted++;
+  }
+  c.score = Math.round(c.questions.reduce((n, q) => n + q.score, 0) / c.questions.length);
+  c.defended = c.score >= 70 && pasted <= 1;
+  c.summary = c.defended
+    ? `Explained ${c.questions.filter((q) => q.score >= 70).length} of ${c.questions.length} parts of the code clearly, naming its own functions and choices.`
+    : pasted > 1 ? "More than one answer was pasted in, so this check can't defend the repository." : "Some answers were too thin to show the code is understood. Another attempt is open in 24 hours.";
+  c.status = "FINISHED";
+  c.finishedAt = new Date().toISOString();
+  c.gradedBy = "rubric";
+  const e = p.evidence.find((x) => x.id === c.evidenceId);
+  const best = e?.ownership;
+  const attempts = (best?.attempts ?? 0) + 1;
+  if (e && (!best || (c.defended && !best.defended) || (c.defended === best.defended && c.score > best.score))) {
+    e.ownership = { checkId: c.id, score: c.score, defended: c.defended, finishedAt: c.finishedAt, attempts };
+  } else if (e) e.ownership = { ...best, attempts };
+}
+
+function checkView(c, handle = null) {
+  const done = c.status === "FINISHED";
+  const { userId, questions, ...rest } = c;
+  return { ...rest, handle, secondsLeft: done ? 0 : Math.max(0, Math.round((Date.parse(c.deadline) - Date.now()) / 1000)),
+    questions: questions.map(({ rubric, pastes, focusLost, ...q }) => ({ ...q, score: done ? q.score : null, feedback: done ? q.feedback : null, flags: done ? q.flags : [] })) };
+}
+
 /** Public routes (no sign-in). Returns true when handled. */
 export function handlePublic(path, res, send, problem) {
+  const om = path.match(/^\/public\/ownership\/([^/]+)$/);
+  if (om) {
+    const c = checks.get(om[1]);
+    const p = c && portfolios.get(c.userId);
+    if (!c || c.status !== "FINISHED" || !p?.profile?.isPublic) { problem(res, 404, "not_found", "A public Ownership Check was not found."); return true; }
+    send(res, 200, checkView(c, p.profile.handle));
+    return true;
+  }
   const m = path.match(/^\/public\/profiles\/([^/]+)$/);
   if (!m) return false;
   const handle = decodeURIComponent(m[1]);
@@ -249,6 +400,44 @@ export async function handle(req, res, user, path, url, { send, problem, readBod
     return true;
   }
 
+  if (path === "/api/ownership/checks" && req.method === "POST") {
+    const b = await json();
+    const e = p.evidence.find((x) => x.id === b.evidenceId);
+    if (!e) { problem(res, 404, "not_found", "That repository was not found."); return true; }
+    if (e.kind !== "GITHUB_REPO") { problem(res, 400, "not_a_repository", "Ownership Checks are about code: pick one of your GitHub repositories."); return true; }
+    const open = [...checks.values()].find((c) => c.userId === user.id && c.evidenceId === e.id && c.status === "OPEN");
+    if (open) { send(res, 201, checkView(open)); return true; }
+    const last = [...checks.values()].filter((c) => c.userId === user.id && c.evidenceId === e.id && c.status === "FINISHED")
+      .sort((a, b) => b.finishedAt.localeCompare(a.finishedAt))[0];
+    if (last && !process.env.MOCK_NO_WAIT && Date.now() - Date.parse(last.finishedAt) < 24 * 3_600_000) {
+      problem(res, 409, "retake_later", "You can take another check on this repository 24 hours after the last one."); return true;
+    }
+    const bank = QUESTIONS[e.title] ?? QUESTIONS["sales-dashboard"];
+    const c = { id: randomUUID(), userId: user.id, evidenceId: e.id, repo: e.title, repoUrl: e.url, status: "OPEN",
+      startedAt: new Date().toISOString(), deadline: new Date(Date.now() + 12 * 60_000).toISOString(), finishedAt: null,
+      score: null, defended: false, summary: null, questionsBy: "templates", gradedBy: null, planElements: 9, planCovered: 9,
+      questions: bank.map((q, i) => ({ ...q, position: i, answer: null, millis: null, pastes: 0, focusLost: 0, score: null, feedback: null, flags: [] })) };
+    checks.set(c.id, c);
+    send(res, 201, checkView(c));
+    return true;
+  }
+  let om = path.match(/^\/api\/ownership\/checks\/([^/]+)(\/finish|\/answers\/(\d+))?$/);
+  if (om) {
+    const c = checks.get(om[1]);
+    if (!c || c.userId !== user.id) { problem(res, 404, "not_found", "That Ownership Check was not found."); return true; }
+    if (c.status === "OPEN" && Date.now() > Date.parse(c.deadline) + 30_000) finishCheck(c, p);
+    if (!om[2] && req.method === "GET") { send(res, 200, checkView(c)); return true; }
+    if (om[2] === "/finish" && req.method === "POST") { if (c.status === "OPEN") finishCheck(c, p); send(res, 200, checkView(c)); return true; }
+    if (om[3] && req.method === "PUT") {
+      if (c.status !== "OPEN") { problem(res, 409, "check_finished", "This check is finished; answers can't change."); return true; }
+      const b = await json();
+      const q = c.questions[Number(om[3])];
+      if (!q) { problem(res, 404, "not_found", "That question was not found."); return true; }
+      Object.assign(q, { answer: String(b.answer ?? "").trim(), millis: Number(b.millis) || 0, pastes: Number(b.pastes) || 0, focusLost: Number(b.focusLost) || 0 });
+      send(res, 200, checkView(c));
+      return true;
+    }
+  }
   if (path === "/api/drives" && req.method === "GET") {
     send(res, 200, drives.filter((d) => d.ownerId === user.id).toReversed().map(({ id, title, createdAt }) => ({ id, title, createdAt })));
     return true;

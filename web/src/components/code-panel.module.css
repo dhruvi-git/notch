@@ -1,0 +1,114 @@
+.panel {
+  --code-bg: #1e1828;
+  --code-ink: #ece6f5;
+  --code-dim: #8a7f9c;
+  --code-line: rgb(255 255 255 / 0.08);
+  margin: 0;
+  min-width: 0;
+  border-radius: var(--r-panel);
+  background: var(--code-bg);
+  color: var(--code-ink);
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04) inset;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.7rem 1.1rem;
+  border-bottom: 1px solid var(--code-line);
+  font-size: var(--t-xs);
+}
+
+.path {
+  font-family: var(--font-mono);
+  color: var(--code-ink);
+  overflow-wrap: anywhere;
+}
+
+.dir {
+  color: var(--code-dim);
+}
+
+.lines {
+  color: var(--code-dim);
+  text-decoration: none;
+}
+
+a.lines:hover {
+  color: #fedc2a;
+  text-decoration: underline;
+}
+
+.code {
+  margin: 0;
+  padding: 0.9rem 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+  tab-size: 4;
+}
+
+.code:focus-visible {
+  outline: 2px solid #fedc2a;
+  outline-offset: -2px;
+  border-radius: 0;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: var(--gutter, 4ch) 1fr;
+}
+
+/* The region in question: a highlighter stroke in the gutter; the context around it recedes. */
+.focused {
+  background: rgb(254 220 42 / 0.07);
+  box-shadow: 3px 0 0 #fedc2a inset;
+}
+
+.context {
+  opacity: 0.38;
+}
+
+.num {
+  padding-right: 1.1ch;
+  text-align: right;
+  color: var(--code-dim);
+  opacity: 0.7;
+  user-select: none;
+}
+
+.text {
+  padding-right: 1.25rem;
+  white-space: pre;
+}
+
+.comment {
+  color: #8a7f9c;
+  font-style: italic;
+}
+
+.string {
+  color: #f3c98b;
+}
+
+.number {
+  color: #f0a3c2;
+}
+
+.keyword {
+  color: #c8a2ff;
+}
+
+.call {
+  color: #fedc2a;
+}
+
+.type {
+  color: #8fd8c8;
+}

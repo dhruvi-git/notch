@@ -79,3 +79,27 @@ scores; each selection searches only the part at or below the previous cut-off.
 
 Below about 10,000 scores the JDK's tuned dual-pivot sort wins on constant factors; from there the
 expected O(n) selection pulls ahead of O(n log n), as predicted.
+
+## Ownership Check planning: greedy weighted set cover vs. exact search
+What to ask in an Ownership Check: pick code regions (functions, queries, methods) so that the
+questions touch every skill, concept and main file the repository shows, as cheaply as possible
+(a region's cost grows with its length). Greedy takes the region with the best cost per newly
+covered element each time; the exact baseline is branch-and-bound over every subset.
+Small instances (elements / candidate regions) compare quality against the optimum; large ones
+show the run time where exact search is out of reach.
+
+| Elements | Regions | Greedy picks | Optimal picks | Ratio | Greedy (ms) | Exact (ms) |
+|---:|---:|---:|---:|---:|---:|---:|
+| 20 | 10 | 11 | 9 | 1.22 | 0.05 | 0.9 |
+| 30 | 14 | 11 | 11 | 1.00 | 0.05 | 2.1 |
+| 40 | 18 | 13 | 12 | 1.08 | 0.05 | 13.9 |
+| 100 | 1,000 | 8 | — | — | 1.1 | — |
+| 200 | 10,000 | 8 | — | — | 4.7 | — |
+| 400 | 20,000 | 10 | — | — | 9.7 | — |
+
+(Picks are weighted costs, rounded.) Greedy stays within 22% of the optimum on every small
+instance, far inside its guarantee of H(d) ≤ 1 + ln d times optimal, where d is the most elements
+any one region covers; the unit tests check that bound against brute force on 300 random instances.
+Exact search grows exponentially (0.9 → 13.9 ms for 8 more regions), while greedy plans a check
+over 20,000 regions in under 10 ms. A real repository gives 50 to 400 regions.
+

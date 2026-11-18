@@ -1,0 +1,98 @@
+.seal {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.plum {
+  --seal-bg: #2f253a;
+  --seal-ink: #fedc2a;
+}
+
+.paper {
+  --seal-bg: #fedc2a;
+  --seal-ink: #2f253a;
+}
+
+.disc {
+  fill: var(--seal-bg);
+}
+
+.edge {
+  fill: none;
+  stroke: var(--seal-ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 2.2 2.73;
+  opacity: 0.9;
+}
+
+.inner {
+  fill: none;
+  stroke: var(--seal-ink);
+  stroke-width: 1.25;
+}
+
+.ringText {
+  fill: var(--seal-ink);
+  font-family: var(--font-sans);
+  font-size: 8.6px;
+  font-weight: 700;
+}
+
+.score {
+  fill: var(--seal-ink);
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.notch {
+  stroke: var(--seal-ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.check {
+  fill: none;
+  stroke: var(--seal-ink);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* One press: the seal arrives slightly large and rotated, lands, and settles. */
+.stamp {
+  animation: press 620ms cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+  transform-origin: center;
+}
+
+@keyframes press {
+  0% {
+    opacity: 0;
+    transform: scale(1.9) rotate(-28deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.94) rotate(-6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+
+.dot {
+  flex: none;
+  vertical-align: -0.15em;
+}
+
+.dot circle:first-child {
+  fill: #2f253a;
+}
+
+.dot circle:last-child {
+  fill: none;
+  stroke: #fedc2a;
+  stroke-width: 1.6;
+}
