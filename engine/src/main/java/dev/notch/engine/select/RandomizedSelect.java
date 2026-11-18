@@ -87,11 +87,25 @@ public final class RandomizedSelect {
         if (k < 0 || k >= values.length) {
             throw new IllegalArgumentException("k must be in [0, " + values.length + ")");
         }
-        double[] a = values.clone();
-        int lo = 0;
-        int hi = a.length - 1;
+        return selectInPlace(values.clone(), 0, values.length - 1, k);
+    }
+
+    /**
+     * Rearranges {@code a[lo..hi]} in place so that {@code a[k]} holds the value a full sort
+     * of that range would put there, with nothing larger before it and nothing smaller after
+     * it, and returns that value. Expected O(hi - lo) time.
+     *
+     * <p>Because the range is left partitioned around {@code k}, a caller needing several
+     * ranks can select the largest first and then search only {@code a[lo..k]} for the next.
+     */
+    public double selectInPlace(double[] a, int lo, int hi, int k) {
+        Objects.requireNonNull(a, "a");
+        if (lo < 0 || hi >= a.length || lo > hi || k < lo || k > hi) {
+            throw new IllegalArgumentException("need 0 <= lo <= k <= hi < " + a.length);
+        }
         while (lo < hi) {
             double pivot = a[lo + rng.nextInt(hi - lo + 1)];
+            // Invariant: [lo, lt) < pivot, [lt, i) == pivot, (gt, hi] > pivot.
             int lt = lo, i = lo, gt = hi;
             while (i <= gt) {
                 int c = Double.compare(a[i], pivot);
