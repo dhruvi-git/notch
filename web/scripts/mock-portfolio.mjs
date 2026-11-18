@@ -42,7 +42,7 @@ function score(evidence) {
   for (const e of evidence) {
     const months = (Date.now() - Date.parse(e.lastActive)) / (30.44 * 86_400_000);
     const strength = e.kind === "GITHUB_REPO"
-      ? (e.fork || e.duplicate ? 0 : 0.5 * Math.min(1, e.ownCommits / 30) + 0.5 * Math.min(1, e.activeWeeks / 8))
+      ? (e.fork || e.duplicate ? 0 : 0.85 * (0.5 * Math.min(1, e.ownCommits / 50) + 0.5 * Math.min(1, e.activeWeeks / 12)))
       : e.kind === "PROJECT" ? 0.4 : 0.2 * (e.depth ?? 0.5);
     miss *= 1 - strength * Math.pow(0.5, Math.max(0, months) / 12);
   }

@@ -174,7 +174,7 @@ export function DriveWorkspace({ initial }: { initial: Drive }) {
             {role.requirements.map((q) => (
               <li key={q.skillId} className={styles.req}>
                 <span className={styles.reqName}>{q.skill}</span>
-                <label className={styles.reqField}>
+                <label className={`${styles.reqField} ${styles.reqWeight}`}>
                   <span>Weight</span>
                   <input
                     type="number"
@@ -185,11 +185,11 @@ export function DriveWorkspace({ initial }: { initial: Drive }) {
                     onChange={(e) => updateReq(q.skillId, { weight: Math.max(1, Math.min(10, Number(e.target.value) || 1)) })}
                   />
                 </label>
-                <label className={styles.reqField}>
-                  <span>Evidence</span>
+                <label className={`${styles.reqField} ${styles.reqLevel}`}>
+                  <span>Evidence at least</span>
                   <select className="field" value={q.minLevel} onChange={(e) => updateReq(q.skillId, { minLevel: e.target.value as Level })}>
-                    <option value="SHOWN">Shown is enough</option>
-                    <option value="VERIFIED">Verified expected</option>
+                    <option value="SHOWN">Shown</option>
+                    <option value="VERIFIED">Verified</option>
                   </select>
                 </label>
                 <label className={styles.must}>

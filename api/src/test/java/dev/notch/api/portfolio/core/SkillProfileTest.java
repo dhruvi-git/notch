@@ -26,13 +26,13 @@ class SkillProfileTest {
 
     @Test
     void scoresLevelsAndEvidenceLinksPerSkill() {
-        EvidenceItem strong = repo(30, 8, false, NOW, 1, 2);
+        EvidenceItem strong = repo(50, 12, false, NOW, 1, 2);
         EvidenceItem project = new EvidenceItem(UUID.randomUUID(), Kind.PROJECT, "dashboard", null, 0, 0, false, false,
                 NOW, 0, Set.of(2, 8));
         List<Standing> s = SkillProfile.assemble(CAT, List.of(strong, project), Set.of(), Set.of(), NOW);
 
         Standing sql = s.stream().filter(x -> x.skill().id() == 2).findFirst().orElseThrow();
-        assertEquals(100.0, sql.score(), 1e-9); // a full-strength repo alone reaches 100
+        assertEquals(91.0, sql.score(), 1e-9); // 1 - (1 - 0.85)(1 - 0.4): a full-strength repo plus a project
         assertEquals(Level.VERIFIED, sql.level());
         assertEquals(2, sql.evidenceIds().size());
 

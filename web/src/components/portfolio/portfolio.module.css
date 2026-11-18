@@ -143,6 +143,10 @@
 }
 
 /* Skill bars. */
+.group {
+  margin-top: 1.25rem;
+}
+
 .group + .group {
   margin-top: 1.75rem;
 }
@@ -159,7 +163,8 @@
 
 .row {
   display: grid;
-  grid-template-columns: minmax(7rem, 10rem) minmax(4rem, 1fr) 2.5rem auto auto;
+  /* Fixed columns, so bars line up across rows whether or not a row has a rank badge. */
+  grid-template-columns: minmax(7rem, 10rem) minmax(4rem, 1fr) 2.5rem 5.5rem 5.25rem;
   align-items: center;
   gap: 0.9rem;
   padding: 0.9rem 1.1rem;
@@ -196,7 +201,8 @@
 
 @media (max-width: 40rem) {
   .row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.5rem 0.6rem;
   }
   .row .track {
     grid-column: 1 / -1;

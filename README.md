@@ -9,6 +9,19 @@ proof attached, and fill every seat across several roles at once.
 
 CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
+## Screens
+
+| | |
+|---|---|
+| ![Landing page](docs/screenshots/01-landing.png) | ![Building a profile](docs/screenshots/02-build-profile.png) |
+| Landing | Building a profile: GitHub, chat export, projects, approving skills |
+| ![Public profile](docs/screenshots/03-public-profile.png) | ![Drive and shortlist](docs/screenshots/04-drive-shortlist.png) |
+| Public profile with evidence levels, rank badges and proof of work | A drive: roles from the job description, ranked shortlist with the score split by skill |
+| ![Seat assignment](docs/screenshots/05-seat-assignment.png) | ![Profile on a phone](docs/screenshots/06-profile-phone.png) |
+| Seat assignment: max-flow against best score first | The public profile on a phone |
+
+Screenshots use the mock API's sample candidates (`web/scripts/mock-portfolio.mjs`).
+
 ## The algorithms
 
 All self-implemented in plain Java 21 (`engine/`), called by the API; the web app never computes
