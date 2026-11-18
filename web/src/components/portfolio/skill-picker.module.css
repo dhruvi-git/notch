@@ -1,0 +1,36 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.label {
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.option {
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0 0.8rem;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.option:hover {
+  border-color: var(--accent);
+}

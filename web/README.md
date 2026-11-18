@@ -31,6 +31,22 @@ Checks: `npm test` (unit tests for highlighting and answer parsing; Node 22.6 or
 
 ## Screens
 
+### Portfolios and hiring (the main product)
+
+| Route | Who | What it does |
+|---|---|---|
+| `/` | Everyone | Landing: "Show, don't claim", evidence levels, the recruiter pitch |
+| `/start` | Candidate | Connect GitHub, upload a ChatGPT or Claude export, add projects, approve suggested skills, publish |
+| `/u/{handle}` | Public, no sign-in | Skills by area (score bar, evidence level, rank badge), proof-of-work cards, a share card that downloads as a 1080×1350 PNG |
+| `/hire` | Recruiter | Drives, and a new drive from a pasted job description |
+| `/hire/{id}` | Recruiter | Edit roles (seats, minimum match, required skills with weight, must-have, evidence level) beside the ranked shortlist; each score is broken down by skill |
+| `/hire/{id}/assign` | Recruiter | The max-flow seat assignment, compared with best-score-first, with CSV export |
+
+Signing in now lands on `/start`. The mock API covers all of these with a sample pool of
+candidates (`scripts/mock-portfolio.mjs`), so the whole flow can be demonstrated without Java.
+
+### Code projects (earlier features, still at `/projects`)
+
 - **Recall** (the default view): results update as you type; **Ask** writes an answer whose
   every line cites a source, with the quoted span highlighted in context. Matches are
   highlighted as whole words, the search explains how it read the query (prefixes for stems,

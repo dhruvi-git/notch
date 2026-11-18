@@ -4,11 +4,13 @@
 //   npm run mock-api            # listens on :8090, like the real API
 //   MOCK_PORT=8090 npm run mock-api
 //
-// Covers sign-in, projects, imports (with background processing), conversations and usage.
+// Covers sign-in, projects, imports (with background processing), conversations and usage, plus
+// portfolios, public profiles and hiring drives (mock-portfolio.mjs).
 // Later phases add the remaining endpoints as their screens are built.
 
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import * as portfolioMock from "./mock-portfolio.mjs";
 
 const PORT = Number(process.env.MOCK_PORT ?? 8090);
 const now = () => new Date().toISOString();
@@ -442,6 +444,7 @@ createServer(async (req, res) => {
     return send(res, 200, login(body.handle || "dev"));
   }
 
+  if (portfolioMock.handlePublic(path, res, send, problem)) return;
   if (!path.startsWith("/api/")) return problem(res, 404, "not_found", "No such endpoint.");
   const token = (req.headers.authorization ?? "").replace(/^Bearer /, "");
   const user = users.get(token);
@@ -449,6 +452,7 @@ createServer(async (req, res) => {
   const own = (p) => p && p.ownerId === user.id;
 
   if (path === "/api/me") return send(res, 200, user);
+  if (await portfolioMock.handle(req, res, user, path, url, { send, problem, readBody })) return;
   if (path === "/api/logout") { users.delete(token); return send(res, 204); }
   if (path === "/api/usage") {
     const u = usage.get(user.id);

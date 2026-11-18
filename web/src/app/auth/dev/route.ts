@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.redirect(signIn, 303);
     }
     const session = (await res.json()) as Session;
-    const out = NextResponse.redirect(new URL("/projects", req.nextUrl.origin), 303);
+    const out = NextResponse.redirect(new URL("/start", req.nextUrl.origin), 303);
     out.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
     return out;
   } catch {
