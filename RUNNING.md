@@ -137,7 +137,7 @@ Open **Upload** (or **Review**) in a project and choose your project folder; no 
 because `node_modules`, `.git`, build output and local `.env` files are left out in the browser.
 A zip works too (the same `billing-service.zip`), up to 100 MB. In under a minute you get an overall assessment, a breakdown by area, the issues with file and line, what's
 done well, and recommendations. Notch's own checks always run; with `ANTHROPIC_API_KEY` set
-(step 10), Claude also reads the code. The sample's events module uses MongoDB, so with a
+(step 12), Claude also reads the code. The sample's events module uses MongoDB, so with a
 Postgres decision recorded it's flagged as going against it.
 
 In a repository set up with `notch init`, the same review comes from Claude Code: type
@@ -158,7 +158,7 @@ Google** (about 5 minutes, free):
    `http://localhost:8090/auth/google/callback`.
 3. Put the client ID and secret in the repository's `.env` (it's gitignored) as
    `GOOGLE_CLIENT_ID=...` and `GOOGLE_CLIENT_SECRET=...`, and start the API with them loaded, the
-   same way as the AI keys in step 11. `curl localhost:8090/auth/config` then says `"google":true`.
+   same way as the AI keys in step 12. `curl localhost:8090/auth/config` then says `"google":true`.
 
 When you deploy, add the deployed API's `/auth/google/callback` address as a second redirect URI
 and set `GOOGLE_CALLBACK_URL` to it.
