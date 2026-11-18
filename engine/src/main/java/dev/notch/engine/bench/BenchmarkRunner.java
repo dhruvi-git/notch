@@ -1,8 +1,10 @@
 package dev.notch.engine.bench;
 
 import dev.notch.engine.baseline.Baselines;
+import dev.notch.engine.flow.SeatAssigner;
 import dev.notch.engine.graph.DisjointSetUnion;
 import dev.notch.engine.probabilistic.BloomFilter;
+import dev.notch.engine.score.PercentileBands;
 import dev.notch.engine.select.RandomizedSelect;
 import dev.notch.engine.text.CorpusIndex;
 import dev.notch.engine.text.RadixTree;
@@ -71,6 +73,8 @@ public final class BenchmarkRunner {
         topK();
         threading();
         bloomFilter();
+        seatAssignment();
+        percentileBands();
     }
 
     // ---------------------------------------------------------------- exact search
@@ -230,6 +234,87 @@ public final class BenchmarkRunner {
             record("bloom", "{\"n\": %d, \"bits\": %d, \"hashes\": %d, \"theoreticalFpr\": %.5f, \"measuredFpr\": %.5f, "
                     + "\"memoryBytes\": %d, \"rawBytes\": %d}", n, f.bits(), f.hashes(), f.expectedFpp(), (double) fp / probes,
                     f.memoryBytes(), 64L * n);
+        }
+        System.out.println();
+    }
+
+    // ---------------------------------------------------------------- seat assignment
+
+    /** Seats per role as a share of the pool, in the synthetic drive below. */
+    static final double[] SEAT_SHARE = {0.10, 0.10, 0.05, 0.05, 0.05};
+
+    /**
+     * A synthetic campus drive with five roles and threshold 70. A fifth of the pool are
+     * all-rounders: they qualify for every role and score highest on role 0, the popular one.
+     * The rest are specialists who qualify only for role 0 or role 1. Roles 2 to 4 can only be
+     * filled by all-rounders, which is exactly what greedy gets wrong: it spends all-rounders on
+     * role 0, where specialists would have done, and leaves the niche roles short.
+     */
+    static double[][] driveScores(int n, Random rnd) {
+        double[][] s = new double[n][SEAT_SHARE.length];
+        for (int i = 0; i < n; i++) {
+            if (rnd.nextInt(5) == 0) {
+                s[i][0] = 90 + rnd.nextInt(11);
+                for (int j = 1; j < s[i].length; j++) s[i][j] = 70 + rnd.nextInt(20);
+            } else {
+                for (int j = 0; j < s[i].length; j++) s[i][j] = rnd.nextInt(60);
+                s[i][rnd.nextInt(2)] = 70 + rnd.nextInt(20);
+            }
+        }
+        return s;
+    }
+
+    private static void seatAssignment() {
+        System.out.println("## Seat assignment: Edmonds–Karp max-flow vs. greedy");
+        System.out.println("Synthetic campus drive: 5 roles with seats for 10%, 10%, 5%, 5% and 5% of the pool, threshold 70;");
+        System.out.println("a fifth of candidates qualify for every role, the rest for one popular role. Seats filled is the quality measure.\n");
+        System.out.println("| Candidates | Seats | Greedy filled | Max-flow filled | Greedy (ms) | Max-flow, cold start (ms) | Max-flow, greedy start (ms) | Augmenting paths (cold / warm) |");
+        System.out.println("|---:|---:|---:|---:|---:|---:|---:|---:|");
+        for (int n : SIZES) {
+            double[][] scores = driveScores(n, new Random(SEED));
+            List<SeatAssigner.Role> rs = new ArrayList<>();
+            for (int j = 0; j < SEAT_SHARE.length; j++) rs.add(new SeatAssigner.Role("role" + j, (int) (n * SEAT_SHARE[j]), 70));
+            List<String> ids = new ArrayList<>(n);
+            for (int i = 0; i < n; i++) ids.add("c" + i);
+
+            SeatAssigner.Result greedy = SeatAssigner.greedy(rs, ids, scores);
+            SeatAssigner.Result cold = SeatAssigner.assign(rs, ids, scores, false);
+            SeatAssigner.Result warm = SeatAssigner.assign(rs, ids, scores, true);
+            if (cold.seatsFilled() != warm.seatsFilled()) throw new IllegalStateException("cold and warm starts disagree");
+            boolean big = n >= 100_000;
+            double greedyMs = median(() -> SeatAssigner.greedy(rs, ids, scores), big ? 1 : WARMUP, big ? 3 : RUNS);
+            double coldMs = median(() -> SeatAssigner.assign(rs, ids, scores, false), big ? 0 : WARMUP, big ? 1 : RUNS);
+            double warmMs = median(() -> SeatAssigner.assign(rs, ids, scores, true), big ? 1 : WARMUP, big ? 3 : RUNS);
+            System.out.printf(Locale.ROOT, "| %,d | %,d | %,d | %,d | %.1f | %.1f | %.1f | %,d / %,d |%n", n, cold.totalSeats(),
+                    greedy.seatsFilled(), cold.seatsFilled(), greedyMs, coldMs, warmMs, cold.augmentations(), warm.augmentations());
+            record("seats", "{\"n\": %d, \"seats\": %d, \"greedyFilled\": %d, \"flowFilled\": %d, \"greedyMs\": %.2f, "
+                    + "\"coldMs\": %.2f, \"warmMs\": %.2f, \"coldPaths\": %d, \"warmPaths\": %d}", n, cold.totalSeats(),
+                    greedy.seatsFilled(), cold.seatsFilled(), greedyMs, coldMs, warmMs, cold.augmentations(), warm.augmentations());
+        }
+        System.out.println();
+    }
+
+    // ---------------------------------------------------------------- percentile bands
+
+    private static void percentileBands() {
+        System.out.println("## Percentile bands: randomized Quickselect vs. full sort");
+        System.out.println("The four badge cut-offs (99th, 95th, 90th, 75th percentile) of n skill scores.\n");
+        System.out.println("| Scores | Quickselect (ms) | Full sort (ms) | Speed-up |");
+        System.out.println("|---:|---:|---:|---:|");
+        int[] sizes = {1_000, 10_000, 100_000, 1_000_000};
+        for (int n : sizes) {
+            double[] scores = new Random(SEED).doubles(n, 0, 100).toArray();
+            RandomizedSelect sel = new RandomizedSelect(SEED);
+            double fast = median(() -> PercentileBands.of(scores, sel).cutoff(1));
+            double slow = median(() -> {
+                double[] sorted = scores.clone();
+                Arrays.sort(sorted);
+                double sink = 0;
+                for (int band : PercentileBands.BANDS) sink += sorted[(int) Math.ceil((100 - band) / 100.0 * n) - 1];
+                return sink;
+            });
+            System.out.printf(Locale.ROOT, "| %,d | %.2f | %.2f | %.1fx |%n", n, fast, slow, slow / fast);
+            record("bands", "{\"n\": %d, \"fastMs\": %.3f, \"slowMs\": %.3f}", n, fast, slow);
         }
         System.out.println();
     }
