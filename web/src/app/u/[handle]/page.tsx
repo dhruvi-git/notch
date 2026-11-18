@@ -112,7 +112,7 @@ export default async function PublicProfile({ params }: { params: Promise<Params
             <p className={common.muted}>No skills yet.</p>
           )}
           {p.poolSize > 0 ? (
-            <p className={`${common.muted} ${common.small}`}>
+            <p className={`${common.muted} ${common.small} ${styles.note}`}>
               Ranks compare @{name} with the {p.poolSize} public profiles on Notch that have evidence for the same skill.
             </p>
           ) : null}

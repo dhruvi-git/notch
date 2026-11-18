@@ -9,8 +9,9 @@ import java.util.Objects;
  * <p>Each piece of evidence has a strength e in [0, 1] and is discounted by age with a 12-month
  * half-life: r = 0.5^(months / 12). The pieces are combined with a noisy-OR,
  * {@code score = 100 · (1 − Π (1 − e·r))}: more independent proof raises the score with
- * diminishing returns, order does not matter, and no single piece (strength at most 1, and
- * below 1 for anything but a very active repo) dominates unless it is very strong.
+ * diminishing returns and order does not matter. A single repository is capped at
+ * {@link #MAX_REPO_STRENGTH}, so one project alone scores at most 85: reaching the 90s takes
+ * several independent pieces of work, which keeps strong candidates apart instead of tied at 100.
  */
 public final class SkillScoring {
 
@@ -20,9 +21,11 @@ public final class SkillScoring {
     public enum Kind { GITHUB_REPO, PROJECT, CHAT_EXPORT }
 
     /** Commits by the candidate at which a repo reaches full commit strength. */
-    public static final int FULL_COMMITS = 30;
+    public static final int FULL_COMMITS = 50;
     /** Distinct weeks with commits at which a repo reaches full consistency strength. */
-    public static final int FULL_WEEKS = 8;
+    public static final int FULL_WEEKS = 12;
+    /** The most one repository can contribute: one project alone never scores a skill above 85. */
+    public static final double MAX_REPO_STRENGTH = 0.85;
     /** Minimum own commits and active weeks for a repo to verify a skill. */
     public static final int VERIFY_COMMITS = 5;
     public static final int VERIFY_WEEKS = 2;
@@ -61,8 +64,8 @@ public final class SkillScoring {
         public double strength() {
             return switch (kind) {
                 case GITHUB_REPO -> (fork || duplicate) ? 0
-                        : 0.5 * Math.min(1.0, (double) ownCommits / FULL_COMMITS)
-                        + 0.5 * Math.min(1.0, (double) activeWeeks / FULL_WEEKS);
+                        : MAX_REPO_STRENGTH * (0.5 * Math.min(1.0, (double) ownCommits / FULL_COMMITS)
+                        + 0.5 * Math.min(1.0, (double) activeWeeks / FULL_WEEKS));
                 case PROJECT -> PROJECT_STRENGTH;
                 case CHAT_EXPORT -> CHAT_MAX_STRENGTH * chatStrength;
             };
