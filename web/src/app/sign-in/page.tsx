@@ -22,7 +22,7 @@ const MESSAGES: Record<string, string> = {
 type Search = { error?: string; expired?: string; signed_out?: string };
 
 export default async function SignIn({ searchParams }: { searchParams: Promise<Search> }) {
-  if (await sessionToken()) redirect("/projects");
+  if (await sessionToken()) redirect("/start");
   const params = await searchParams;
   let config: AuthConfig | null = null;
   try {

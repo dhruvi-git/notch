@@ -1,85 +1,54 @@
 import Link from "next/link";
 import { NotchMark } from "@/components/Brand";
-import { HeroDemo } from "./HeroDemo";
 import styles from "./landing.module.css";
 
-const WHY = [
+const LEVELS = [
   {
-    name: "You don't know what's in your code",
-    text: "Agents wrote it faster than you read it. You can't debug it and you're afraid to change it.",
-    fix: "Notch lists the files agents changed that you've never looked at, most depended-on first, and Explain walks you through them.",
+    level: "Claimed",
+    className: styles.claimed,
+    title: "You typed it in",
+    text: "A starting point. It shows on your profile but scores nothing until work backs it.",
   },
   {
-    name: "Nobody remembers why",
-    text: "Decisions and pivots happened in chats that are gone. Half the code still follows the old plan, and a new session undoes last week's choice.",
-    fix: "Every decision and pivot is kept with its reason and source, and code that still follows the old plan is flagged.",
+    level: "Shown",
+    className: styles.shown,
+    title: "There's an artifact",
+    text: "A project, a repository or a write-up uses the skill, with a link anyone can open.",
   },
   {
-    name: "Your agents pull in different directions",
-    text: "Claude Code here, Codex there, quick fixes in Cursor. The same file changes again and again, in different styles.",
-    fix: "Notch groups sessions into work streams and shows the files being pulled between them. Every agent reads the same decisions.",
-  },
-  {
-    name: "You forget what's done and what isn't",
-    text: "You come back after a week and can't tell where you were, so you start over, or stop.",
-    fix: "Each project opens on where things stand: done recently, still to do, and what you've probably forgotten.",
+    level: "Verified",
+    className: styles.verified,
+    title: "The work checks out",
+    text: "Your own commits across several weeks, not a fork, and not a copy of someone else's project.",
   },
 ];
 
-const FEATURES = [
+const STEPS = [
   {
-    name: "Review your code",
-    text: "An honest assessment of the whole codebase: what each part does well, the issues with file and line, and what to fix first.",
-    where: "Review",
+    title: "Connect GitHub",
+    text: "Notch reads your public repositories: your commits, the weeks you worked, and the languages and tools in each.",
   },
   {
-    name: "See how it fits together",
-    text: "A map of the code: what every file does, where to start reading, and what a change to a file could affect.",
-    where: "Explain",
+    title: "Add what GitHub can't see",
+    text: "Hackathons, a club you run, a weekend build. Optionally add a ChatGPT or Claude export to surface what you've been learning.",
   },
   {
-    name: "Keep the decisions",
-    text: "What was chosen, why, and what was ruled out, plus open tasks and the fixes for errors you hit. Collected from your sessions and commits as you work.",
-    where: "Ledger",
-  },
-  {
-    name: "Pick up where you left off",
-    text: "Your last session, the work you haven't committed, and the next tasks, in one place when you come back.",
-    where: "Where you stopped",
-  },
-  {
-    name: "Ask your project",
-    text: "Search everything Notch holds, or ask a question and get an answer that quotes its source.",
-    where: "Ask",
-  },
-  {
-    name: "Catch drift",
-    text: "Code, chats and commits that go against a decision are flagged, and a commit that breaks one is stopped before it lands.",
-    where: "Drift",
+    title: "Share one link",
+    text: "Your skill map, your rank among peers, and the proof behind each skill, on one page.",
   },
 ];
 
-const FAQ = [
-  {
-    q: "Do I need to upload chat exports?",
-    a: "No. Your code is enough to start: a review and a map need nothing else. Connect the repository and Notch collects decisions from your Claude Code sessions and commits by itself. Chat exports from ChatGPT or Claude are an optional extra.",
-  },
-  {
-    q: "Is my code stored?",
-    a: "No. Uploaded code is read in memory and discarded once the review is written. Notch keeps the review and a map of file names, imports and summaries, encrypted and tied to your account.",
-  },
-  {
-    q: "Which languages does it understand?",
-    a: "Reviews work for any language. The map understands imports and routes in TypeScript and JavaScript (including Next.js and Express), Python, Java and Go.",
-  },
-  {
-    q: "Does it work with my coding agent?",
-    a: "Yes. Claude Code gets a /notch command and a briefing at the start of every session. Codex and Cursor connect to the same decisions over MCP.",
-  },
+/** The sample profile in the hero. Illustrative: the real one is built from a candidate's evidence. */
+const SAMPLE = [
+  { name: "SQL", score: 91, level: "Verified" },
+  { name: "Python", score: 84, level: "Verified" },
+  { name: "Power BI", score: 58, level: "Shown" },
+  { name: "Statistics", score: 46, level: "Shown" },
 ];
 
 export function Landing({ signedIn = false }: { signedIn?: boolean }) {
-  const start = signedIn ? "/projects" : "/sign-in";
+  const build = signedIn ? "/start" : "/sign-in";
+  const hire = signedIn ? "/hire" : "/sign-in";
   return (
     <div className={styles.page}>
       <div className={`${styles.top} on-brand`}>
@@ -89,223 +58,121 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
             notch
           </Link>
           <nav aria-label="On this page" className={styles.navLinks}>
-            <a href="#why">Why Notch</a>
-            <a href="#features">What it does</a>
-            <a href="#how">How it works</a>
-            <a href="#claude-code">Claude Code</a>
-            <a href="#privacy">Privacy</a>
+            <a href="#levels">How it works</a>
+            <a href="#students">For students</a>
+            <a href="#recruiters">For recruiters</a>
           </nav>
-          <Link href={start} className={signedIn ? "btn btn-yellow" : "btn btn-quiet"}>
-            {signedIn ? "Open your projects" : "Sign in"}
+          <Link href={signedIn ? "/start" : "/sign-in"} className="btn btn-quiet">
+            {signedIn ? "My profile" : "Sign in"}
           </Link>
         </header>
 
         <section className={styles.hero}>
           <div className={styles.heroText}>
-            <h1 className={styles.title}>The second brain for projects you build with AI.</h1>
+            <p className={styles.kicker}>Proof of work for tech freshers</p>
+            <h1 className={styles.title}>
+              Show, <span className={styles.mark}>don&rsquo;t claim.</span>
+            </h1>
             <p className={styles.lede}>
-              Agents write code faster than you can follow it. Notch remembers what was decided, what&rsquo;s done and what
-              isn&rsquo;t, shows you the code you&rsquo;ve never read, and warns you before the project drifts apart.
+              Notch turns your GitHub, projects and the things you build on weekends into a portfolio where every skill carries its proof.
+              Recruiters see verified work, not another resume.
             </p>
             <div className={styles.ctas}>
-              <Link href={start} className="btn btn-yellow">
-                {signedIn ? "Open your projects" : "Get started"}
+              <Link href={build} className="btn btn-yellow">
+                Build my profile
               </Link>
-              <a href="#how" className={styles.textLink}>
-                See how it works
-              </a>
+              <Link href={hire} className="btn btn-quiet">
+                I&rsquo;m hiring
+              </Link>
             </div>
-            {!signedIn ? <p className={styles.heroNote}>Sign in with Google or GitHub, then choose a folder.</p> : null}
+            <p className={styles.heroNote}>Free for students. Sign in with GitHub or Google.</p>
           </div>
-          <HeroDemo />
+
+          <figure className={styles.sample} aria-label="An example profile">
+            <div className={styles.sampleHead}>
+              <span className={styles.sampleAvatar} aria-hidden="true">
+                AR
+              </span>
+              <span>
+                <strong>Asha Rao</strong>
+                <span className={styles.sampleSub}>@asha-r · Data analyst</span>
+              </span>
+              <span className="chip chip-yellow">Top 10% SQL</span>
+            </div>
+            <ul className={styles.sampleRows}>
+              {SAMPLE.map((s) => (
+                <li key={s.name}>
+                  <span className={styles.sampleName}>{s.name}</span>
+                  <span className={styles.sampleTrack} role="img" aria-label={`${s.score} out of 100`}>
+                    <span style={{ width: `${s.score}%` }} />
+                  </span>
+                  <span className={s.level === "Verified" ? styles.verified : styles.shown}>{s.level}</span>
+                </li>
+              ))}
+            </ul>
+            <figcaption className={styles.sampleFoot}>An example. Every bar is backed by repositories and projects you can open.</figcaption>
+          </figure>
         </section>
       </div>
 
       <main>
-        <section id="why" className={styles.section} aria-labelledby="why-title">
-          <h2 id="why-title" className={styles.sectionTitle}>
-            Why projects fall apart
+        <section id="levels" className={styles.section} aria-labelledby="levels-title">
+          <h2 id="levels-title" className={styles.sectionTitle}>
+            Every skill has a level
           </h2>
-          <p className={styles.sectionLede}>
-            Rarely because the code couldn&rsquo;t be written. Usually because the developer lost track of it. Notch checks
-            every project for these four, with the evidence.
-          </p>
-          <ul className={styles.features}>
-            {WHY.map((w) => (
-              <li key={w.name} className={styles.feature}>
-                <h3>{w.name}</h3>
-                <p>{w.text}</p>
-                <p className={styles.fixLine}>{w.fix}</p>
+          <p className={styles.sectionLede}>The level depends on the evidence behind it, so nobody can type their way to a strong profile.</p>
+          <ul className={styles.levels}>
+            {LEVELS.map((l) => (
+              <li key={l.level} className={l.level === "Verified" ? styles.levelCardStrong : styles.levelCard}>
+                <span className={l.className}>{l.level}</span>
+                <h3>{l.title}</h3>
+                <p>{l.text}</p>
               </li>
             ))}
           </ul>
         </section>
 
-        <section id="features" className={styles.section} aria-labelledby="features-title">
-          <h2 id="features-title" className={styles.sectionTitle}>
-            What Notch does
-          </h2>
-          <p className={styles.sectionLede}>Each of these is a page in the app. The label shows where to find it.</p>
-          <ul className={styles.features}>
-            {FEATURES.map((f) => (
-              <li key={f.name} className={styles.feature}>
-                <h3>{f.name}</h3>
-                <p>{f.text}</p>
-                <span className={styles.where}>{f.where}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section id="how" className={`${styles.section} ${styles.how}`} aria-labelledby="how-title">
-          <h2 id="how-title" className={styles.sectionTitle}>
-            How it works
+        <section id="students" className={styles.section} aria-labelledby="students-title">
+          <h2 id="students-title" className={styles.sectionTitle}>
+            Three minutes to a profile
           </h2>
           <ol className={styles.steps}>
-            <li className={styles.step}>
-              <div>
-                <h3>Add your code</h3>
-                <p>
-                  Choose your project folder. There&rsquo;s nothing to zip: <code>node_modules</code>, <code>.git</code> and
-                  build output stay on your computer. A zip works too, or connect the repository with <code>notch init</code>{" "}
-                  and Notch keeps itself up to date.
-                </p>
-              </div>
-              <div className={styles.artifact}>
-                <p className={styles.artifactStrong}>Packing 50 files from worli-decision</p>
-                <p>Left out: node_modules, .git, .next and local .env files.</p>
-              </div>
-            </li>
-            <li className={styles.step}>
-              <div>
-                <h3>Read the review and the map</h3>
-                <p>
-                  In about a minute you get the overall picture, the issues ranked by how much they matter, and what to do
-                  next. Explain shows how the files depend on each other.
-                </p>
-              </div>
-              <div className={styles.artifact}>
-                <p className={styles.counts}>
-                  <span className={styles.count} data-severity="high"><strong>2</strong> High</span>
-                  <span className={styles.count} data-severity="medium"><strong>8</strong> Medium</span>
-                  <span className={styles.count}><strong>4</strong> Low</span>
-                </p>
-                <p>The funding solver tries every combination of properties, so large sheets freeze the tab.</p>
-              </div>
-            </li>
-            <li className={styles.step}>
-              <div>
-                <h3>Keep working, and Notch keeps up</h3>
-                <p>
-                  Every Claude Code session and commit adds to the project&rsquo;s memory: decisions with their reasons, open
-                  tasks, and how errors were fixed. Come back a week later and it&rsquo;s all there.
-                </p>
-              </div>
-              <div className={styles.artifact}>
-                <p className={styles.artifactStrong}>Decision: use Postgres for billing data</p>
-                <p>Because we need joins and transactions. Ruled out: MongoDB. From the session on 5 October.</p>
-              </div>
-            </li>
+            {STEPS.map((s, i) => (
+              <li key={s.title}>
+                <span className={styles.stepNum}>0{i + 1}</span>
+                <h3>{s.title}</h3>
+                <p>{s.text}</p>
+              </li>
+            ))}
           </ol>
         </section>
 
-        <section id="claude-code" className={styles.section} aria-labelledby="cc-title">
-          <div className={styles.split}>
-            <div>
-              <h2 id="cc-title" className={styles.sectionTitle}>
-                Inside Claude Code
+        <section id="recruiters" className={styles.section} aria-labelledby="recruiters-title">
+          <div className={styles.recruiters}>
+            <div className={styles.recruitersText}>
+              <h2 id="recruiters-title" className={styles.sectionTitle}>
+                Hiring freshers? Match on proof.
               </h2>
               <p className={styles.sectionLede}>
-                After <code>notch init</code>, every Claude Code session starts with a briefing on where you stopped, and
-                the <code>/notch</code> command is there when you need it.
+                Paste a job description. Notch reads the skills it asks for, ranks candidates on verified evidence, and shows why each one
+                scored as they did.
               </p>
-              <dl className={styles.commands}>
-                <dt><code>/notch review</code></dt>
-                <dd>Claude Code reviews the repository and saves the review to Notch.</dd>
-                <dt><code>/notch resume</code></dt>
-                <dd>Where work stopped, open tasks and anything that drifted.</dd>
-                <dt><code>/notch why &lt;error&gt;</code></dt>
-                <dd>What fixed this error last time, or a plain &ldquo;not seen before&rdquo;.</dd>
-                <dt><code>/notch decisions</code></dt>
-                <dd>The decisions in force, with why and what was ruled out.</dd>
-              </dl>
+              <Link href={hire} className="btn btn-primary">
+                Start a drive
+              </Link>
             </div>
-            <pre className={`${styles.code} ${styles.terminal}`}>{`$ git commit -m "Store raw events"
-
-Notch: 1 change goes against the project's decisions
-
-  HIGH   package.json:5
-         "mongoose": "^8.4.0"
-         Adds MongoDB, but on 5 Oct the project
-         chose PostgreSQL and ruled it out.
-
-Commit stopped.`}</pre>
+            <ul className={styles.recruiterPoints}>
+              <li>A ranked shortlist with the score broken down by skill</li>
+              <li>Every claim links to the repository or project behind it</li>
+              <li>Fill every seat across several roles at once</li>
+            </ul>
           </div>
-        </section>
-
-        <section id="guide" className={styles.section} aria-labelledby="guide-title">
-          <h2 id="guide-title" className={styles.sectionTitle}>
-            Finding your way around
-          </h2>
-          <p className={styles.sectionLede}>Every project opens on its Overview. The menu groups the rest by what you&rsquo;re doing.</p>
-          <div className={styles.guide}>
-            <div>
-              <h3>Your code</h3>
-              <p><strong>Review</strong> for the assessment and issues, <strong>Explain</strong> for how it works, file by file.</p>
-            </div>
-            <div>
-              <h3>Your project&rsquo;s memory</h3>
-              <p>
-                <strong>Where you stopped</strong>, <strong>Ask</strong>, the <strong>Ledger</strong> of decisions and tasks,{" "}
-                <strong>Drift</strong>, and the <strong>Conversations</strong> it all came from.
-              </p>
-            </div>
-            <div>
-              <h3>Adding to it</h3>
-              <p><strong>Upload</strong> a folder, zip or chat export, or <strong>Connect repo</strong> so it updates itself.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="privacy" className={`${styles.section} ${styles.private}`} aria-labelledby="private-title">
-          <h2 id="private-title" className={styles.sectionTitle}>
-            Your code stays yours
-          </h2>
-          <p>
-            Keys and tokens are removed before anything is stored or sent to a model. Everything kept is encrypted and tied
-            to your account, so no one else&rsquo;s can read it. Projects you mark private are never sent to an AI model;
-            the review&rsquo;s automated checks, search and decisions still work.
-          </p>
-        </section>
-
-        <section className={styles.section} aria-labelledby="faq-title">
-          <h2 id="faq-title" className={styles.sectionTitle}>
-            Questions
-          </h2>
-          <div className={styles.faq}>
-            {FAQ.map((f) => (
-              <details key={f.q}>
-                <summary>{f.q}</summary>
-                <p>{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.closing}>
-          <p className={styles.closingLine}>Start with the project you&rsquo;re working on now.</p>
-          <Link href={start} className="btn btn-primary">
-            {signedIn ? "Open your projects" : "Get started"}
-          </Link>
         </section>
       </main>
 
       <footer className={styles.footer}>
-        <span className={styles.wordmarkSmall}>
-          <NotchMark size={16} />
-          notch
-        </span>
-        <span>Understand your code, and remember why it&rsquo;s built that way.</span>
+        <span>Notch · CIA 3, Advanced Algorithm</span>
+        <span>Your raw chats are never stored or shown.</span>
       </footer>
     </div>
   );

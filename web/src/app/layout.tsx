@@ -12,7 +12,7 @@ import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: { default: "Notch", template: "%s | Notch" },
-  description: "The project brain every coding agent plugs into: decisions, history and guardrails for AI-assisted code.",
+  description: "Portfolios where every skill carries its proof, and hiring that matches on verified work.",
 };
 
 export const viewport: Viewport = {

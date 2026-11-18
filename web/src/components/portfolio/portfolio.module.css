@@ -1,0 +1,242 @@
+/* Shared pieces of the portfolio and hiring screens. */
+
+/* A dark stage behind page headers, darker than the app's purple rail, as in the mockups. */
+.stage {
+  --brand: #2f253a;
+  --brand-raised: #43375a;
+}
+
+.topBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  padding: 1rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.topLinks {
+  display: flex;
+  gap: 1.25rem;
+  margin-left: auto;
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.topLinks a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.topLinks a:hover,
+.topLinks a[aria-current="page"] {
+  color: var(--ink);
+}
+
+.container {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2.5rem clamp(1rem, 4vw, 1.5rem) 4rem;
+}
+
+.narrow {
+  max-width: 54rem;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.lede {
+  margin: 0.6rem 0 0;
+  color: var(--ink-soft);
+  font-size: var(--t-lg);
+  line-height: 1.5;
+}
+
+.card {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  padding: 1.5rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--t-lg);
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.small {
+  font-size: var(--t-sm);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.error {
+  margin: 0.75rem 0 0;
+  color: var(--danger);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.notice {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--r-control);
+  background: var(--mark-wash);
+  font-size: var(--t-sm);
+}
+
+/* Evidence levels. Verified is solid, shown is tinted, claimed is dashed: they differ in more than hue. */
+.level {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 5.5rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--r-pill);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.levelVERIFIED {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.levelSHOWN {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.levelCLAIMED {
+  border: 1px dashed var(--line-strong);
+  color: var(--ink-soft);
+}
+
+.band {
+  display: inline-flex;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--r-pill);
+  background: var(--mark);
+  color: var(--mark-ink);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Skill bars. */
+.group + .group {
+  margin-top: 1.75rem;
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-panel);
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 10rem) minmax(4rem, 1fr) 2.5rem auto auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.skillName {
+  font-weight: 600;
+}
+
+.track {
+  display: block;
+  height: 0.6rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.score {
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  text-align: right;
+}
+
+@media (max-width: 40rem) {
+  .row {
+    grid-template-columns: 1fr auto;
+  }
+  .row .track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .row .score {
+    display: none;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tag {
+  display: inline-flex;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  color: var(--accent);
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1rem;
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.9rem;
+  line-height: 1.1;
+}
+
+.statLabel {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}

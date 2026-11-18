@@ -1,0 +1,182 @@
+.page {
+  min-height: 100vh;
+}
+
+.hero {
+  padding: 2.75rem clamp(1rem, 4vw, 3rem) 2.25rem;
+}
+
+.heroInner {
+  max-width: 72rem;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.avatar {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 50%;
+  background: var(--mark);
+  color: var(--mark-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2rem;
+  flex: none;
+}
+
+.heroText {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.headline {
+  margin: 0.4rem 0 0;
+  font-size: var(--t-lg);
+  color: var(--ink-soft);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.heroStats {
+  max-width: 72rem;
+  margin: 2rem auto 0;
+}
+
+.heroStats > div {
+  border-top: 1px solid var(--line-strong);
+  padding-top: 0.8rem;
+}
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+  align-items: flex-start;
+}
+
+.skills {
+  flex: 999 1 34rem;
+  min-width: 0;
+}
+
+.aside {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.proof {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.cards article {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  scroll-margin-top: 1rem;
+}
+
+.cards article:target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.kind {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.desc {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.statsLine {
+  margin: 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.shareCard {
+  background: var(--mark);
+  color: var(--mark-ink);
+  border-radius: 1.4rem;
+  padding: 1.6rem;
+}
+
+.shareCard p {
+  margin: 0;
+}
+
+.shareBrand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.shareHeadline {
+  margin-top: 1.5rem !important;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2.8rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.shareSub {
+  margin-top: 0.4rem !important;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.shareDetail {
+  margin-top: 1.5rem !important;
+}
+
+.shareUrl {
+  font-family: var(--font-mono);
+  font-size: var(--t-sm);
+  margin-top: 0.25rem !important;
+}
+
+.shareActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}

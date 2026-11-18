@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(signIn);
     }
     const session = (await res.json()) as Session;
-    const out = NextResponse.redirect(new URL("/projects", req.nextUrl.origin));
+    const out = NextResponse.redirect(new URL("/start", req.nextUrl.origin));
     out.cookies.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
     return out;
   } catch {
