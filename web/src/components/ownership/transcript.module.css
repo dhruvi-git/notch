@@ -1,0 +1,230 @@
+/* Verdict: sits on the plum stage. */
+.verdict {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5rem 2.5rem;
+}
+
+.verdictText {
+  max-width: 44rem;
+}
+
+.verdictTitle {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.4vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+/* A repository name stays whole; only very narrow screens may break it. */
+.repo {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@media (max-width: 30rem) {
+  .repo {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+.summary {
+  margin-top: 0.9rem;
+  font-size: var(--t-lg);
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.meta {
+  margin-top: 0.9rem;
+  max-width: 62ch;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+/* A plain ring for a score that didn't pass: deliberately not a seal. */
+.scoreRing {
+  --p: 0;
+  display: grid;
+  place-items: center;
+  width: 9.5rem;
+  height: 9.5rem;
+  border-radius: 50%;
+  background: conic-gradient(var(--ink-soft) calc(var(--p) * 1%), var(--line) 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  position: relative;
+}
+
+.scoreRing span {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+/* Exchanges: code on the left, the conversation on the right. */
+.exchanges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3.5rem;
+}
+
+.exchange {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.codeCol {
+  position: sticky;
+  top: 1.25rem;
+  min-width: 0;
+}
+
+.talk {
+  min-width: 0;
+}
+
+.qNum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.concept {
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.prompt {
+  margin-top: 0.6rem;
+  font-family: var(--font-display);
+  font-size: var(--t-xl);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.015em;
+}
+
+.answer {
+  margin: 1.25rem 0 0;
+  padding: 0 0 0 1.1rem;
+  border-left: 3px solid var(--mark);
+}
+
+.answer p {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.answer footer {
+  margin-top: 0.5rem;
+  font-size: var(--t-xs);
+  color: var(--ink-faint);
+}
+
+.unanswered {
+  margin-top: 1.25rem;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.grade {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 1.5rem;
+}
+
+.gradeScore {
+  min-width: 2.2ch;
+  font-family: var(--font-display);
+  font-size: var(--t-2xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink-soft);
+}
+
+.gradePass {
+  color: var(--ink);
+}
+
+.gradeBar {
+  position: relative;
+  flex: 1;
+  height: 0.45rem;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+}
+
+.gradeBar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}
+
+/* The pass mark, drawn as a notch. */
+.gradeBar i {
+  position: absolute;
+  top: -0.3rem;
+  bottom: -0.3rem;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--mark);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.feedback {
+  margin-top: 0.75rem;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  line-height: 1.55;
+}
+
+.flags {
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.flags li {
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--r-pill);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+@media (max-width: 56rem) {
+  .exchange {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+  .codeCol {
+    position: static;
+  }
+}
+
+@media (max-width: 36rem) {
+  .verdict {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

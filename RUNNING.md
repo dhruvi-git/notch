@@ -90,11 +90,18 @@ This is the main product and what the CIA 3 demo shows. With the API (step 4) an
 3. On **My profile**, enter your GitHub username and choose **Connect**. Your public repositories
    with your own commits appear as evidence. Then upload `samples/chatgpt-conversations.json` under
    AI chat history, approve or reject the suggested skills, pick a handle and publish.
-4. Open your public profile at `/u/<handle>` (no sign-in needed) and download the share card.
-5. Go to **Hire**, create a drive and paste a job description such as
+4. Under **Defend your code**, choose **Defend this repository** on one of your repositories,
+   read the brief, and choose **Start the clock**. Answer the five questions about your own code
+   in your own words (12 minutes), then **Finish**. Without `ANTHROPIC_API_KEY` the questions come
+   from templates and the grading from a rubric, so this works offline. A score of 70 defends the
+   repository: its skills move to the Defended level and the transcript appears on your profile.
+5. Open your public profile at `/u/<handle>` (no sign-in needed), open the transcript from the
+   seal, and download the share card.
+6. Go to **Hire**, create a drive and paste a job description such as
    "Must have strong SQL and Python. Dashboards in Power BI. Statistics is a plus."
-   Add a second role (for example Backend: Java must-have, 2 seats), save, and read the shortlist.
-6. Choose **Assign all seats**. The assignment page compares max-flow with best-score-first.
+   Add a second role (for example Backend: Java must-have, 2 seats), set a skill's
+   "Evidence at least" to Defended, save, and read the shortlist.
+7. Choose **Assign all seats**. The assignment page compares max-flow with best-score-first.
 
 If a step fails, note the step number and the error the page shows, and send it with the API log.
 

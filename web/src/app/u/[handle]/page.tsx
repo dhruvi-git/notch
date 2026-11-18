@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/Brand";
+import { Seal } from "@/components/Seal";
 import { SkillBars } from "@/components/portfolio/SkillBars";
 import { ApiError, publicApi } from "@/lib/server-api";
 import { shortDate } from "@/lib/format";
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 }
 
 const KIND: Record<EvidenceView["kind"], string> = {
-  GITHUB_REPO: "GitHub repository",
+  GITHUB_REPO: "Repository",
   PROJECT: "Project",
   CHAT_EXPORT: "Learning, from AI chats",
 };
@@ -43,7 +44,10 @@ function evidenceStats(e: EvidenceView): string {
 export default async function PublicProfile({ params }: { params: Promise<Params> }) {
   const { handle } = await params;
   const p = await load(handle);
-  const verified = p.skills.filter((s) => s.level === "VERIFIED").length;
+  const verified = p.skills.filter((s) => s.level === "VERIFIED" || s.level === "DEFENDED").length;
+  const defended = p.evidence.filter((e) => e.ownership?.defended);
+  // Defended repositories first, then the rest as the API ordered them (most recent first).
+  const evidence = [...p.evidence].sort((a, b) => Number(Boolean(b.ownership?.defended)) - Number(Boolean(a.ownership?.defended)));
   const commits = p.evidence.filter((e) => e.kind === "GITHUB_REPO" && !e.duplicate).reduce((n, e) => n + e.ownCommits, 0);
   const lastActive = p.evidence.map((e) => e.lastActive).sort().at(-1) ?? null;
   const badges = p.skills.filter((s) => s.topPercent).sort((a, b) => (a.topPercent ?? 100) - (b.topPercent ?? 100)).slice(0, 3);
@@ -79,15 +83,27 @@ export default async function PublicProfile({ params }: { params: Promise<Params
               </div>
             ) : null}
           </div>
+          {defended.length > 0 ? (
+            <ul className={styles.seals} aria-label="Defended repositories">
+              {defended.slice(0, 3).map((e) => (
+                <li key={e.id}>
+                  <a href={`/t/${e.ownership!.checkId}`} className={styles.sealLink}>
+                    <Seal score={e.ownership!.score} size={96} tone="paper" label={`${e.title}: defended, score ${e.ownership!.score}. Read the transcript.`} />
+                    <span>{e.title}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
         <div className={`${common.stats} ${styles.heroStats}`}>
           <div>
-            <div className={common.statValue}>{verified}</div>
-            <div className={common.statLabel}>verified skill{verified === 1 ? "" : "s"}</div>
+            <div className={common.statValue}>{defended.length}</div>
+            <div className={common.statLabel}>defended repositor{defended.length === 1 ? "y" : "ies"}</div>
           </div>
           <div>
-            <div className={common.statValue}>{p.evidence.length}</div>
-            <div className={common.statLabel}>pieces of evidence</div>
+            <div className={common.statValue}>{verified}</div>
+            <div className={common.statLabel}>skills backed by own code</div>
           </div>
           <div>
             <div className={common.statValue}>{commits}</div>
@@ -105,7 +121,10 @@ export default async function PublicProfile({ params }: { params: Promise<Params
           <h2 id="skills" className={styles.sectionTitle}>
             Skills
           </h2>
-          <p className={`${common.muted} ${common.small}`}>Scores run from 0 to 100 and come only from the evidence below.</p>
+          <p className={`${common.muted} ${common.small}`}>
+            Scores run from 0 to 100 and come only from the evidence below. The notch marks 85: only a repository its owner has defended can take a
+            skill past it.
+          </p>
           {p.skills.length > 0 ? (
             <SkillBars skills={p.skills} linkToEvidence />
           ) : (
@@ -125,8 +144,12 @@ export default async function PublicProfile({ params }: { params: Promise<Params
             </h2>
             <ShareCard
               handle={name}
-              headline={best.topPercent ? `Top ${best.topPercent}%` : `${Math.round(best.score)}/100`}
-              subline={`in ${best.name}, from ${best.level === "VERIFIED" ? "verified" : "real"} work`}
+              headline={defended[0] ? "Defended" : best.topPercent ? `Top ${best.topPercent}%` : `${Math.round(best.score)}/100`}
+              subline={
+                defended[0]
+                  ? `my own code in ${defended[0].title}, scoring ${defended[0].ownership!.score}`
+                  : `in ${best.name}, from ${best.level === "VERIFIED" || best.level === "DEFENDED" ? "verified" : "real"} work`
+              }
               detail={commits > 0 ? `${commits} own commits` : `${p.evidence.length} pieces of evidence`}
             />
           </aside>
@@ -136,32 +159,46 @@ export default async function PublicProfile({ params }: { params: Promise<Params
           <h2 id="proof" className={styles.sectionTitle}>
             Proof of work
           </h2>
-          <div className={styles.cards}>
-            {p.evidence.map((e) => (
-              <article key={e.id} id={`evidence-${e.id}`} className={common.card}>
-                <p className={styles.kind}>{KIND[e.kind]}</p>
-                <h3 className={styles.cardTitle}>
-                  {e.url ? (
-                    <a href={e.url} rel="noopener noreferrer" target="_blank">
-                      {e.title}
+          <ul className={styles.record}>
+            {evidence.map((e) => {
+              const own = e.ownership;
+              return (
+                <li key={e.id} id={`evidence-${e.id}`} className={`${styles.entry} ${own?.defended ? styles.entryDefended : ""}`}>
+                  <div className={styles.entryMain}>
+                    <p className={styles.kind}>{KIND[e.kind]}</p>
+                    <h3 className={styles.cardTitle}>
+                      {e.url ? (
+                        <a href={e.url} rel="noopener noreferrer" target="_blank">
+                          {e.title}
+                        </a>
+                      ) : (
+                        e.title
+                      )}
+                    </h3>
+                    {e.description ? <p className={`${common.muted} ${styles.desc}`}>{e.description}</p> : null}
+                    <p className={styles.statsLine}>{evidenceStats(e)}</p>
+                    {e.duplicate ? <p className={common.notice}>Matches a repository another person claimed first, so it doesn&rsquo;t count.</p> : null}
+                    <div className={common.chips}>
+                      {e.skills.map((s) => (
+                        <span key={s.id} className={common.tag}>
+                          {s.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {own?.defended ? (
+                    <a href={`/t/${own.checkId}`} className={styles.entrySeal}>
+                      <Seal score={own.score} size={104} label={`Defended, score ${own.score}`} />
+                      <span>
+                        Defended {shortDate(own.finishedAt)}
+                        <strong>Read the transcript</strong>
+                      </span>
                     </a>
-                  ) : (
-                    e.title
-                  )}
-                </h3>
-                {e.description ? <p className={`${common.muted} ${styles.desc}`}>{e.description}</p> : null}
-                <p className={styles.statsLine}>{evidenceStats(e)}</p>
-                {e.duplicate ? <p className={common.notice}>Matches a repository another person claimed first, so it doesn&rsquo;t count.</p> : null}
-                <div className={common.chips}>
-                  {e.skills.map((s) => (
-                    <span key={s.id} className={common.tag}>
-                      {s.name}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
         </section>
       </main>
     </div>

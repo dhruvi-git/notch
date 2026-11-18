@@ -1,11 +1,21 @@
-import { LEVEL_LABEL, type Level, type SkillView } from "@/lib/portfolio-types";
+import { SealDot } from "@/components/Seal";
+import { LEVEL_LABEL, UNDEFENDED_CAP, type Level, type SkillView } from "@/lib/portfolio-types";
 import styles from "./portfolio.module.css";
 
 export function LevelChip({ level }: { level: Level }) {
-  return <span className={`${styles.level} ${styles[`level${level}`]}`}>{LEVEL_LABEL[level]}</span>;
+  return (
+    <span className={`${styles.level} ${styles[`level${level}`]}`}>
+      {level === "DEFENDED" ? <SealDot /> : null}
+      {LEVEL_LABEL[level]}
+    </span>
+  );
 }
 
-/** Skills grouped by area, strongest first: a bar for the 0–100 score, the evidence level and any rank badge. */
+/**
+ * Skills grouped by area, strongest first: a bar for the 0–100 score, the evidence level and any
+ * rank badge. Every track has a notch at 85, the most a skill can score without a defended
+ * repository; anything past it is drawn in highlighter yellow.
+ */
 export function SkillBars({ skills, linkToEvidence = false }: { skills: SkillView[]; linkToEvidence?: boolean }) {
   const groups = new Map<string, SkillView[]>();
   for (const s of skills) {
@@ -31,7 +41,13 @@ export function SkillBars({ skills, linkToEvidence = false }: { skills: SkillVie
                   role="img"
                   aria-label={`${s.name}: ${Math.round(s.score)} out of 100`}
                 >
-                  <span className={styles.fill} style={{ width: `${Math.max(0, Math.min(100, s.score))}%` }} />
+                  <span
+                    className={styles.fill}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, s.score))}%`,
+                      ["--cut" as string]: `${(UNDEFENDED_CAP / Math.max(s.score, 1)) * 100}%`,
+                    }}
+                  />
                 </span>
                 <span className={styles.score} aria-hidden="true">
                   {Math.round(s.score)}

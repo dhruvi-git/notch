@@ -2,10 +2,13 @@
 
 [![CI](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml/badge.svg)](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml)
 
-**Show, don't claim.** Notch is a portfolio for tech students and freshers in which every skill
-is backed by evidence: their own commits on GitHub, projects, and (optionally) what they have
-been learning in AI chats. Recruiters paste a job description, get a ranked shortlist with the
-proof attached, and fill every seat across several roles at once.
+**You wrote it. Now prove it.** Notch is a portfolio for tech students and freshers in which
+every skill is backed by evidence: their own commits on GitHub, projects, and (optionally) what
+they have been learning in AI chats. The strongest evidence is an **Ownership Check**: a timed
+interview about the candidate's own repository, in which Notch picks parts of their code and asks
+them to explain it. Pass, and the repository is **Defended**, the one level nobody can fake, with a
+public transcript recruiters can read. Recruiters paste a job description, get a ranked shortlist
+with the proof attached, and fill every seat across several roles at once.
 
 CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
@@ -13,12 +16,14 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
 | | |
 |---|---|
-| ![Landing page](docs/screenshots/01-landing.png) | ![Building a profile](docs/screenshots/02-build-profile.png) |
-| Landing | Building a profile: GitHub, chat export, projects, approving skills |
-| ![Public profile](docs/screenshots/03-public-profile.png) | ![Drive and shortlist](docs/screenshots/04-drive-shortlist.png) |
-| Public profile with evidence levels, rank badges and proof of work | A drive: roles from the job description, ranked shortlist with the score split by skill |
-| ![Seat assignment](docs/screenshots/05-seat-assignment.png) | ![Profile on a phone](docs/screenshots/06-profile-phone.png) |
-| Seat assignment: max-flow against best score first | The public profile on a phone |
+| ![Landing page](docs/screenshots/01-landing.png) | ![Starting an Ownership Check](docs/screenshots/02-defend-brief.png) |
+| Landing: a recorded Ownership Check plays in the hero | Defend your code: each repository's status, and the brief before the clock starts |
+| ![The interview](docs/screenshots/03-interview.png) | ![The verdict](docs/screenshots/04-verdict.png) |
+| The interview: the candidate's own code, one question at a time, against the clock | The verdict: the Defended seal, then how every answer was graded |
+| ![Public profile](docs/screenshots/05-public-profile.png) | ![Public transcript](docs/screenshots/06-transcript.png) |
+| Public profile: Defended seals, and the notch at 85 that only a defence can pass | The public transcript recruiters read |
+| ![Drive and shortlist](docs/screenshots/07-drive-shortlist.png) | ![Seat assignment](docs/screenshots/08-seat-assignment.png) |
+| A drive: roles from the job description, Defended as a minimum level | Seat assignment: max-flow against best score first |
 
 Screenshots use the mock API's sample candidates (`web/scripts/mock-portfolio.mjs`).
 
@@ -33,6 +38,7 @@ a score or an assignment.
 | Percentile cut-offs behind "Top 10% in SQL" badges; top-k shortlists | Randomized Quickselect, three-way partition (`select/RandomizedSelect`, `score/PercentileBands`) | Unit 6 · CO5 |
 | Is a connected repository a copy of someone else's? | Bloom filter, then an exact check (`probabilistic/BloomFilter`, `api/.../DuplicateScreen`) | Unit 6 · CO5 |
 | Skill names and autocomplete | Radix tree (`text/RadixTree`, `api/.../SkillCatalog`) | Unit 4 |
+| Which parts of a repository an Ownership Check asks about, so a few questions touch every skill, concept and main file | Greedy weighted set cover, H(d)-approximate (`cover/GreedySetCover`, `api/.../QuestionPlanner`) | Unit 5 · CO4 |
 
 On a synthetic campus drive, max-flow fills 100% of seats where best-score-first greedy fills
 81%; a 10,000-candidate drive takes about 60 ms. Results and method: [docs/benchmarks.md](docs/benchmarks.md).

@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Seal } from "@/components/Seal";
 import { LevelChip } from "@/components/portfolio/SkillBars";
 import { SkillPicker } from "@/components/portfolio/SkillPicker";
 import { call, ClientApiError, postJson } from "@/lib/client-api";
-import type { ChatImportResult, GitHubSyncResult, ProfileView, SkillRef } from "@/lib/portfolio-types";
+import type { ChatImportResult, CheckView, EvidenceView, GitHubSyncResult, ProfileView, SkillRef } from "@/lib/portfolio-types";
 import type { User } from "@/lib/types";
 import common from "@/components/portfolio/portfolio.module.css";
 import styles from "./onboarding.module.css";
@@ -42,6 +43,7 @@ export function Onboarding({ user, profile }: { user: User; profile: ProfileView
       ) : null}
 
       <GitHubSection user={user} hasRepos={hasRepos} onDone={() => router.refresh()} />
+      {hasRepos ? <DefendSection profile={profile} /> : null}
       <ChatSection onDone={() => router.refresh()} />
       <ProjectSection onDone={() => router.refresh()} />
       <ApproveSection profile={profile} onDone={() => router.refresh()} />
@@ -411,5 +413,116 @@ function PublishSection({ profile, onDone }: { profile: ProfileView; onDone: () 
         ) : null}
       </form>
     </section>
+  );
+}
+
+const RETAKE_HOURS = 24;
+
+/** Ownership Checks: explain your own code against the clock, and the repository becomes Defended. */
+function DefendSection({ profile }: { profile: ProfileView }) {
+  const repos = profile.evidence.filter((e) => e.kind === "GITHUB_REPO" && !e.duplicate);
+  const defended = repos.filter((e) => e.ownership?.defended).length;
+  return (
+    <section className={`${common.card} ${styles.defend}`} aria-labelledby="defend">
+      <div className={styles.defendHead}>
+        <div>
+          <h2 id="defend" className={common.cardTitle}>
+            Defend your code
+          </h2>
+          <p className={`${common.muted} ${common.small}`}>
+            Anyone can push a repository. Explain yours and it becomes Defended: the highest level on Notch, and the only way a skill scores past
+            85. Recruiters can read every question and answer.
+          </p>
+        </div>
+        <p className={styles.defendCount}>
+          <strong>{defended}</strong> of {repos.length} defended
+        </p>
+      </div>
+      <ul className={styles.defendList}>
+        {repos.map((e) => (
+          <DefendRow key={e.id} repo={e} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DefendRow({ repo }: { repo: EvidenceView }) {
+  const router = useRouter();
+  const [briefing, setBriefing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const own = repo.ownership;
+  const retakeAt = own && !own.defended ? Date.parse(own.finishedAt) + RETAKE_HOURS * 3_600_000 : 0;
+  const waiting = retakeAt > Date.now();
+
+  async function start() {
+    setBusy(true);
+    setError(null);
+    try {
+      const c = await postJson<CheckView>("/ownership/checks", { evidenceId: repo.id });
+      router.push(`/check/${c.id}`);
+    } catch (err) {
+      setError(message(err, "The check couldn\u2019t start. Try again."));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className={styles.defendRow}>
+      <div className={styles.defendRepo}>
+        {own?.defended ? <Seal score={own.score} size={52} /> : <span className={styles.defendEmpty} aria-hidden="true" />}
+        <div>
+          <p className={styles.defendName}>{repo.title}</p>
+          <p className={`${common.muted} ${common.small}`}>
+            {own?.defended
+              ? `Defended with ${own.score} out of 100.`
+              : own
+                ? `Scored ${own.score} last time; 70 defends it.${waiting ? ` Try again after ${new Date(retakeAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : ""}`
+                : `${repo.skills.map((s) => s.name).slice(0, 4).join(", ") || "No skills found yet"}`}
+          </p>
+        </div>
+      </div>
+      <div className={styles.defendActions}>
+        {own ? (
+          <Link href={own.defended ? `/t/${own.checkId}` : `/check/${own.checkId}`} className={styles.defendLink}>
+            {own.defended ? "Transcript" : "Last attempt"}
+          </Link>
+        ) : null}
+        {!own?.defended && !briefing ? (
+          <button type="button" className="btn btn-primary" onClick={() => setBriefing(true)} disabled={waiting}>
+            {own ? "Try again" : "Defend this repository"}
+          </button>
+        ) : null}
+      </div>
+      {briefing ? (
+        <div className={styles.brief} role="region" aria-label={`Before you start the check on ${repo.title}`}>
+          <ul>
+            <li>
+              <strong>12 minutes, 5 questions.</strong> Each one shows a part of {repo.title} and asks you to explain it.
+            </li>
+            <li>
+              <strong>Your own words.</strong> Pasting and leaving the page are recorded. Notes are fine; copying an explanation isn&rsquo;t.
+            </li>
+            <li>
+              <strong>70 defends it.</strong> If you pass, the transcript appears on your public profile. If not, try again in 24 hours.
+            </li>
+          </ul>
+          <div className={styles.briefActions}>
+            <button type="button" className="btn btn-yellow" onClick={start} disabled={busy}>
+              {busy ? "Reading your code\u2026" : "Start the clock"}
+            </button>
+            <button type="button" className="btn btn-quiet" onClick={() => setBriefing(false)} disabled={busy}>
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {error ? (
+        <p className={common.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+    </li>
   );
 }

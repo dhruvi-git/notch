@@ -185,6 +185,11 @@ curl -s -X POST localhost:8090/api/drives/$D/assign | jq '{totalSeats, filled, g
 | POST | `/api/drives/{id}/assign` | Assign every seat with max-flow; reports what greedy would have filled |
 | GET | `/api/drives/{id}/assignment` | The latest assignment |
 | POST | `/api/dev/demo-pool?size=` | Local profile only: seed synthetic public candidates |
+| POST | `/api/ownership/checks` | Start an Ownership Check on one of your repositories (`{"evidenceId"}`): 5 questions, 12 minutes |
+| GET | `/api/ownership/checks/{id}` | Your check: questions and draft answers while open; scores, feedback and integrity signals once finished |
+| PUT | `/api/ownership/checks/{id}/answers/{position}` | Save an answer (`{"answer", "millis", "pastes", "focusLost"}`); allowed until 30 s past the deadline |
+| POST | `/api/ownership/checks/{id}/finish` | Grade every answer and decide the verdict (70 defends; more than one pasted answer fails) |
+| GET | `/public/ownership/{id}` | The transcript of a finished check on a public profile (no sign-in); rubrics are never shown |
 
 GitHub sync reads public data only. Without a token GitHub allows 60 calls an hour, enough for
 the 12 most recently pushed repositories; set `GITHUB_TOKEN` (any personal token, no scopes
@@ -192,10 +197,20 @@ needed) to read up to 30. Forks and repositories without your own commits are sk
 repository whose first commit or latest tree matches one someone else already claimed is kept
 but marked as a duplicate, adds no strength, and cannot verify a skill.
 
+**Ownership Checks.** Starting a check reads the repository from GitHub (its file tree, then up
+to 20 source files, or 8 without `GITHUB_TOKEN`), splits the files into regions (functions,
+methods, SQL statements), tags each with the skills and concepts it shows, and picks what to ask
+with greedy weighted set cover so the questions touch every skill, concept and main file. With
+`ANTHROPIC_API_KEY` set, a model writes each question and its rubric from the code and grades the
+answers; without one, concept templates write the questions and a transparent rubric grades them
+(ideas covered, the code's own names used, depth). A score of 70 or more with at most one pasted
+answer makes the repository Defended: its skills reach the Defended level and may score past 85.
+Retakes open 24 hours after a finished check; the best attempt is the one shown.
+
 **Checking the SQL.** `scripts/check_repository_sql.py` runs every statement in
-`PortfolioRepository` and `RecruitRepository`, verbatim, against your local database (after the
-API has migrated it once): 101 checks covering upserts, `IN` lists, joins, cascades, ownership and
-every constraint in V10–V13. It runs in one transaction that is rolled back, so it leaves no data:
+`PortfolioRepository`, `RecruitRepository` and `OwnershipRepository`, verbatim, against your local
+database (after the API has migrated it once): 145 checks covering upserts, `IN` lists, joins,
+cascades, ownership, public transcripts and every constraint in V10–V14. It runs in one transaction that is rolled back, so it leaves no data:
 `pip install psycopg2-binary && python scripts/check_repository_sql.py` (`NOTCH_DB_DSN` overrides
 the connection).
 

@@ -190,6 +190,7 @@ export function DriveWorkspace({ initial }: { initial: Drive }) {
                   <select className="field" value={q.minLevel} onChange={(e) => updateReq(q.skillId, { minLevel: e.target.value as Level })}>
                     <option value="SHOWN">Shown</option>
                     <option value="VERIFIED">Verified</option>
+                    <option value="DEFENDED">Defended</option>
                   </select>
                 </label>
                 <label className={styles.must}>
