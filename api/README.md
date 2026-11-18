@@ -192,6 +192,13 @@ needed) to read up to 30. Forks and repositories without your own commits are sk
 repository whose first commit or latest tree matches one someone else already claimed is kept
 but marked as a duplicate, adds no strength, and cannot verify a skill.
 
+**Checking the SQL.** `scripts/check_repository_sql.py` runs every statement in
+`PortfolioRepository` and `RecruitRepository`, verbatim, against your local database (after the
+API has migrated it once): 101 checks covering upserts, `IN` lists, joins, cascades, ownership and
+every constraint in V10–V13. It runs in one transaction that is rolled back, so it leaves no data:
+`pip install psycopg2-binary && python scripts/check_repository_sql.py` (`NOTCH_DB_DSN` overrides
+the connection).
+
 Skill scores are computed from evidence on every read (engine `SkillScoring`), so they never go
 stale. The pool of public candidates and their percentile bands is cached for 30 seconds and
 rebuilt when any portfolio changes.
