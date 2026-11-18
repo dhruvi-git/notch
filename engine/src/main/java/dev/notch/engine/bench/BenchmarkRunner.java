@@ -1,6 +1,7 @@
 package dev.notch.engine.bench;
 
 import dev.notch.engine.baseline.Baselines;
+import dev.notch.engine.cover.GreedySetCover;
 import dev.notch.engine.flow.SeatAssigner;
 import dev.notch.engine.graph.DisjointSetUnion;
 import dev.notch.engine.probabilistic.BloomFilter;
@@ -75,6 +76,7 @@ public final class BenchmarkRunner {
         bloomFilter();
         seatAssignment();
         percentileBands();
+        setCover();
     }
 
     // ---------------------------------------------------------------- exact search
@@ -317,6 +319,74 @@ public final class BenchmarkRunner {
             record("bands", "{\"n\": %d, \"fastMs\": %.3f, \"slowMs\": %.3f}", n, fast, slow);
         }
         System.out.println();
+    }
+
+    // ---------------------------------------------------------------- set cover
+
+    /** Random instance: every element lies in at least one set; costs 1 to 5. */
+    static List<java.util.BitSet> coverSets(int u, int m, Random rnd, double[] costs) {
+        List<java.util.BitSet> sets = new ArrayList<>();
+        for (int i = 0; i < m; i++) {
+            java.util.BitSet s = new java.util.BitSet(u);
+            for (int e = 0; e < u; e++) if (rnd.nextInt(5) == 0) s.set(e);
+            sets.add(s);
+            costs[i] = 1 + rnd.nextInt(5);
+        }
+        for (int e = 0; e < u; e++) sets.get(rnd.nextInt(m)).set(e);
+        return sets;
+    }
+
+    private static void setCover() {
+        System.out.println("## Choosing code to ask about: greedy set cover vs. exact search");
+        System.out.println("Random weighted instances (each element in a set with probability 1/5, costs 1-5). Exact search tries every subset.\n");
+        System.out.println("| Universe | Sets | Greedy cost | Optimal cost | Ratio | H(max set) bound | Greedy (ms) | Exact (ms) |");
+        System.out.println("|---:|---:|---:|---:|---:|---:|---:|---:|");
+        int[][] small = {{20, 10}, {30, 14}, {40, 18}};
+        for (int[] c : small) {
+            int u = c[0], m = c[1];
+            double[] costs = new double[m];
+            List<java.util.BitSet> sets = coverSets(u, m, new Random(SEED), costs);
+            GreedySetCover.Result g = GreedySetCover.solve(u, sets, costs, Integer.MAX_VALUE);
+            int maxSize = sets.stream().mapToInt(java.util.BitSet::cardinality).max().orElse(1);
+            double[] opt = {0};
+            double greedyMs = median(() -> GreedySetCover.solve(u, sets, costs, Integer.MAX_VALUE));
+            double exactMs = median(() -> opt[0] = exactCover(u, sets, costs), 1, 3);
+            System.out.printf(Locale.ROOT, "| %d | %d | %.0f | %.0f | %.3f | %.2f | %.3f | %.1f |%n", u, m, g.cost(), opt[0],
+                    g.cost() / opt[0], GreedySetCover.harmonic(maxSize), greedyMs, exactMs);
+            record("cover", "{\"u\": %d, \"m\": %d, \"greedy\": %.1f, \"opt\": %.1f, \"greedyMs\": %.3f, \"exactMs\": %.2f}",
+                    u, m, g.cost(), opt[0], greedyMs, exactMs);
+        }
+        System.out.println();
+        System.out.println("| Universe | Sets | Sets picked | Greedy (ms) |");
+        System.out.println("|---:|---:|---:|---:|");
+        int[][] large = {{100, 1_000}, {200, 10_000}, {400, 20_000}};
+        for (int[] c : large) {
+            int u = c[0], m = c[1];
+            double[] costs = new double[m];
+            List<java.util.BitSet> sets = coverSets(u, m, new Random(SEED), costs);
+            GreedySetCover.Result g = GreedySetCover.solve(u, sets, costs, Integer.MAX_VALUE);
+            double ms = median(() -> GreedySetCover.solve(u, sets, costs, Integer.MAX_VALUE), 1, 3);
+            System.out.printf(Locale.ROOT, "| %d | %,d | %d | %.1f |%n", u, m, g.picked().size(), ms);
+        }
+        System.out.println();
+    }
+
+    /** Cheapest cover by trying every subset: the baseline the greedy approximation is measured against. */
+    static double exactCover(int u, List<java.util.BitSet> sets, double[] costs) {
+        double best = Double.POSITIVE_INFINITY;
+        int m = sets.size();
+        for (int mask = 1; mask < (1 << m); mask++) {
+            java.util.BitSet c = new java.util.BitSet(u);
+            double cost = 0;
+            for (int i = 0; i < m && cost < best; i++) {
+                if ((mask >> i & 1) == 1) {
+                    c.or(sets.get(i));
+                    cost += costs[i];
+                }
+            }
+            if (cost < best && c.cardinality() == u) best = cost;
+        }
+        return best;
     }
 
     // ---------------------------------------------------------------- helpers

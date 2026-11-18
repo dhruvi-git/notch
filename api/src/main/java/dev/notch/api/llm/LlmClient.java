@@ -36,6 +36,24 @@ public interface LlmClient {
         return null;
     }
 
+    /**
+     * Writes one Ownership Check question about a candidate's own code, as JSON:
+     * {@code {"question": "...", "rubric": [["term", "synonym"], ...]}}. Null when this client can't
+     * (offline); throws {@link IllegalStateException} when a model was asked and didn't deliver.
+     */
+    default java.util.Map<String, Object> ownershipQuestion(OwnershipPrompt prompt) {
+        return null;
+    }
+
+    /**
+     * Grades one Ownership Check answer, as JSON: {@code {"score": 0-100, "feedback": "...",
+     * "covered": [...], "missed": [...]}}. Null when this client can't (offline); throws
+     * {@link IllegalStateException} when a model was asked and didn't deliver.
+     */
+    default java.util.Map<String, Object> gradeOwnership(OwnershipGradeRequest request) {
+        return null;
+    }
+
     /** A short name for logs and the UI, such as "offline" or a provider name. */
     String name();
 }

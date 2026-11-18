@@ -1,4 +1,4 @@
-"""Runs every SQL statement in PortfolioRepository and RecruitRepository, verbatim, against PostgreSQL.
+"""Runs every SQL statement in PortfolioRepository, RecruitRepository and OwnershipRepository, verbatim, against PostgreSQL.
 
 Checks that the queries parse and behave (upserts, IN lists, joins, cascades, ownership) and that
 the migrations' constraints reject bad data. Everything runs in one transaction that is rolled back,
@@ -13,6 +13,10 @@ psycopg2.extras.register_uuid()
 
 def extract(path):
     src = open(path).read()
+    # inline shared column lists: "SELECT " + COLUMNS + """ ... becomes one text block
+    for name, body in re.findall(r'static final String (\w+) = """(.*?)""";', src, re.S):
+        src = re.sub(r'"((?:[^"\\]|\\.)*)" \+ ' + name + r' \+ """', lambda m: '"""' + m.group(1) + body + '\n', src)
+        src = re.sub(r'"((?:[^"\\]|\\.)*)" \+ ' + name + r' \+ "((?:[^"\\]|\\.)*)"', lambda m: '"""' + m.group(1) + body + m.group(2) + '"""', src)
     out = {}
     for m in re.finditer(r'public [^\n=;]*?\b(\w+)\(([^)]*)\)\s*\{', src):
         name, start = m.group(1), m.end()
@@ -33,6 +37,7 @@ def to_pg(sql):
 base = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'main', 'java', 'dev', 'notch', 'api') + os.sep
 P = extract(base + os.path.join('portfolio', 'PortfolioRepository.java'))
 R = extract(base + os.path.join('recruit', 'RecruitRepository.java'))
+O = extract(base + os.path.join('ownership', 'OwnershipRepository.java'))
 con = psycopg2.connect(os.environ.get('NOTCH_DB_DSN', 'host=localhost port=5433 dbname=notch user=notch password=notch'))
 cur = con.cursor()
 ok = fail = 0
@@ -102,7 +107,7 @@ check(run(P, 'setLinkApproved', a=True, e=chatA, u=A, s=25) == 1, 'approve own l
 
 links = run(P, 'evidenceFor', 0, users=[A, B])
 check(len(links) == 4, f'links for A and B: {len(links)}')
-rows = run(P, 'evidenceFor', 1, users=[A, B])
+rows = run(P, 'evidenceFor', 2, users=[A, B])
 check(len(rows) == 3, 'evidence rows')
 check(run(P, 'githubEvidence', u=A) == [(repoA, 'https://github.com/asha/sales-dashboard')], 'github evidence by url')
 check(run(P, 'updateRepoEvidence', title='sales-dashboard', description='d', commits=150, weeks=10, dup=None, root='root-a-' + x,
@@ -123,6 +128,45 @@ check(run(P, 'fingerprintOwners', sha='nope') == [], 'unknown fingerprint')
 # claimed and hidden skills
 run(P, 'setUserSkill', u=A, s=2, c=True, h=False); run(P, 'setUserSkill', u=A, s=2, c=True, h=True)  # upsert
 check(run(P, 'userSkillsFor', users=[A, B]) == [(A, 2, True, True)], 'user skills upsert')
+
+# ownership checks
+chk, chk2 = uuid.uuid4(), uuid.uuid4()
+check(len(O['create']) == 2 and 'c.plan_covered FROM ownership_checks' in ' '.join(to_pg(O['check'][0]).split()), 'ownership SQL extracted with shared columns')
+run(O, 'create', 0, id=chk, u=A, e=repoA, deadline=now + dt.timedelta(minutes=12), by='templates', elements=9, covered=8)
+q0, q1 = uuid.uuid4(), uuid.uuid4()
+for qid, pos in ((q0, 0), (q1, 1)):
+    run(O, 'create', 1, id=qid, c=chk, pos=pos, path='churn.py', start=10, end=24, lang='python', code='def f():\n  pass',
+        concept='Joins' if pos else None, prompt='Walk me through f.', rubric='join|merge\nkey|on', ids='f\ndf', covers='SQL\nchurn.py')
+run(O, 'create', 1, expect_error='UniqueViolation', id=uuid.uuid4(), c=chk, pos=0, path='x', start=1, end=2, lang='python',
+    code='x', concept=None, prompt='p', rubric='a|b', ids='', covers='')
+run(O, 'create', 0, expect_error='CheckViolation', id=uuid.uuid4(), u=A, e=repoA, deadline=now, by='guesswork', elements=1, covered=1)
+check(len(run(O, 'check', id=chk, u=A)) == 1, 'own check')
+check(run(O, 'check', id=chk, u=B) == [], 'other user cannot read the check')
+check(run(O, 'openCheck', u=A, e=repoA)[0][0] == chk, 'open check found')
+check(run(O, 'lastFinished', u=A, e=repoA) == [(None,)], 'nothing finished yet')
+check(run(O, 'publicCheck', id=chk) == [], 'open checks are not public')
+check(run(O, 'saveAnswer', a='It merges on customer_id.', ms=42000, p=0, f=1, c=chk, pos=0) == 1, 'answer saved')
+check(run(O, 'saveAnswer', a='x', ms=1, p=0, f=0, c=chk, pos=7) == 0, 'no such question')
+run(O, 'saveAnswer', expect_error='CheckViolation', a='x', ms=-5, p=0, f=0, c=chk, pos=1)
+qs = run(O, 'questions', c=chk)
+check([q[1] for q in qs] == [0, 1] and qs[0][12] == 'It merges on customer_id.' and qs[0][16] == 1, 'questions in order with answers')
+run(O, 'finish', 0, s=72, f='Named the join key.', flags='Left the page 2 times', id=q0)
+run(O, 'finish', 0, s=0, f='Not answered.', flags='', id=q1)
+check(run(O, 'finish', 1, s=72, d=True, summary='Defended', by='rubric', id=chk) == 1, 'check finished')
+check(run(O, 'finish', 1, s=10, d=False, summary='x', by='rubric', id=chk) == 0, 'a finished check cannot be finished again')
+check(run(O, 'openCheck', u=A, e=repoA) == [], 'no open check after finishing')
+check(run(O, 'lastFinished', u=A, e=repoA)[0][0] is not None, 'finish time recorded')
+check(len(run(O, 'publicCheck', id=chk)) == 1, 'finished check on a public profile is public')
+check(run(O, 'header', id=chk)[0][0] == 'asha-r-' + x, 'public header has the handle')
+# a second, failed attempt: the profile still shows the best (defended) one
+run(O, 'create', 0, id=chk2, u=A, e=repoA, deadline=now, by='model', elements=5, covered=5)
+run(O, 'finish', 1, s=40, d=False, summary='Not yet', by='model', id=chk2)
+own = [r for r in run(P, 'evidenceFor', 1, users=[A, B]) if r[0] == repoA]
+check(len(own) == 1 and own[0][1] == chk and own[0][2] == 72 and own[0][3] is True and own[0][5] == 2, f'evidence shows best check of 2: {own}')
+cur.execute("UPDATE profiles SET is_public = false WHERE user_id = %s", (A,))
+check(run(O, 'publicCheck', id=chk) == [], 'private profile hides its transcripts')
+cur.execute("UPDATE profiles SET is_public = true WHERE user_id = %s", (A,))
+run(R, 'replaceRoles', 3, expect_error='ForeignKeyViolation', r=uuid.uuid4(), s=17, w=1.0, m=True, l='DEFENDED')  # DEFENDED level accepted by the check
 
 # deletes
 check(run(P, 'deleteChatEvidence', u=A) == 1, 'delete chat evidence')

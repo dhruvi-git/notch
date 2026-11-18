@@ -63,6 +63,16 @@ class SkillScoringTest {
     }
 
     @Test
+    void defendedWorkIsTheOnlyWayPast85() {
+        assertEquals(100.0, SkillScoring.score(List.of(Evidence.defendedRepo(50, 12, 0))), EPS);
+        assertEquals(Level.DEFENDED, SkillScoring.level(List.of(Evidence.repo(50, 12, false, false, 0), Evidence.defendedRepo(10, 3, 0))));
+        // Defending a repository too thin to verify a skill does not make the skill defended.
+        assertEquals(Level.SHOWN, SkillScoring.level(List.of(Evidence.defendedRepo(3, 1, 0))));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Evidence(SkillScoring.Kind.PROJECT, 0, 0, false, false, 0, 0, true));
+    }
+
+    @Test
     void rejectsInvalidEvidence() {
         assertThrows(IllegalArgumentException.class, () -> Evidence.repo(-1, 0, false, false, 0));
         assertThrows(IllegalArgumentException.class, () -> Evidence.project(-2));

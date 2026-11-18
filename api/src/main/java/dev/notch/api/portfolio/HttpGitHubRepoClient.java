@@ -2,6 +2,8 @@ package dev.notch.api.portfolio;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.notch.api.ownership.core.RegionExtractor;
+import dev.notch.api.ownership.core.SourceSelector;
 import dev.notch.api.portfolio.core.RepoEvidence;
 import dev.notch.api.portfolio.core.RepoEvidence.RepoData;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +54,18 @@ public class HttpGitHubRepoClient implements GitHubRepoClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Tree(String sha) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record RepoInfo(@JsonProperty("default_branch") String defaultBranch) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record TreeItem(String path, String type, Long size) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GitTree(List<TreeItem> tree, Boolean truncated) {
     }
 
     private record Response(int status, String body, String link, String remaining) {
@@ -141,6 +155,37 @@ public class HttpGitHubRepoClient implements GitHubRepoClient {
         return new RepoData(r.fullName(), r.htmlUrl(), r.description(), r.topics(), languages, false, own, pushed, rootSha, treeSha);
     }
 
+    @Override
+    public List<RegionExtractor.SourceFile> sourceFiles(String fullName, int maxFiles) {
+        if (!fullName.matches("[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}")) throw new RepoNotFound(fullName);
+        Response info = get("/repos/" + fullName);
+        if (info.status() == 404) throw new RepoNotFound(fullName);
+        check(info);
+        String branch = mapper.readValue(info.body(), RepoInfo.class).defaultBranch();
+        if (branch == null) return List.of();
+
+        Response treeRes = get("/repos/" + fullName + "/git/trees/" + enc(branch) + "?recursive=1");
+        if (treeRes.status() == 404 || treeRes.status() == 409) return List.of(); // empty repository
+        check(treeRes);
+        GitTree tree = mapper.readValue(treeRes.body(), GitTree.class);
+        List<SourceSelector.Entry> entries = new ArrayList<>();
+        if (tree.tree() != null) {
+            for (TreeItem t : tree.tree()) {
+                if ("blob".equals(t.type()) && t.path() != null && t.size() != null) entries.add(new SourceSelector.Entry(t.path(), t.size()));
+            }
+        }
+        List<RegionExtractor.SourceFile> out = new ArrayList<>();
+        for (SourceSelector.Entry e : SourceSelector.choose(entries, maxFiles)) {
+            String path = java.util.Arrays.stream(e.path().split("/")).map(HttpGitHubRepoClient::enc)
+                    .collect(java.util.stream.Collectors.joining("/"));
+            Response raw = get("/repos/" + fullName + "/contents/" + path + "?ref=" + enc(branch), "application/vnd.github.raw+json");
+            if (raw.status() == 404) continue;
+            check(raw);
+            out.add(new RegionExtractor.SourceFile(e.path(), raw.body()));
+        }
+        return out;
+    }
+
     private List<Commit> commits(String path) {
         Response res = get(path);
         if (res.status() == 409) return List.of();
@@ -155,9 +200,13 @@ public class HttpGitHubRepoClient implements GitHubRepoClient {
     }
 
     private Response get(String path) {
+        return get(path, "application/vnd.github+json");
+    }
+
+    private Response get(String path, String accept) {
         HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(API + path))
                 .timeout(Duration.ofSeconds(15))
-                .header("Accept", "application/vnd.github+json")
+                .header("Accept", accept)
                 .header("X-GitHub-Api-Version", "2022-11-28")
                 .header("User-Agent", "notch-api")
                 .GET();

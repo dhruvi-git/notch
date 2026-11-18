@@ -18,12 +18,27 @@ public interface GitHubRepoClient {
 
     Listing fetch(String username, int maxRepos);
 
+    /**
+     * The source files of one repository worth asking about in an Ownership Check, chosen by
+     * {@link dev.notch.api.ownership.core.SourceSelector}: one call for the repository, one for its
+     * file tree, and one per file read.
+     *
+     * @param fullName "owner/name"
+     */
+    List<dev.notch.api.ownership.core.RegionExtractor.SourceFile> sourceFiles(String fullName, int maxFiles);
+
     /** Calls allowed per hour decide how many repositories one sync may read. */
     boolean authenticated();
 
     final class UserNotFound extends RuntimeException {
         public UserNotFound(String username) {
             super("GitHub has no user called " + username);
+        }
+    }
+
+    final class RepoNotFound extends RuntimeException {
+        public RepoNotFound(String fullName) {
+            super("GitHub has no public repository " + fullName);
         }
     }
 
