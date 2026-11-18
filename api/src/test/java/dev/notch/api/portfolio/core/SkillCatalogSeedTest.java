@@ -33,6 +33,14 @@ class SkillCatalogSeedTest {
         Map<String, Integer> aliases = new HashMap<>();
         Matcher a = ALIAS.matcher(sql.substring(split));
         while (a.find()) assertNull(aliases.put(a.group(1), Integer.parseInt(a.group(2))), "alias twice: " + a.group(1));
+        // Later migrations that only add aliases.
+        for (String later : new String[]{"/db/migration/V13__github_language_aliases.sql"}) {
+            try (InputStream in = SkillCatalogSeedTest.class.getResourceAsStream(later)) {
+                assertNotNull(in, later + " on the classpath");
+                Matcher b = ALIAS.matcher(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+                while (b.find()) assertNull(aliases.put(b.group(1), Integer.parseInt(b.group(2))), "alias twice: " + b.group(1));
+            }
+        }
         return SkillCatalog.of(skills, aliases);
     }
 
@@ -43,6 +51,8 @@ class SkillCatalogSeedTest {
         assertEquals("PostgreSQL", c.resolve("postgres").orElseThrow().name());
         assertEquals("scikit-learn", c.resolve("sklearn").orElseThrow().name());
         assertEquals("Go (Golang)", c.resolve("golang").orElseThrow().name());
+        assertEquals("Docker", c.resolve("Dockerfile").orElseThrow().name());
+        assertEquals("Jupyter", c.resolve("Jupyter Notebook").orElseThrow().name());
     }
 
     @Test

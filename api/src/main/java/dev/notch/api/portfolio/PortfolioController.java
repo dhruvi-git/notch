@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -39,10 +40,15 @@ public class PortfolioController {
     public record LinkApproval(@NotNull Boolean approved) {
     }
 
-    private final PortfolioService portfolio;
+    public record GitHubSyncRequest(@Size(max = 39) String username) {
+    }
 
-    public PortfolioController(PortfolioService portfolio) {
+    private final PortfolioService portfolio;
+    private final EvidenceImportService imports;
+
+    public PortfolioController(PortfolioService portfolio, EvidenceImportService imports) {
         this.portfolio = portfolio;
+        this.imports = imports;
     }
 
     @GetMapping("/api/portfolio/me")
@@ -75,6 +81,17 @@ public class PortfolioController {
     @PatchMapping("/api/portfolio/evidence/{evidenceId}/skills/{skillId}")
     public ProfileView approve(@PathVariable UUID evidenceId, @PathVariable int skillId, @Valid @RequestBody LinkApproval req) {
         return portfolio.setLink(evidenceId, skillId, req.approved());
+    }
+
+    /** Body optional: {@code {"username": "..."}}; defaults to the GitHub account the user signed in with. */
+    @PostMapping("/api/portfolio/github/sync")
+    public EvidenceImportService.GitHubSyncResult syncGitHub(@RequestBody(required = false) GitHubSyncRequest req) {
+        return imports.syncGitHub(req == null ? null : req.username());
+    }
+
+    @PostMapping("/api/portfolio/chat-export")
+    public EvidenceImportService.ChatImportResult importChats(@RequestParam("file") MultipartFile file) {
+        return imports.importChats(file);
     }
 
     @GetMapping("/api/skills/autocomplete")

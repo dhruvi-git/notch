@@ -174,6 +174,8 @@ curl -s -X POST localhost:8090/api/drives/$D/assign | jq '{totalSeats, filled, g
 | DELETE | `/api/portfolio/evidence/{id}` | Remove evidence |
 | PUT | `/api/portfolio/skills/{skillId}` | Claim or hide a skill (`{"claimed", "hidden"}`) |
 | PATCH | `/api/portfolio/evidence/{id}/skills/{skillId}` | Approve or reject a suggested skill (`{"approved"}`) |
+| POST | `/api/portfolio/github/sync` | Read public repositories (`{"username"}`, defaults to the GitHub sign-in): own commits, active weeks, skills from languages, topics and text; copies flagged by the Bloom-filter screen |
+| POST | `/api/portfolio/chat-export` | Upload a ChatGPT or Claude export (`file`, zip or JSON); suggests skills you asked about in 2+ conversations, unapproved until you approve them; the file is not kept |
 | GET | `/api/skills/autocomplete?q=` | Skills by prefix from the radix tree |
 | GET | `/public/profiles/{handle}` | A public profile: skills with score, level and percentile band, and the evidence (no sign-in) |
 | GET, POST | `/api/drives` | List your drives, or create one from `{"title", "description"}` with a draft role |
@@ -183,6 +185,12 @@ curl -s -X POST localhost:8090/api/drives/$D/assign | jq '{totalSeats, filled, g
 | POST | `/api/drives/{id}/assign` | Assign every seat with max-flow; reports what greedy would have filled |
 | GET | `/api/drives/{id}/assignment` | The latest assignment |
 | POST | `/api/dev/demo-pool?size=` | Local profile only: seed synthetic public candidates |
+
+GitHub sync reads public data only. Without a token GitHub allows 60 calls an hour, enough for
+the 12 most recently pushed repositories; set `GITHUB_TOKEN` (any personal token, no scopes
+needed) to read up to 30. Forks and repositories without your own commits are skipped. A
+repository whose first commit or latest tree matches one someone else already claimed is kept
+but marked as a duplicate, adds no strength, and cannot verify a skill.
 
 Skill scores are computed from evidence on every read (engine `SkillScoring`), so they never go
 stale. The pool of public candidates and their percentile bands is cached for 30 seconds and
