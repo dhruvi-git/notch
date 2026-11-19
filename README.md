@@ -2,13 +2,17 @@
 
 [![CI](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml/badge.svg)](https://github.com/dhruvi-git/notch/actions/workflows/ci.yml)
 
-**You wrote it. Now prove it.** Notch is a portfolio for tech students and freshers in which
-every skill is backed by evidence: their own commits on GitHub, projects, and (optionally) what
-they have been learning in AI chats. The strongest evidence is an **Ownership Check**: a timed
-interview about the candidate's own repository, in which Notch picks parts of their code and asks
-them to explain it. Pass, and the repository is **Defended**, the one level nobody can fake, with a
-public transcript recruiters can read. Recruiters paste a job description, get a ranked shortlist
-with the proof attached, and fill every seat across several roles at once.
+**You wrote it. Now prove it.** Notch reads a student's work and tells them who they are as a
+builder. Connect GitHub, or paste what ChatGPT or Claude remembers about you, and in under a
+minute Notch draws your skills as a **constellation** (one star per skill, joined where you used
+skills together), names your **archetype** (The Data Storyteller, The Product Builder…) and how
+you work (Night Owl, Finisher…), and puts what you *talk* about next to what you *build* with:
+your learning edges and your quiet strengths. Every insight comes from a count it can point to.
+
+The strongest proof is an **Ownership Check**: a timed interview about your own repository in
+which Notch picks parts of your code and asks you to explain them. Pass, and the repository is
+**Defended**, with a public transcript recruiters can read. Recruiters paste a job description,
+get a ranked shortlist with the proof attached, and fill every seat across several roles at once.
 
 CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
@@ -16,14 +20,16 @@ CIA 3 project for Advanced Algorithm, Semester V, B.Tech CS AI & ML (2026–27).
 
 | | |
 |---|---|
-| ![Landing page](docs/screenshots/01-landing.png) | ![Starting an Ownership Check](docs/screenshots/02-defend-brief.png) |
-| Landing: a recorded Ownership Check plays in the hero | Defend your code: each repository's status, and the brief before the clock starts |
-| ![The interview](docs/screenshots/03-interview.png) | ![The verdict](docs/screenshots/04-verdict.png) |
-| The interview: the candidate's own code, one question at a time, against the clock | The verdict: the Defended seal, then how every answer was graded |
-| ![Public profile](docs/screenshots/05-public-profile.png) | ![Public transcript](docs/screenshots/06-transcript.png) |
-| Public profile: Defended seals, and the notch at 85 that only a defence can pass | The public transcript recruiters read |
-| ![Drive and shortlist](docs/screenshots/07-drive-shortlist.png) | ![Seat assignment](docs/screenshots/08-seat-assignment.png) |
-| A drive: roles from the job description, Defended as a minimum level | Seat assignment: max-flow against best score first |
+| ![Your read](docs/screenshots/02-you.png) | ![Said vs done](docs/screenshots/03-said-done.png) |
+| You: your constellation, archetype and trait, drawn from your own work | Said vs done: what you talk to AI about, against what you build |
+| ![Memory import](docs/screenshots/04-memory-import.png) | ![Public profile](docs/screenshots/05-public-profile.png) |
+| Bring in your AI history with one prompt, no export file | The public profile recruiters and friends see |
+| ![The interview](docs/screenshots/06-interview.png) | ![The verdict](docs/screenshots/07-verdict.png) |
+| An Ownership Check: explain your own code against the clock | The verdict: the Defended seal, then how every answer was graded |
+| ![Public transcript](docs/screenshots/08-transcript.png) | ![Drive and shortlist](docs/screenshots/09-drive-shortlist.png) |
+| The public transcript of a defence | A drive: roles from the job description, a ranked shortlist |
+| ![Landing page](docs/screenshots/01-landing.png) | ![Seat assignment](docs/screenshots/10-seat-assignment.png) |
+| Landing | Seat assignment: max-flow against best score first |
 
 Screenshots use the mock API's sample candidates (`web/scripts/mock-portfolio.mjs`).
 

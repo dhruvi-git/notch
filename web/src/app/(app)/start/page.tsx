@@ -2,22 +2,23 @@ import type { Metadata } from "next";
 import { TopBar } from "@/components/portfolio/TopBar";
 import { api } from "@/lib/server-api";
 import type { ProfileView } from "@/lib/portfolio-types";
+import type { MyRead } from "@/lib/read-types";
 import type { User } from "@/lib/types";
-import common from "@/components/portfolio/portfolio.module.css";
-import { Onboarding } from "./Onboarding";
+import { You } from "./You";
 
-export const metadata: Metadata = { title: "My profile" };
+export const metadata: Metadata = { title: "You" };
 
 export default async function Start() {
-  const [user, profile] = await Promise.all([api<User>("/api/me"), api<ProfileView>("/api/portfolio/me")]);
+  const [user, profile, mine, prompt] = await Promise.all([
+    api<User>("/api/me"),
+    api<ProfileView>("/api/portfolio/me"),
+    api<MyRead>("/api/insights/me"),
+    api<{ prompt: string }>("/api/portfolio/memory-prompt"),
+  ]);
   return (
     <div>
-      <TopBar user={user} current="profile" />
-      <main className={`${common.container} ${common.narrow}`}>
-        <h1 className={common.title}>{profile.hasProfile ? "Your profile" : "Build your profile"}</h1>
-        <p className={common.lede}>Connect your work, approve what Notch found, and publish one link. You approve everything before it shows.</p>
-        <Onboarding user={user} profile={profile} />
-      </main>
+      <TopBar user={user} current="profile" tone="dark" profileHandle={profile.hasProfile && profile.isPublic ? profile.handle : null} />
+      <You user={user} profile={profile} mine={mine} prompt={prompt.prompt} />
     </div>
   );
 }

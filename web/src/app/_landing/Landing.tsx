@@ -52,7 +52,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
             <a href="#recruiters">For recruiters</a>
           </nav>
           <Link href={signedIn ? "/start" : "/sign-in"} className="btn btn-quiet">
-            {signedIn ? "My profile" : "Sign in"}
+            {signedIn ? "Your read" : "Sign in"}
           </Link>
         </header>
 
@@ -89,8 +89,8 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
               Four levels. Only one you can&rsquo;t fake.
             </h2>
             <p className={styles.sectionLede}>
-              A skill&rsquo;s score comes from the evidence behind it, and each kind of evidence can only carry it so far. Past 85 there is one way
-              up: explain the code yourself.
+              A skill&rsquo;s score comes from the evidence behind it, and each piece can only carry it so far. One repository tops out at 85.
+              Explain the code yourself and that ceiling goes.
             </p>
           </div>
           <ol className={styles.ladder}>

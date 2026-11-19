@@ -1,0 +1,177 @@
+/* Drawn for the plum stage: light stars on dark. */
+.figure {
+  margin: 0;
+  position: relative;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.dust {
+  fill: #e9e1f7;
+}
+
+.area {
+  fill: #a596bd;
+  opacity: 0.7;
+  font-family: var(--font-sans);
+  font-size: var(--area, 10.5px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.link {
+  stroke: #d9cdf2;
+  stroke-opacity: 0.13;
+  stroke-linecap: round;
+  transition: stroke-opacity 160ms ease;
+}
+
+/* Skills used together more than once: the lines that carry the shape. */
+.linkStrong {
+  stroke-opacity: 0.42;
+}
+
+.linkOn {
+  stroke: #fedc2a;
+  stroke-opacity: 0.9;
+}
+
+.star {
+  cursor: default;
+  transition: opacity 160ms ease;
+}
+
+.dim {
+  opacity: 0.22;
+}
+
+.link.dim {
+  stroke-opacity: 0.06;
+}
+
+.verified {
+  fill: #f6f1ff;
+}
+
+.shown {
+  fill: #b9a8d8;
+}
+
+.claimed {
+  fill: none;
+  stroke: #b9a8d8;
+  stroke-width: 1.4;
+}
+
+.defended {
+  fill: #fedc2a;
+}
+
+.ring {
+  fill: none;
+  stroke: #fedc2a;
+  stroke-width: 1.2;
+  stroke-dasharray: 2 2.4;
+  opacity: 0.9;
+}
+
+.hit {
+  fill: transparent;
+}
+
+.label {
+  fill: #d9cdf2;
+  font-family: var(--font-sans);
+  font-size: var(--label, 12.5px);
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #2f253a;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.labelOn {
+  fill: #fff;
+}
+
+.labelScore {
+  fill: #fedc2a;
+  font-weight: 800;
+}
+
+/* The reveal: stars arrive strongest first, then the lines draw between them. */
+.playing .star {
+  animation: arrive 620ms cubic-bezier(0.2, 0.8, 0.2, 1.2) both;
+  animation-delay: var(--delay);
+}
+
+.playing .link {
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: draw 700ms ease-out forwards;
+  animation-delay: var(--delay);
+}
+
+.playing .area {
+  animation: fade 900ms ease-out both;
+  animation-delay: 200ms;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playing .star,
+  .playing .link,
+  .playing .area {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Key */
+.key {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.key .link {
+  stroke-opacity: 0.6;
+  stroke-width: 1.4;
+}

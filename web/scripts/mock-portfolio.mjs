@@ -4,6 +4,8 @@
 
 import { randomUUID } from "node:crypto";
 
+import { MEMORY_PROMPT, parseMemory, readOf } from "./mock-insights.mjs";
+
 const daysAgo = (d) => new Date(Date.now() - d * 86_400_000).toISOString();
 
 const SKILLS = [
@@ -13,6 +15,8 @@ const SKILLS = [
   [42, "scikit-learn", "AI & ML"], [44, "PyTorch", "AI & ML"], [60, "React", "Web"], [61, "Next.js", "Web"],
   [64, "Node.js", "Web"], [67, "CSS", "Web"], [72, "Spring Boot", "Web"], [73, "REST APIs", "Web"],
   [90, "PostgreSQL", "Databases"], [102, "Docker", "DevOps & Cloud"], [100, "Git", "DevOps & Cloud"],
+  [5, "C++", "Languages"], [110, "Data Structures", "CS Fundamentals"], [111, "Algorithms", "CS Fundamentals"],
+  [45, "Deep Learning", "AI & ML"], [104, "AWS", "DevOps & Cloud"],
 ].map(([id, name, domain]) => ({ id, name, domain }));
 const byName = new Map(SKILLS.map((s) => [s.name.toLowerCase(), s]));
 const byId = new Map(SKILLS.map((s) => [s.id, s]));
@@ -302,6 +306,13 @@ export function handlePublic(path, res, send, problem) {
     send(res, 200, checkView(c, p.profile.handle));
     return true;
   }
+  const rm = path.match(/^\/public\/profiles\/([^/]+)\/read$/);
+  if (rm) {
+    const owner = [...portfolios.values()].find((x) => x.profile?.handle === rm[1] && x.profile.isPublic);
+    if (!owner) { problem(res, 404, "not_found", `A public profile called @${rm[1]} was not found.`); return true; }
+    send(res, 200, readOf(profileView(owner, false), owner.evidence, new Map(SKILLS.map((k) => [k.id, k.name])), false));
+    return true;
+  }
   const m = path.match(/^\/public\/profiles\/([^/]+)$/);
   if (!m) return false;
   const handle = decodeURIComponent(m[1]);
@@ -345,22 +356,86 @@ export async function handle(req, res, user, path, url, { send, problem, readBod
     const b = await json();
     const username = b.username || user.handle;
     p.evidence = p.evidence.filter((e) => e.kind !== "GITHUB_REPO");
-    const repo = (title, desc, ownCommits, activeWeeks, days, names) => ({ id: randomUUID(), kind: "GITHUB_REPO", title,
+    // Commit rhythm: mostly late evenings, a Wednesday habit, some weekends (deterministic per repository).
+    const rhythm = (commits, seed) => {
+      const weekdays = Array(7).fill(0), hours = Array(24).fill(0);
+      const dayW = [1.0, 1.1, 2.4, 1.2, 0.9, 1.3, 1.1], hourW = Array.from({ length: 24 }, (_, h) => (h >= 21 || h <= 1 ? 3.2 : h >= 14 && h <= 18 ? 1.6 : h >= 9 ? 0.8 : 0.15));
+      const pick = (w, r) => { const t = w.reduce((a, b) => a + b, 0); let x = r * t; for (let i = 0; i < w.length; i++) { x -= w[i]; if (x <= 0) return i; } return w.length - 1; };
+      let r = seed;
+      const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+      for (let i = 0; i < commits; i++) { weekdays[pick(dayW, rnd())]++; hours[pick(hourW, rnd())]++; }
+      return { weekdays, hours };
+    };
+    const repo = (title, desc, ownCommits, activeWeeks, days, startedDays, names, seed) => ({ id: randomUUID(), kind: "GITHUB_REPO", title,
       url: `https://github.com/${username}/${title}`, description: desc, ownCommits, activeWeeks, fork: false, duplicate: false,
-      lastActive: daysAgo(days), skills: names.map((n) => ({ id: byName.get(n.toLowerCase()).id, name: n })), pendingSkills: [] });
+      lastActive: daysAgo(days), firstActive: daysAgo(startedDays), ...rhythm(ownCommits, seed),
+      skills: names.map((n) => ({ id: byName.get(n.toLowerCase()).id, name: n })), pendingSkills: [] });
     p.evidence.push(
-      repo("sales-dashboard", "Monthly sales analysis for a local retailer, with a Power BI report.", 146, 9, 3, ["SQL", "Python", "pandas", "Power BI"]),
-      repo("churn-model", "Predicting subscription churn with scikit-learn.", 61, 5, 60, ["Python", "scikit-learn", "Machine Learning"]),
+      repo("sales-dashboard", "Monthly sales analysis for a local retailer, with a Power BI report.", 146, 9, 3, 140, ["SQL", "Python", "pandas", "Power BI", "Data Visualization"], 11),
+      repo("churn-model", "Predicting subscription churn with scikit-learn.", 61, 5, 60, 200, ["Python", "scikit-learn", "Machine Learning", "pandas"], 23),
+      repo("fest-tickets", "Ticket sales for the college fest: a React front end on a Node API and PostgreSQL.", 48, 4, 120, 260, ["React", "Node.js", "PostgreSQL", "SQL", "JavaScript"], 37),
+      repo("etl-pipeline", "Nightly ETL from Google Sheets into PostgreSQL.", 34, 6, 25, 90, ["Python", "PostgreSQL", "SQL", "Git"], 41),
+      repo("dsa-practice", "Data structures and algorithms practice in C++.", 88, 11, 15, 480, ["C++", "Data Structures", "Algorithms"], 53),
     );
-    send(res, 200, { username, listed: 5, read: 4, added: 2, updated: 0, removed: 0, forksSkipped: 1, withoutOwnCommits: 2,
+    send(res, 200, { username, listed: 8, read: 7, added: 5, updated: 0, removed: 0, forksSkipped: 1, withoutOwnCommits: 1,
       duplicates: [], partial: false, note: null });
+    return true;
+  }
+  if (path === "/api/insights/me" && req.method === "GET") {
+    send(res, 200, { read: readOf(profileView(p, true), p.evidence, new Map(SKILLS.map((k) => [k.id, k.name])), true), goal: p.goal ?? null });
+    return true;
+  }
+  if (path === "/api/insights/goal" && req.method === "PUT") {
+    const b = await json();
+    const g = String(b.goal ?? "").trim();
+    if (!g || g.length > 80) { problem(res, 400, "invalid_goal", "Describe the role in 1 to 80 characters."); return true; }
+    p.goal = g;
+    send(res, 200, { read: readOf(profileView(p, true), p.evidence, new Map(SKILLS.map((k) => [k.id, k.name])), true), goal: p.goal });
+    return true;
+  }
+  if (path === "/api/portfolio/memory-prompt" && req.method === "GET") {
+    send(res, 200, { prompt: MEMORY_PROMPT });
+    return true;
+  }
+  if (path === "/api/portfolio/memory-import" && req.method === "POST") {
+    const b = await json();
+    let parsed;
+    try { parsed = parseMemory(String(b.text ?? ""), byName); } catch (e) { problem(res, 400, "unreadable_reply", e.message); return true; }
+    if (!parsed.skills.length && !parsed.projects.length && !parsed.goal) {
+      problem(res, 422, "nothing_found", "The reply had no skills, projects or goal that Notch recognises."); return true;
+    }
+    p.evidence = p.evidence.filter((e) => !(e.kind === "CHAT_EXPORT" && e.chatSource === "MEMORY"));
+    const depth = { USED: 0.7, LEARNING: 0.5, ASKED: 0.3 };
+    const label = { USED: "used", LEARNING: "learning", ASKED: "asked about" };
+    const skills = parsed.skills.map(({ skill, mode, note }) => {
+      const e = { id: randomUUID(), kind: "CHAT_EXPORT", chatSource: "MEMORY", chatMode: mode, chatConversations: 0, chatNote: note,
+        title: `${skill.name}: ${label[mode]}, from AI memory`, url: null, description: null, ownCommits: 0, activeWeeks: 0,
+        fork: false, duplicate: false, lastActive: new Date().toISOString(), depth: depth[mode], skills: [], pendingSkills: [{ id: skill.id, name: skill.name }] };
+      p.evidence.push(e);
+      return { evidenceId: e.id, skillId: skill.id, name: skill.name, mode, note };
+    });
+    const titles = new Set(p.evidence.filter((e) => e.kind === "PROJECT").map((e) => e.title.toLowerCase()));
+    let skipped = 0;
+    const projects = [];
+    for (const pr of parsed.projects) {
+      if (titles.has(pr.title.toLowerCase())) { skipped++; continue; }
+      titles.add(pr.title.toLowerCase());
+      const e = { id: randomUUID(), kind: "PROJECT", chatSource: "MEMORY", title: pr.title, url: null, description: pr.description,
+        ownCommits: 0, activeWeeks: 0, fork: false, duplicate: false, lastActive: new Date().toISOString(), skills: [],
+        pendingSkills: pr.skills.map(({ id, name }) => ({ id, name })) };
+      p.evidence.push(e);
+      projects.push({ evidenceId: e.id, title: pr.title, skills: pr.skills.map((k) => k.name) });
+    }
+    if (parsed.goal) p.goal = parsed.goal;
+    send(res, 200, { skills, projects, skippedProjects: skipped, unrecognised: parsed.unrecognised, goal: parsed.goal });
     return true;
   }
   if (path === "/api/portfolio/chat-export" && req.method === "POST") {
     await readBody(req);
-    p.evidence = p.evidence.filter((e) => e.kind !== "CHAT_EXPORT");
-    const suggestions = [["Statistics", 14, 0.72], ["Machine Learning", 6, 0.4]].map(([name, convs, depth]) => {
-      const e = { id: randomUUID(), kind: "CHAT_EXPORT", title: `Discussed ${name} in ${convs} ChatGPT conversations`, url: null,
+    p.evidence = p.evidence.filter((e) => !(e.kind === "CHAT_EXPORT" && e.chatSource !== "MEMORY"));
+    const suggestions = [["Statistics", 14, 0.72], ["Docker", 9, 0.5], ["SQL", 7, 0.45], ["Deep Learning", 5, 0.35]].map(([name, convs, depth]) => {
+      const e = { id: randomUUID(), kind: "CHAT_EXPORT", chatSource: "EXPORT", chatMode: "ASKED", chatConversations: convs,
+        title: `Discussed ${name} in ${convs} ChatGPT conversations`, url: null,
         description: null, ownCommits: 0, activeWeeks: 0, fork: false, duplicate: false, lastActive: daysAgo(4), depth,
         skills: [], pendingSkills: [{ id: byName.get(name.toLowerCase()).id, name }] };
       p.evidence.push(e);

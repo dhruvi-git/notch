@@ -13,8 +13,8 @@ export function LevelChip({ level }: { level: Level }) {
 
 /**
  * Skills grouped by area, strongest first: a bar for the 0–100 score, the evidence level and any
- * rank badge. Every track has a notch at 85, the most a skill can score without a defended
- * repository; anything past it is drawn in highlighter yellow.
+ * rank badge. Every track has a notch at 85, the most one repository can earn a skill on its own;
+ * anything past it (several repositories, or a defended one) is drawn in highlighter yellow.
  */
 export function SkillBars({ skills, linkToEvidence = false }: { skills: SkillView[]; linkToEvidence?: boolean }) {
   const groups = new Map<string, SkillView[]>();

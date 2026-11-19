@@ -65,4 +65,28 @@ class RepoEvidenceTest {
         assertEquals(Set.of(6), d.skillIds());
         assertNull(d.description());
     }
+
+    @Test
+    void rhythmCountsCommitsByWeekdayAndHourInTheCandidatesZone() {
+        // 2026-11-16 is a Monday. 18:00 UTC is 23:30 in India; 20:00 UTC on Sunday is 01:30 on Monday there.
+        List<Instant> commits = List.of(Instant.parse("2026-11-16T18:00:00Z"), Instant.parse("2026-11-15T20:00:00Z"),
+                Instant.parse("2026-11-21T04:00:00Z"), Instant.parse("2026-11-10T09:00:00Z"));
+        RepoEvidence.Rhythm r = RepoEvidence.rhythm(commits, RepoEvidence.DEFAULT_ZONE);
+        assertEquals(Instant.parse("2026-11-10T09:00:00Z"), r.firstActive());
+        assertArrayEquals(new int[]{2, 1, 0, 0, 0, 1, 0}, r.weekdays());   // Mon x2, Tue (14:30), Sat (09:30)
+        assertEquals(1, r.hours()[23]);
+        assertEquals(1, r.hours()[1]);
+        assertEquals(1, r.hours()[9]);
+        assertEquals(1, r.hours()[14]);
+        assertEquals(4, java.util.Arrays.stream(r.hours()).sum());
+        // In UTC the same commits fall on other days.
+        assertArrayEquals(new int[]{1, 1, 0, 0, 0, 1, 1}, RepoEvidence.rhythm(commits, java.time.ZoneOffset.UTC).weekdays());
+        // Edge: no commits, no rhythm; and the arrays can't be changed from outside.
+        assertNull(RepoEvidence.rhythm(List.of(), RepoEvidence.DEFAULT_ZONE));
+        int[] days = {1, 0, 0, 0, 0, 0, 0};
+        RepoEvidence.Rhythm fixed = new RepoEvidence.Rhythm(Instant.EPOCH, days, new int[24]);
+        days[0] = 9;
+        assertEquals(1, fixed.weekdays()[0]);
+        assertThrows(IllegalArgumentException.class, () -> new RepoEvidence.Rhythm(Instant.EPOCH, new int[6], new int[24]));
+    }
 }

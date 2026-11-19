@@ -268,3 +268,32 @@
   font-size: var(--t-sm);
   color: var(--ink-soft);
 }
+
+/* Joined to a plum hero underneath: no border, the stage's colour. */
+.topBarDark {
+  --brand: #2f253a;
+  border-bottom-color: transparent;
+  background: var(--brand);
+}
+
+.topBarDark .topLinks a {
+  color: var(--ink-soft);
+}
+
+.topBarDark .topLinks a:hover,
+.topBarDark .topLinks a[aria-current="page"] {
+  color: var(--ink);
+}
+
+@media (max-width: 30rem) {
+  .topBar {
+    gap: 0.75rem 1rem;
+  }
+  .topLinks {
+    gap: 0.9rem;
+  }
+  /* Settings stays one tap away in the avatar menu. */
+  .topLinks a[href="/settings"] {
+    display: none;
+  }
+}
