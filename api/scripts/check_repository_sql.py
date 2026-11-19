@@ -168,6 +168,35 @@ check(run(O, 'publicCheck', id=chk) == [], 'private profile hides its transcript
 cur.execute("UPDATE profiles SET is_public = true WHERE user_id = %s", (A,))
 run(R, 'replaceRoles', 3, expect_error='ForeignKeyViolation', r=uuid.uuid4(), s=17, w=1.0, m=True, l='DEFENDED')  # DEFENDED level accepted by the check
 
+# insights (V15): commit rhythm, AI-history details, goals
+days = '{3,4,14,4,3,1,1}'
+hours = '{' + ','.join(['1'] * 23 + ['7']) + '}'
+check(run(P, 'setRhythm', first=now - dt.timedelta(days=200), days=days, hours=hours, id=repoA) == 1, 'rhythm saved')
+run(P, 'setRhythm', expect_error='CheckViolation', first=now, days='{1,2,3}', hours=hours, id=repoA)
+row = [r for r in run(P, 'evidenceFor', 2, users=[A]) if r[0] == repoA][0]
+check(row[13] == [3, 4, 14, 4, 3, 1, 1] and len(row[14]) == 24 and row[14][23] == 7 and row[12] is not None,
+      f'rhythm read back as arrays: {row[12:15]}')
+check(run(P, 'setChatMeta', source='MEMORY', mode='LEARNING', c=0, note='working through a course', id=chatA) == 1, 'chat meta saved')
+run(P, 'setChatMeta', expect_error='CheckViolation', source='TWITTER', mode='USED', c=0, note=None, id=chatA)
+run(P, 'setChatMeta', expect_error='CheckViolation', source='MEMORY', mode='MASTERED', c=0, note=None, id=chatA)
+run(P, 'setChatMeta', expect_error='CheckViolation', source='EXPORT', mode='ASKED', c=-1, note=None, id=chatA)
+run(P, 'setChatMeta', expect_error='CheckViolation', source='EXPORT', mode='ASKED', c=1, note='x' * 201, id=chatA)
+row = [r for r in run(P, 'evidenceFor', 2, users=[A]) if r[0] == chatA][0]
+check(row[15:19] == ('MEMORY', 'LEARNING', 0, 'working through a course') or list(row[15:19]) == ['MEMORY', 'LEARNING', 0, 'working through a course'],
+      f'chat meta read back: {row[15:19]}')
+exp = uuid.uuid4()
+run(P, 'insertEvidence', id=exp, u=A, kind='CHAT_EXPORT', title='Discussed Docker', url=None, commits=0, weeks=0, **ev)  # no source: legacy
+check(run(P, 'deleteChatEvidence', 1, u=B, source='MEMORY') == 0, 'cannot delete another user\'s memory import')
+check(run(P, 'deleteChatEvidence', 1, u=A, source='EXPORT') == 1, 'export delete takes legacy rows, not memory ones')
+check(len([r for r in run(P, 'evidenceFor', 2, users=[A]) if r[0] == chatA]) == 1, 'memory evidence kept')
+check(run(P, 'projectTitles', u=A) == [('fest analytics',)], f'project titles lower-cased: {run(P, "projectTitles", u=A)}')
+check(run(P, 'goal', u=A) == [], 'no goal yet')
+run(P, 'setGoal', u=A, goal='Data analyst at a product company')
+run(P, 'setGoal', u=A, goal='ML engineer')   # update path
+check(run(P, 'goal', u=A) == [('ML engineer',)], 'goal updated')
+check(run(P, 'goal', u=B) == [], 'goals are per user')
+run(P, 'setGoal', expect_error='CheckViolation', u=B, goal='x' * 81)
+
 # deletes
 check(run(P, 'deleteChatEvidence', u=A) == 1, 'delete chat evidence')
 check(run(P, 'deleteEvidence', 1, u=B, ids=[projA]) == 0, 'cannot delete another user\'s evidence')

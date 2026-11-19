@@ -356,3 +356,47 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* A source inside the tabbed "Add to your read" panel. */
+.pane {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Review: the one thing on the page waiting on the candidate. */
+.review {
+  padding: 1.5rem 1.6rem;
+  border-radius: var(--r-panel);
+  background: var(--mark-wash);
+  box-shadow: 0 0 0 1px rgb(47 37 58 / 0.08) inset;
+}
+
+.reviewHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem 2rem;
+}
+
+.reviewHead > div {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 44rem;
+}
+
+.more {
+  margin-top: 0.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.more:hover {
+  text-decoration: underline;
+}

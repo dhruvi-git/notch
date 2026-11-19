@@ -185,6 +185,11 @@ curl -s -X POST localhost:8090/api/drives/$D/assign | jq '{totalSeats, filled, g
 | POST | `/api/drives/{id}/assign` | Assign every seat with max-flow; reports what greedy would have filled |
 | GET | `/api/drives/{id}/assignment` | The latest assignment |
 | POST | `/api/dev/demo-pool?size=` | Local profile only: seed synthetic public candidates |
+| GET | `/api/insights/me` | Your read: archetype and trait, constellation (skills and the links between skills used together), Said vs Done, insights, stats and commit rhythm; plus your goal |
+| PUT | `/api/insights/goal` | Set the role you're aiming for (`{"goal"}`, up to 80 characters) |
+| GET | `/api/portfolio/memory-prompt` | The prompt to paste into ChatGPT or Claude |
+| POST | `/api/portfolio/memory-import` | Read the assistant's reply (`{"text"}`): skills and projects are added unapproved, the goal is saved; replaces the previous memory import |
+| GET | `/public/profiles/{handle}/read` | The public read: archetype, constellation and stats, without AI history or private insights (no sign-in) |
 | POST | `/api/ownership/checks` | Start an Ownership Check on one of your repositories (`{"evidenceId"}`): 5 questions, 12 minutes |
 | GET | `/api/ownership/checks/{id}` | Your check: questions and draft answers while open; scores, feedback and integrity signals once finished |
 | PUT | `/api/ownership/checks/{id}/answers/{position}` | Save an answer (`{"answer", "millis", "pastes", "focusLost"}`); allowed until 30 s past the deadline |
@@ -197,6 +202,22 @@ needed) to read up to 30. Forks and repositories without your own commits are sk
 repository whose first commit or latest tree matches one someone else already claimed is kept
 but marked as a duplicate, adds no strength, and cannot verify a skill.
 
+**The read.** `insights/core/Insights` turns a candidate's skills and evidence into their read,
+deterministically, and every sentence it writes comes from a count it can point to. The
+archetype comes from the share of proven skill in each catalogue area (languages don't count,
+since they span every kind); the trait from when commits happen (Night Owl, Early Bird, Weekend
+Builder, with at least 20 commits) or how work is spread (Steady, Sprinter, Finisher). GitHub sync
+records only counts of the candidate's own commits by weekday and hour, in `notch.insights.zone`
+(default Asia/Kolkata), never the commits. Said vs Done compares AI history (chat exports and
+memory imports, approved or not) with repositories and projects. The public read never includes
+AI history.
+
+**Memory import.** Instead of an export file, a candidate can paste Notch's prompt into ChatGPT or
+Claude and paste the reply back. The prompt asks for a fixed plain-text format and tells the
+assistant not to invent anything; `MemoryImport.parse` copes with the markdown, bold text, code
+fences and bullet styles assistants add, matches skills against the catalogue, and reports
+unrecognised names instead of guessing. Nothing it finds counts until the candidate approves it.
+
 **Ownership Checks.** Starting a check reads the repository from GitHub (its file tree, then up
 to 20 source files, or 8 without `GITHUB_TOKEN`), splits the files into regions (functions,
 methods, SQL statements), tags each with the skills and concepts it shows, and picks what to ask
@@ -204,13 +225,14 @@ with greedy weighted set cover so the questions touch every skill, concept and m
 `ANTHROPIC_API_KEY` set, a model writes each question and its rubric from the code and grades the
 answers; without one, concept templates write the questions and a transparent rubric grades them
 (ideas covered, the code's own names used, depth). A score of 70 or more with at most one pasted
-answer makes the repository Defended: its skills reach the Defended level and may score past 85.
+answer makes the repository Defended: its skills reach the Defended level, and that one repository can take them past 85 on its own.
 Retakes open 24 hours after a finished check; the best attempt is the one shown.
 
 **Checking the SQL.** `scripts/check_repository_sql.py` runs every statement in
 `PortfolioRepository`, `RecruitRepository` and `OwnershipRepository`, verbatim, against your local
-database (after the API has migrated it once): 145 checks covering upserts, `IN` lists, joins,
-cascades, ownership, public transcripts and every constraint in V10–V14. It runs in one transaction that is rolled back, so it leaves no data:
+database (after the API has migrated it once): 177 checks covering upserts, `IN` lists, joins,
+cascades, ownership, public transcripts, commit rhythm arrays, AI-history sources and every
+constraint in V10–V15. It runs in one transaction that is rolled back, so it leaves no data:
 `pip install psycopg2-binary && python scripts/check_repository_sql.py` (`NOTCH_DB_DSN` overrides
 the connection).
 

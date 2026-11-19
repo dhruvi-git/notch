@@ -32,9 +32,27 @@ public class PortfolioRepository {
     }
 
     /** Evidence as stored, plus every skill link and whether the candidate approved it. */
+    /**
+     * @param firstActive       first own commit (repositories synced since V15), else null
+     * @param weekdays          own commits by weekday, Monday first, or null
+     * @param hours             own commits by hour of day, or null
+     * @param chatSource        EXPORT or MEMORY for AI history, else null
+     * @param chatMode          ASKED, LEARNING or USED for AI history, else null
+     * @param chatConversations conversations the skill came up in (exports), else 0
+     * @param chatNote          what the candidate's AI remembered about it (memory), else null
+     */
     public record StoredEvidence(UUID id, UUID userId, SkillScoring.Kind kind, String title, String url, String description,
                                  int ownCommits, int activeWeeks, boolean fork, UUID duplicateOf, double chatDepth,
-                                 Instant lastActive, Map<Integer, Boolean> skills, Ownership ownership) {
+                                 Instant lastActive, Map<Integer, Boolean> skills, Ownership ownership, Instant firstActive,
+                                 int[] weekdays, int[] hours, String chatSource, String chatMode, int chatConversations,
+                                 String chatNote) {
+        public StoredEvidence(UUID id, UUID userId, SkillScoring.Kind kind, String title, String url, String description,
+                              int ownCommits, int activeWeeks, boolean fork, UUID duplicateOf, double chatDepth,
+                              Instant lastActive, Map<Integer, Boolean> skills, Ownership ownership) {
+            this(id, userId, kind, title, url, description, ownCommits, activeWeeks, fork, duplicateOf, chatDepth, lastActive,
+                    skills, ownership, null, null, null, null, null, 0, null);
+        }
+
         /** For scoring: only approved links count. A repository is defended once any check on it was passed. */
         public EvidenceItem toItem() {
             Set<Integer> approved = new HashSet<>();
@@ -180,7 +198,8 @@ public class PortfolioRepository {
                 .forEach(e -> ownership.put(e.getKey(), e.getValue()));
         List<StoredEvidence> rows = jdbc.sql("""
                 SELECT id, user_id, kind, title, url, description, own_commits, active_weeks, is_fork, duplicate_of,
-                       chat_depth, last_active_at
+                       chat_depth, last_active_at, first_active_at, commit_weekdays, commit_hours, chat_source, chat_mode,
+                       chat_conversations, chat_note
                 FROM evidence WHERE user_id IN (:users) ORDER BY last_active_at DESC""")
                 .param("users", userIds)
                 .query((rs, n) -> {
@@ -189,7 +208,9 @@ public class PortfolioRepository {
                             rs.getString("title"), rs.getString("url"), rs.getString("description"),
                             rs.getInt("own_commits"), rs.getInt("active_weeks"), rs.getBoolean("is_fork"),
                             Db.uuid(rs, "duplicate_of"), rs.getDouble("chat_depth"), Db.instant(rs, "last_active_at"),
-                            links.getOrDefault(id, Map.of()), ownership.get(id));
+                            links.getOrDefault(id, Map.of()), ownership.get(id), Db.instant(rs, "first_active_at"),
+                            ints(rs.getArray("commit_weekdays")), ints(rs.getArray("commit_hours")), rs.getString("chat_source"),
+                            rs.getString("chat_mode"), rs.getInt("chat_conversations"), rs.getString("chat_note"));
                 })
                 .list();
         for (StoredEvidence e : rows) out.computeIfAbsent(e.userId(), k -> new ArrayList<>()).add(e);
@@ -235,6 +256,67 @@ public class PortfolioRepository {
 
     public int deleteChatEvidence(UUID userId) {
         return jdbc.sql("DELETE FROM evidence WHERE user_id = :u AND kind = 'CHAT_EXPORT'").param("u", userId).update();
+    }
+
+    /** Deletes AI-history evidence from one source (EXPORT also takes rows from before sources were recorded). */
+    public int deleteChatEvidence(UUID userId, String source) {
+        return jdbc.sql("""
+                DELETE FROM evidence WHERE user_id = :u AND kind = 'CHAT_EXPORT'
+                  AND (chat_source = :source OR (:source = 'EXPORT' AND chat_source IS NULL))""")
+                .param("u", userId).param("source", source).update();
+    }
+
+    /** Records where a piece of AI-history evidence came from and what it says. */
+    public void setChatMeta(UUID evidenceId, String source, String mode, int conversations, String note) {
+        jdbc.sql("""
+                UPDATE evidence SET chat_source = :source, chat_mode = :mode, chat_conversations = :c, chat_note = :note
+                WHERE id = :id""")
+                .param("source", source).param("mode", mode).param("c", conversations).param("note", note).param("id", evidenceId)
+                .update();
+    }
+
+    /** Records when a repository's own commits happened. */
+    public void setRhythm(UUID evidenceId, Instant firstActive, int[] weekdays, int[] hours) {
+        jdbc.sql("""
+                UPDATE evidence SET first_active_at = :first, commit_weekdays = CAST(:days AS INT[]),
+                       commit_hours = CAST(:hours AS INT[])
+                WHERE id = :id""")
+                .param("first", Db.ts(firstActive)).param("days", arrayText(weekdays)).param("hours", arrayText(hours))
+                .param("id", evidenceId)
+                .update();
+    }
+
+    /** The titles of a user's projects, lower-cased, so an import doesn't add one twice. */
+    public Set<String> projectTitles(UUID userId) {
+        return new HashSet<>(jdbc.sql("SELECT lower(title) FROM evidence WHERE user_id = :u AND kind = 'PROJECT'")
+                .param("u", userId).query(String.class).list());
+    }
+
+    public Optional<String> goal(UUID userId) {
+        return jdbc.sql("SELECT goal FROM candidate_goals WHERE user_id = :u").param("u", userId).query(String.class).optional();
+    }
+
+    public void setGoal(UUID userId, String goal) {
+        jdbc.sql("""
+                INSERT INTO candidate_goals (user_id, goal) VALUES (:u, :goal)
+                ON CONFLICT (user_id) DO UPDATE SET goal = EXCLUDED.goal, updated_at = now()""")
+                .param("u", userId).param("goal", goal).update();
+    }
+
+    /** A Postgres array literal, "{1,2,3}", so no driver-specific array binding is needed. */
+    static String arrayText(int[] a) {
+        if (a == null) return null;
+        StringBuilder b = new StringBuilder("{");
+        for (int i = 0; i < a.length; i++) b.append(i == 0 ? "" : ",").append(a[i]);
+        return b.append('}').toString();
+    }
+
+    private static int[] ints(java.sql.Array a) throws java.sql.SQLException {
+        if (a == null) return null;
+        Object[] raw = (Object[]) a.getArray();
+        int[] out = new int[raw.length];
+        for (int i = 0; i < raw.length; i++) out[i] = ((Number) raw[i]).intValue();
+        return out;
     }
 
     /** Every repository fingerprint on Notch, to build the duplicate screen. */

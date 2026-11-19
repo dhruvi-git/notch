@@ -87,9 +87,11 @@ This is the main product and what the CIA 3 demo shows. With the API (step 4) an
 1. Seed sample candidates, so recruiters have people to rank:
    `curl -X POST "localhost:8090/api/dev/demo-pool?size=300"` should return `{"created":300,"skipped":0}`.
 2. Open http://localhost:3000, choose **Build my profile** and sign in (the test sign-in works locally).
-3. On **My profile**, enter your GitHub username and choose **Connect**. Your public repositories
-   with your own commits appear as evidence. Then upload `samples/chatgpt-conversations.json` under
-   AI chat history, approve or reject the suggested skills, pick a handle and publish.
+3. On **You**, choose **Connect GitHub** and enter your username. Your constellation draws itself,
+   with your archetype beside it and what your work says underneath. Then open the **AI memory**
+   tab: copy the prompt, paste it into ChatGPT or Claude, and paste the reply back (or upload
+   `samples/chatgpt-conversations.json` under **Chat export**). **Said vs done** fills in, and what
+   the reply found waits for you under **things to review**. Pick a handle and publish.
 4. Under **Defend your code**, choose **Defend this repository** on one of your repositories,
    read the brief, and choose **Start the clock**. Answer the five questions about your own code
    in your own words (12 minutes), then **Finish**. Without `ANTHROPIC_API_KEY` the questions come

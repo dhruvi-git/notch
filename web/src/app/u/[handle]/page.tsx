@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/components/Brand";
 import { Seal } from "@/components/Seal";
+import { Constellation, ConstellationKey } from "@/components/read/Constellation";
+import type { Read } from "@/lib/read-types";
 import { SkillBars } from "@/components/portfolio/SkillBars";
 import { ApiError, publicApi } from "@/lib/server-api";
 import { shortDate } from "@/lib/format";
@@ -19,6 +21,15 @@ async function load(handle: string): Promise<ProfileView> {
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) notFound();
     throw e;
+  }
+}
+
+/** The public read (archetype and constellation); null if the API predates it. */
+async function loadRead(handle: string): Promise<Read | null> {
+  try {
+    return await publicApi<Read>(`/public/profiles/${encodeURIComponent(handle)}/read`);
+  } catch {
+    return null;
   }
 }
 
@@ -43,7 +54,7 @@ function evidenceStats(e: EvidenceView): string {
 
 export default async function PublicProfile({ params }: { params: Promise<Params> }) {
   const { handle } = await params;
-  const p = await load(handle);
+  const [p, read] = await Promise.all([load(handle), loadRead(handle)]);
   const verified = p.skills.filter((s) => s.level === "VERIFIED" || s.level === "DEFENDED").length;
   const defended = p.evidence.filter((e) => e.ownership?.defended);
   // Defended repositories first, then the rest as the API ordered them (most recent first).
@@ -56,7 +67,7 @@ export default async function PublicProfile({ params }: { params: Promise<Params
 
   return (
     <div className={styles.page}>
-      <header className={common.topBar}>
+      <header className={`${common.topBar} ${common.topBarDark} on-brand`}>
         <Brand href="/" />
         <nav aria-label="Main" className={common.topLinks}>
           <Link href="/">Make your own profile</Link>
@@ -64,14 +75,17 @@ export default async function PublicProfile({ params }: { params: Promise<Params
       </header>
 
       <section className={`${styles.hero} on-brand ${common.stage}`} aria-labelledby="who">
-        <div className={styles.heroInner}>
-          <div className={styles.avatar} aria-hidden="true">
-            {name.slice(0, 2).toUpperCase()}
-          </div>
+        <div className={styles.heroGrid}>
           <div className={styles.heroText}>
-            <h1 id="who" className={common.title}>
+            <h1 id="who" className={styles.handle}>
               @{name}
             </h1>
+            {read && read.archetype.key !== "EXPLORER" ? (
+              <p className={styles.archetype}>
+                {read.archetype.name}
+                {read.archetype.trait ? <span className={styles.trait}>{read.archetype.trait.name}</span> : null}
+              </p>
+            ) : null}
             {p.headline ? <p className={styles.headline}>{p.headline}</p> : null}
             {badges.length > 0 ? (
               <div className={styles.badges}>
@@ -82,37 +96,45 @@ export default async function PublicProfile({ params }: { params: Promise<Params
                 ))}
               </div>
             ) : null}
+            {defended.length > 0 ? (
+              <ul className={styles.seals} aria-label="Defended repositories">
+                {defended.slice(0, 3).map((e) => (
+                  <li key={e.id}>
+                    <a href={`/t/${e.ownership!.checkId}`} className={styles.sealLink}>
+                      <Seal score={e.ownership!.score} size={84} tone="paper" label={`${e.title}: defended, score ${e.ownership!.score}. Read the transcript.`} />
+                      <span>{e.title}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <dl className={styles.heroStats}>
+              <div>
+                <dt>skills backed by own code</dt>
+                <dd>{verified}</dd>
+              </div>
+              <div>
+                <dt>own commits</dt>
+                <dd>{commits.toLocaleString("en-IN")}</dd>
+              </div>
+              {read?.stats.activeWeeks ? (
+                <div>
+                  <dt>weeks shipped</dt>
+                  <dd>{read.stats.activeWeeks}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>last active</dt>
+                <dd>{lastActive ? shortDate(lastActive) : "\u2014"}</dd>
+              </div>
+            </dl>
           </div>
-          {defended.length > 0 ? (
-            <ul className={styles.seals} aria-label="Defended repositories">
-              {defended.slice(0, 3).map((e) => (
-                <li key={e.id}>
-                  <a href={`/t/${e.ownership!.checkId}`} className={styles.sealLink}>
-                    <Seal score={e.ownership!.score} size={96} tone="paper" label={`${e.title}: defended, score ${e.ownership!.score}. Read the transcript.`} />
-                    <span>{e.title}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
+          {read && read.constellation.stars.length > 0 ? (
+            <div className={styles.sky}>
+              <Constellation stars={read.constellation.stars} links={read.constellation.links} />
+              <ConstellationKey className={styles.key} />
+            </div>
           ) : null}
-        </div>
-        <div className={`${common.stats} ${styles.heroStats}`}>
-          <div>
-            <div className={common.statValue}>{defended.length}</div>
-            <div className={common.statLabel}>defended repositor{defended.length === 1 ? "y" : "ies"}</div>
-          </div>
-          <div>
-            <div className={common.statValue}>{verified}</div>
-            <div className={common.statLabel}>skills backed by own code</div>
-          </div>
-          <div>
-            <div className={common.statValue}>{commits}</div>
-            <div className={common.statLabel}>own commits</div>
-          </div>
-          <div>
-            <div className={common.statValue}>{lastActive ? shortDate(lastActive) : "—"}</div>
-            <div className={common.statLabel}>last active</div>
-          </div>
         </div>
       </section>
 
@@ -122,8 +144,8 @@ export default async function PublicProfile({ params }: { params: Promise<Params
             Skills
           </h2>
           <p className={`${common.muted} ${common.small}`}>
-            Scores run from 0 to 100 and come only from the evidence below. The notch marks 85: only a repository its owner has defended can take a
-            skill past it.
+            Scores run from 0 to 100 and come only from the evidence below. The notch marks 85, the most one repository earns a skill on its own;
+            past it means several repositories, or one its owner defended.
           </p>
           {p.skills.length > 0 ? (
             <SkillBars skills={p.skills} linkToEvidence />

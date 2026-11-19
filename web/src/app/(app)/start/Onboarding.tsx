@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Seal } from "@/components/Seal";
-import { LevelChip } from "@/components/portfolio/SkillBars";
 import { SkillPicker } from "@/components/portfolio/SkillPicker";
 import { call, ClientApiError, postJson } from "@/lib/client-api";
 import type { ChatImportResult, CheckView, EvidenceView, GitHubSyncResult, ProfileView, SkillRef } from "@/lib/portfolio-types";
@@ -12,47 +11,12 @@ import type { User } from "@/lib/types";
 import common from "@/components/portfolio/portfolio.module.css";
 import styles from "./onboarding.module.css";
 
-function message(err: unknown, fallback: string): string {
+export function message(err: unknown, fallback: string): string {
   return err instanceof ClientApiError ? err.message : fallback;
 }
 
 /** The candidate's home: connect GitHub, add chats and projects, approve skills, publish. */
-export function Onboarding({ user, profile }: { user: User; profile: ProfileView }) {
-  const router = useRouter();
-  const pending = profile.evidence.filter((e) => e.pendingSkills.length > 0);
-  const hasRepos = profile.evidence.some((e) => e.kind === "GITHUB_REPO");
-  const step = !hasRepos ? 1 : pending.length > 0 ? 3 : profile.hasProfile && profile.isPublic ? 4 : 3;
-
-  return (
-    <div className={styles.flow}>
-      <ol className={styles.progress} aria-label="Progress">
-        {["Connect GitHub", "Add chats and projects", "Approve skills", "Publish"].map((label, i) => (
-          <li key={label} aria-current={step === i + 1 ? "step" : undefined} className={step > i + 1 ? styles.done : undefined}>
-            <span className={styles.bar} />
-            <span>
-              {i + 1} · {label}
-            </span>
-          </li>
-        ))}
-      </ol>
-
-      {profile.hasProfile && profile.isPublic && profile.handle ? (
-        <p className={common.notice}>
-          Your profile is live at <Link href={`/u/${profile.handle}`}>/u/{profile.handle}</Link>.
-        </p>
-      ) : null}
-
-      <GitHubSection user={user} hasRepos={hasRepos} onDone={() => router.refresh()} />
-      {hasRepos ? <DefendSection profile={profile} /> : null}
-      <ChatSection onDone={() => router.refresh()} />
-      <ProjectSection onDone={() => router.refresh()} />
-      <ApproveSection profile={profile} onDone={() => router.refresh()} />
-      <PublishSection profile={profile} onDone={() => router.refresh()} />
-    </div>
-  );
-}
-
-function GitHubSection({ user, hasRepos, onDone }: { user: User; hasRepos: boolean; onDone: () => void }) {
+export function GitHubSection({ user, hasRepos, onDone }: { user: User; hasRepos: boolean; onDone: () => void }) {
   const [username, setUsername] = useState(user.github ? user.handle : "");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<GitHubSyncResult | null>(null);
@@ -74,10 +38,7 @@ function GitHubSection({ user, hasRepos, onDone }: { user: User; hasRepos: boole
   }
 
   return (
-    <section className={common.card} aria-labelledby="gh">
-      <h2 id="gh" className={common.cardTitle}>
-        GitHub
-      </h2>
+    <div className={styles.pane}>
       <p className={`${common.muted} ${common.small}`}>
         Notch reads your public repositories: your own commits, the weeks you worked, and the languages and tools in each. Forks and
         repositories without your commits are left out.
@@ -121,11 +82,11 @@ function GitHubSection({ user, hasRepos, onDone }: { user: User; hasRepos: boole
           {result.note ? <p className={`${common.muted} ${common.small}`}>{result.note}</p> : null}
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }
 
-function ChatSection({ onDone }: { onDone: () => void }) {
+export function ChatSection({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ChatImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -147,10 +108,7 @@ function ChatSection({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <section className={common.card} aria-labelledby="chats">
-      <h2 id="chats" className={common.cardTitle}>
-        AI chat history <span className={common.muted}>· optional</span>
-      </h2>
+    <div className={styles.pane}>
       <p className={`${common.muted} ${common.small}`}>
         Upload your ChatGPT or Claude export to surface what you&rsquo;ve been learning. Only your own messages are read, the file
         isn&rsquo;t kept, and nobody sees your chats. Suggestions count only after you approve them.
@@ -181,11 +139,11 @@ function ChatSection({ onDone }: { onDone: () => void }) {
           {result.suggestions.length === 1 ? "" : "s"} you kept coming back to. Approve them below.
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }
 
-function ProjectSection({ onDone }: { onDone: () => void }) {
+export function ProjectSection({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
@@ -223,11 +181,10 @@ function ProjectSection({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <section className={common.card} aria-labelledby="proj">
-      <h2 id="proj" className={common.cardTitle}>
-        Add what GitHub can&rsquo;t see
-      </h2>
-      <p className={`${common.muted} ${common.small}`}>A hackathon, a club you run, a weekend build. Projects count as shown evidence.</p>
+    <div className={styles.pane}>
+      <p className={`${common.muted} ${common.small}`}>
+        A hackathon, a club you run, a weekend build: anything GitHub can&rsquo;t see. Projects count as shown evidence.
+      </p>
       <form className={styles.form} onSubmit={submit} noValidate>
         <label className={styles.field}>
           <span>Title</span>
@@ -270,22 +227,56 @@ function ProjectSection({ onDone }: { onDone: () => void }) {
           </p>
         ) : null}
       </form>
-    </section>
+    </div>
   );
 }
 
-function ApproveSection({ profile, onDone }: { profile: ProfileView; onDone: () => void }) {
+/** Everything an import suggested, waiting for the candidate: nothing counts until they say so. */
+export function ReviewSection({ profile, onDone }: { profile: ProfileView; onDone: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fromWork = profile.skills.filter((s) => s.level !== "CLAIMED");
-  const pending = profile.evidence.filter((e) => e.kind === "CHAT_EXPORT" && e.pendingSkills.length > 0);
+  const [open, setOpen] = useState(false);
+  const projects = profile.evidence.filter((e) => e.kind === "PROJECT" && e.pendingSkills.length > 0);
+  // One row per skill, however many sources suggested it (AI memory and a chat export can both).
+  const bySkill = new Map<number, { id: number; name: string; sources: EvidenceView[] }>();
+  for (const e of profile.evidence) {
+    if (e.kind !== "CHAT_EXPORT") continue;
+    for (const s of e.pendingSkills) {
+      const row = bySkill.get(s.id) ?? { id: s.id, name: s.name, sources: [] };
+      row.sources.push(e);
+      bySkill.set(s.id, row);
+    }
+  }
+  const skills = [...bySkill.values()];
+  type Row = { key: string; title: string; detail: string; evidence: EvidenceView[]; project: boolean };
+  const rows: Row[] = [
+    ...projects.map((e) => ({
+      key: e.id,
+      title: e.title,
+      detail: `Project${e.description ? `: ${e.description}` : ""}${e.pendingSkills.length ? ` (${e.pendingSkills.map((s) => s.name).join(", ")})` : ""}`,
+      evidence: [e],
+      project: true,
+    })),
+    ...skills.map((k) => ({
+      key: `skill-${k.id}`,
+      title: k.name,
+      detail: k.sources.map((e) => sourceText(e, k.name)).join("; "),
+      evidence: k.sources,
+      project: false,
+    })),
+  ];
+  if (rows.length === 0) return null;
+  const SHOWN = 4;
+  const visible = open ? rows : rows.slice(0, SHOWN);
 
-  async function decide(evidenceId: string, skillId: number, approve: boolean) {
-    setBusy(evidenceId);
+  async function run(key: string, evidence: EvidenceView[], keep: boolean) {
+    setBusy(key);
     setError(null);
     try {
-      if (approve) await postJson(`/portfolio/evidence/${evidenceId}/skills/${skillId}`, { approved: true }, "PATCH");
-      else await call(`/portfolio/evidence/${evidenceId}`, { method: "DELETE" });
+      for (const e of evidence) {
+        if (keep) for (const s of e.pendingSkills) await postJson(`/portfolio/evidence/${e.id}/skills/${s.id}`, { approved: true }, "PATCH");
+        else await call(`/portfolio/evidence/${e.id}`, { method: "DELETE" });
+      }
       onDone();
     } catch (err) {
       setError(message(err, "That didn't save. Try again."));
@@ -295,47 +286,47 @@ function ApproveSection({ profile, onDone }: { profile: ProfileView; onDone: () 
   }
 
   return (
-    <section className={`${common.card} ${styles.focus}`} aria-labelledby="approve">
-      <h2 id="approve" className={common.cardTitle}>
-        Your skills
-      </h2>
-      <h3 className={`${common.eyebrow} ${styles.sub}`}>From your work</h3>
-      {fromWork.length > 0 ? (
-        <ul className={styles.skillChips}>
-          {fromWork.map((s) => (
-            <li key={s.id}>
-              <span className={styles.skillChip}>
-                {s.name} <LevelChip level={s.level} />
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className={`${common.muted} ${common.small}`}>Connect GitHub or add a project, and skills appear here.</p>
-      )}
-
-      {pending.length > 0 ? (
-        <>
-          <h3 className={`${common.eyebrow} ${styles.sub}`}>Suggested from your chats</h3>
-          <ul className={styles.suggestions}>
-            {pending.map((e) =>
-              e.pendingSkills.map((s) => (
-                <li key={`${e.id}-${s.id}`} className={styles.suggestion}>
-                  <div className={styles.suggestionText}>
-                    <strong>{s.name}</strong>
-                    <span className={`${common.muted} ${common.small}`}>{e.title}</span>
-                  </div>
-                  <button type="button" className="btn btn-quiet" disabled={busy === e.id} onClick={() => decide(e.id, s.id, false)}>
-                    Not me
-                  </button>
-                  <button type="button" className="btn btn-primary" disabled={busy === e.id} onClick={() => decide(e.id, s.id, true)}>
-                    Add to profile
-                  </button>
-                </li>
-              )),
-            )}
-          </ul>
-        </>
+    <section className={styles.review} aria-labelledby="review">
+      <div className={styles.reviewHead}>
+        <div>
+          <h2 id="review" className={common.cardTitle}>
+            {rows.length === 1 ? "1 thing to review" : `${rows.length} things to review`}
+          </h2>
+          <p className={`${common.muted} ${common.small}`}>
+            From your AI history. They already shape your read; add them to your profile and they count towards your scores too.
+          </p>
+        </div>
+        {rows.length > 1 ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy !== null}
+            onClick={() => run("all", rows.flatMap((r) => r.evidence), true)}
+          >
+            {busy === "all" ? "Adding\u2026" : "Add all"}
+          </button>
+        ) : null}
+      </div>
+      <ul className={styles.suggestions}>
+        {visible.map((r) => (
+          <li key={r.key} className={styles.suggestion}>
+            <div className={styles.suggestionText}>
+              <strong>{r.title}</strong>
+              <span className={`${common.muted} ${common.small}`}>{r.detail}</span>
+            </div>
+            <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={() => run(r.key, r.evidence, false)}>
+              {r.project ? "Not mine" : "Not me"}
+            </button>
+            <button type="button" className="btn btn-primary" disabled={busy !== null} onClick={() => run(r.key, r.evidence, true)}>
+              {r.project ? "Add project" : "Add"}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {rows.length > SHOWN ? (
+        <button type="button" className={styles.more} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          {open ? "Show fewer" : `Show ${rows.length - SHOWN} more`}
+        </button>
       ) : null}
       {error ? (
         <p className={common.error} role="alert">
@@ -346,7 +337,17 @@ function ApproveSection({ profile, onDone }: { profile: ProfileView; onDone: () 
   );
 }
 
-function PublishSection({ profile, onDone }: { profile: ProfileView; onDone: () => void }) {
+/** "learning, from AI memory" / "came up in 14 ChatGPT conversations", from the evidence title. */
+function sourceText(e: EvidenceView, skill: string) {
+  if (e.title.startsWith(`${skill}: `)) {
+    const t = e.title.slice(skill.length + 2);
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  const m = /^Discussed .+ in (\d+) (.+) conversations$/.exec(e.title);
+  return m ? `Came up in ${m[1]} ${m[2]} conversations` : e.title;
+}
+
+export function PublishSection({ profile, onDone }: { profile: ProfileView; onDone: () => void }) {
   const [handle, setHandle] = useState(profile.handle ?? "");
   const [headline, setHeadline] = useState(profile.headline ?? "");
   const [isPublic, setPublic] = useState(profile.hasProfile ? profile.isPublic : true);
@@ -419,7 +420,7 @@ function PublishSection({ profile, onDone }: { profile: ProfileView; onDone: () 
 const RETAKE_HOURS = 24;
 
 /** Ownership Checks: explain your own code against the clock, and the repository becomes Defended. */
-function DefendSection({ profile }: { profile: ProfileView }) {
+export function DefendSection({ profile }: { profile: ProfileView }) {
   const repos = profile.evidence.filter((e) => e.kind === "GITHUB_REPO" && !e.duplicate);
   const defended = repos.filter((e) => e.ownership?.defended).length;
   return (
@@ -430,8 +431,8 @@ function DefendSection({ profile }: { profile: ProfileView }) {
             Defend your code
           </h2>
           <p className={`${common.muted} ${common.small}`}>
-            Anyone can push a repository. Explain yours and it becomes Defended: the highest level on Notch, and the only way a skill scores past
-            85. Recruiters can read every question and answer.
+            Anyone can push a repository. Explain yours and it becomes Defended: the highest level on Notch, and the only kind of repository that
+            can take a skill past 85 on its own. Recruiters can read every question and answer.
           </p>
         </div>
         <p className={styles.defendCount}>

@@ -64,6 +64,7 @@ public class EvidenceWriter {
                 added++;
             }
             repo.replaceLinks(id, d.skillIds());
+            if (d.rhythm() != null) repo.setRhythm(id, d.rhythm().firstActive(), d.rhythm().weekdays(), d.rhythm().hours());
             if (dupOf == null) screen.add(d.rootSha(), d.treeSha());
             written.add(d.url());
         }
@@ -78,7 +79,7 @@ public class EvidenceWriter {
     /** Replaces the candidate's chat-export suggestions: one unapproved evidence item per suggested skill. */
     @Transactional
     public List<UUID> replaceChatSuggestions(UUID userId, String source, List<ChatSkillSuggester.Suggestion> suggestions) {
-        repo.deleteChatEvidence(userId);
+        repo.deleteChatEvidence(userId, "EXPORT");
         List<UUID> ids = new ArrayList<>();
         for (ChatSkillSuggester.Suggestion s : suggestions) {
             UUID id = UUID.randomUUID();
@@ -87,6 +88,7 @@ public class EvidenceWriter {
             repo.insertEvidence(id, userId, SkillScoring.Kind.CHAT_EXPORT, title, null, null, 0, 0, false, null,
                     s.depth(), null, null, last);
             repo.linkSkills(id, List.of(s.skill().id()), false);
+            repo.setChatMeta(id, "EXPORT", "ASKED", s.conversations(), null);
             ids.add(id);
         }
         return ids;

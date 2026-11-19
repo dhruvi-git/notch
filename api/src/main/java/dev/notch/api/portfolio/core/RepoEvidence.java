@@ -39,8 +39,27 @@ public final class RepoEvidence {
     }
 
     public record Draft(String title, String url, String description, int ownCommits, int activeWeeks, Instant lastActive,
-                        Set<Integer> skillIds, String rootSha, String treeSha) {
+                        Set<Integer> skillIds, String rootSha, String treeSha, Rhythm rhythm) {
+        public Draft(String title, String url, String description, int ownCommits, int activeWeeks, Instant lastActive,
+                     Set<Integer> skillIds, String rootSha, String treeSha) {
+            this(title, url, description, ownCommits, activeWeeks, lastActive, skillIds, rootSha, treeSha, null);
+        }
     }
+
+    /**
+     * When the candidate's own commits happened: the first one, and counts by weekday (Monday
+     * first) and by hour, in the candidate's zone. Counts only; the commits are not kept.
+     */
+    public record Rhythm(Instant firstActive, int[] weekdays, int[] hours) {
+        public Rhythm {
+            if (weekdays.length != 7 || hours.length != 24) throw new IllegalArgumentException("7 weekdays and 24 hours");
+            weekdays = weekdays.clone();
+            hours = hours.clone();
+        }
+    }
+
+    /** Commit times are bucketed in this zone unless the API is configured otherwise; Notch starts with students in India. */
+    public static final java.time.ZoneId DEFAULT_ZONE = java.time.ZoneId.of("Asia/Kolkata");
 
     public enum Skip { FORK, NO_OWN_COMMITS }
 
@@ -59,11 +78,31 @@ public final class RepoEvidence {
     }
 
     public static Draft build(RepoData repo, SkillCatalog catalog) {
+        return build(repo, catalog, DEFAULT_ZONE);
+    }
+
+    public static Draft build(RepoData repo, SkillCatalog catalog, java.time.ZoneId zone) {
         if (skip(repo).isPresent()) throw new IllegalArgumentException("repository is skipped: " + skip(repo).get());
         Instant last = repo.ownCommitDates().stream().max(Comparator.naturalOrder()).orElse(repo.pushedAt());
         String name = repo.fullName().substring(repo.fullName().indexOf('/') + 1);
         return new Draft(name, repo.htmlUrl(), blankToNull(repo.description()), repo.ownCommitDates().size(),
-                activeWeeks(repo.ownCommitDates()), last, skills(repo, catalog), repo.rootSha(), repo.treeSha());
+                activeWeeks(repo.ownCommitDates()), last, skills(repo, catalog), repo.rootSha(), repo.treeSha(),
+                rhythm(repo.ownCommitDates(), zone));
+    }
+
+    /** The rhythm of a list of commit times, or null when there are none. */
+    public static Rhythm rhythm(List<Instant> commits, java.time.ZoneId zone) {
+        if (commits.isEmpty()) return null;
+        int[] days = new int[7];
+        int[] hours = new int[24];
+        Instant first = commits.get(0);
+        for (Instant c : commits) {
+            java.time.ZonedDateTime t = c.atZone(zone);
+            days[t.getDayOfWeek().getValue() - 1]++;
+            hours[t.getHour()]++;
+            if (c.isBefore(first)) first = c;
+        }
+        return new Rhythm(first, days, hours);
     }
 
     static Set<Integer> skills(RepoData repo, SkillCatalog catalog) {
