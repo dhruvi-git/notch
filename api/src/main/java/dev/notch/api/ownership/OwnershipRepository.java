@@ -121,10 +121,11 @@ public class OwnershipRepository {
                 .param("id", checkId).query(CHECK).optional();
     }
 
+    /** The repository a check is about, and its owner's handle (null before they set up a profile). */
     public PublicHeader header(UUID checkId) {
         return jdbc.sql("""
                 SELECT p.handle, e.title, e.url FROM ownership_checks c
-                JOIN profiles p ON p.user_id = c.user_id JOIN evidence e ON e.id = c.evidence_id
+                JOIN evidence e ON e.id = c.evidence_id LEFT JOIN profiles p ON p.user_id = c.user_id
                 WHERE c.id = :id""")
                 .param("id", checkId)
                 .query((rs, n) -> new PublicHeader(rs.getString("handle"), rs.getString("title"), rs.getString("url")))

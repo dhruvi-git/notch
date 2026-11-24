@@ -85,8 +85,11 @@ public class DemoPoolController {
 
                 boolean isRepo = rnd.nextInt(4) != 0;
                 boolean fork = isRepo && rnd.nextInt(10) == 0;
-                int commits = isRepo ? (int) Math.round(Math.abs(rnd.nextGaussian()) * 25) : 0;
-                int weeks = isRepo ? Math.min(commits, 1 + rnd.nextInt(10)) : 0;
+                // Spread from beginners to a few strong builders. A repository counts in full at 50 own
+                // commits over 12 active weeks (SkillScoring), so the pool has to reach that range for
+                // drives at the default threshold of 50 to have anyone to seat.
+                int commits = isRepo ? 3 + (int) Math.round(Math.abs(rnd.nextGaussian()) * 40) : 0;
+                int weeks = isRepo ? Math.min(commits, 2 + rnd.nextInt(14)) : 0;
                 Instant last = now.minus(Duration.ofDays(rnd.nextInt(540)));
                 UUID id = UUID.randomUUID();
                 String title = (isRepo ? "repo-" : "Project ") + handle + "-" + (e + 1);

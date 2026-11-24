@@ -63,6 +63,16 @@ public final class RegionExtractor {
                     + "|(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:async\\s*)?(?:\\([^)]*\\)|[A-Za-z_$][\\w$]*)\\s*=>"
                     + "|[\\w<>\\[\\],.?\\s]+?\\s+([A-Za-z_$][\\w$]*)\\s*\\([^;]*\\)\\s*(?:throws [\\w., ]+)?\\s*\\{)");
     private static final Pattern IDENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_]{3,}");
+    /**
+     * A quoted string on one line. Written as an unrolled loop with possessive quantifiers: the
+     * textbook {@code "(?:[^"\\]|\\.)*"} recurses once per character in java.util.regex and
+     * overflows the stack on a long literal. Stopping at the line end also keeps an apostrophe in
+     * a comment ("don't") from pairing with a quote further down the file.
+     */
+    private static final Pattern STRING_LITERAL = Pattern.compile(
+            "\"[^\"\\\\\\n]*+(?:\\\\.[^\"\\\\\\n]*+)*+\""
+                    + "|'[^'\\\\\\n]*+(?:\\\\.[^'\\\\\\n]*+)*+'"
+                    + "|`[^`\\\\\\n]*+(?:\\\\.[^`\\\\\\n]*+)*+`");
     private static final Set<String> COMMON = Set.of(
             "self", "this", "true", "false", "null", "none", "return", "import", "from", "class", "def", "function",
             "const", "public", "private", "static", "void", "string", "async", "await", "print", "length",
@@ -187,7 +197,7 @@ public final class RegionExtractor {
     /** Names the author chose, most used first: words of 4+ characters that aren't keywords or common words. */
     static List<String> identifiers(String code) {
         Map<String, Integer> count = new java.util.LinkedHashMap<>();
-        Matcher m = IDENT.matcher(code.replaceAll("(?s)\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'", " "));
+        Matcher m = IDENT.matcher(STRING_LITERAL.matcher(code).replaceAll(" "));
         while (m.find()) {
             String w = m.group();
             if (COMMON.contains(w.toLowerCase(Locale.ROOT))) continue;
@@ -271,7 +281,7 @@ public final class RegionExtractor {
     }
 
     private static String stripStringsAndComments(String line) {
-        String noStrings = line.replaceAll("\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*`", "\"\"");
+        String noStrings = STRING_LITERAL.matcher(line).replaceAll("\"\"");
         int c = noStrings.indexOf("//");
         return c >= 0 ? noStrings.substring(0, c) : noStrings;
     }

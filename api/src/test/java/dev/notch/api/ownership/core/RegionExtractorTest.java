@@ -92,4 +92,28 @@ class RegionExtractorTest {
         assertFalse(ids.contains("return") || ids.contains("items"));
         assertFalse(RegionExtractor.identifiers("x = \"hidden_name\"").contains("hidden_name"));
     }
+
+    @Test
+    void longStringsAndStrayApostrophesDoNotOverflowTheStack() {
+        String longLiteral = "x".repeat(200_000);
+        String escapes = "\\n".repeat(50_000);
+        String ts = "// don't stop here\n"
+                + "export function render(): string {\n"
+                + "  const a = \"" + longLiteral + "\";\n"
+                + "  const b = '" + escapes + "';\n"
+                + "  const c = `" + longLiteral + "`;\n"
+                + "  return a + b + c;\n"
+                + "}\n"
+                + "it's " + "y".repeat(200_000) + "\n";
+        List<Region> regions = assertDoesNotThrow(() ->
+                RegionExtractor.extract(List.of(new SourceFile("src/big.ts", ts)), SampleRepo.CATALOG));
+        assertTrue(regions.stream().anyMatch(r -> r.name().equals("render")), regions.toString());
+    }
+
+    @Test
+    void anApostropheInACommentDoesNotHideTheCodeAfterIt() {
+        List<String> ids = RegionExtractor.identifiers("// don't panic\nint totalCount = load(\"ignoredWord\");\n// it's fine\n");
+        assertTrue(ids.contains("totalCount"), ids.toString());
+        assertFalse(ids.contains("ignoredWord"), ids.toString());
+    }
 }
