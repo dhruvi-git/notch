@@ -123,11 +123,34 @@ export type Term = {
   contribution: number;
 };
 
-export type ShortlistCandidate = { userId: string; handle: string; headline: string | null; score: number; breakdown: Term[] };
+/** The smallest single change that lifts a candidate to a role's minimum match (engine MatchScoring.closestFix). */
+export type Fix = { skill: string; from: number; to: number; level: Level; levelUp: boolean };
 
-export type Shortlist = { roleId: string; role: string; poolSize: number; eligible: number; candidates: ShortlistCandidate[] };
+export type ShortlistCandidate = {
+  userId: string;
+  handle: string;
+  headline: string | null;
+  score: number;
+  breakdown: Term[];
+  /** Set when the candidate is below the role's minimum match and one change would lift them over it. */
+  fix?: Fix | null;
+};
 
-export type Placement = { userId: string; handle: string; score: number };
+/** A candidate missing one must-have whom one improvement would bring in. */
+export type NearMiss = { userId: string; handle: string; headline: string | null; fix: Fix };
+
+export type Shortlist = {
+  roleId: string;
+  role: string;
+  poolSize: number;
+  eligible: number;
+  threshold?: number;
+  candidates: ShortlistCandidate[];
+  nearMisses?: NearMiss[];
+};
+
+/** `moved`: best-score-first greedy would have left this person out or put them in another role. */
+export type Placement = { userId: string; handle: string; score: number; moved?: boolean };
 
 export type RoleResult = { roleId: string; name: string; seats: number; filled: number; eligible: number | null; placements: Placement[] };
 
@@ -139,6 +162,12 @@ export type Assignment = {
   augmentingPaths: number;
   millis: number;
   roles: RoleResult[];
+  /** Totals for the three methods; null on runs stored before best fit. */
+  greedyScore?: number | null;
+  maxFlowFilled?: number | null;
+  maxFlowScore?: number | null;
+  bestFitScore?: number | null;
+  bestFitMillis?: number | null;
 };
 
 export const LEVEL_LABEL: Record<Level, string> = { CLAIMED: "Claimed", SHOWN: "Shown", VERIFIED: "Verified", DEFENDED: "Defended" };

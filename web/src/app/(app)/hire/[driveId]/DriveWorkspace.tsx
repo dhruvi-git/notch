@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { SkillPicker } from "@/components/portfolio/SkillPicker";
 import { call, ClientApiError, postJson } from "@/lib/client-api";
-import { LEVEL_LABEL, type Drive, type Level, type Requirement, type Role, type Shortlist, type Term } from "@/lib/portfolio-types";
+import { LEVEL_LABEL, type Drive, type Fix, type Level, type Requirement, type Role, type Shortlist, type Term } from "@/lib/portfolio-types";
 import common from "@/components/portfolio/portfolio.module.css";
 import styles from "../hire.module.css";
 
-/** Segment colours for the score breakdown, one per requirement in order; they differ in lightness too. */
-const SEGMENT = ["var(--accent)", "var(--ink)", "#e0a800", "#8b7aa0", "#1e9e6a", "#d4522a", "#3b82c4", "#c03a8a"];
+/**
+ * Segment colours for the score breakdown, one per requirement in order. Notch's purple leads,
+ * then ink and the signature yellow; the rest are purples that differ in lightness, so adjacent
+ * segments stay distinct without bringing in unrelated hues.
+ */
+const SEGMENT = ["var(--accent)", "var(--ink)", "#e0a800", "#c9a2ff", "#5b1fb3", "#8b7aa0", "#e6d4ff", "#3d1585"];
 
 type DraftRole = Omit<Role, "id"> & { id: string | null };
 
@@ -287,7 +291,10 @@ export function DriveWorkspace({ initial }: { initial: Drive }) {
           ) : !shortlist ? (
             <p className={common.muted}>{loadingList ? "Ranking candidates…" : "Add the skills this role needs to see a shortlist."}</p>
           ) : shortlist.candidates.length === 0 ? (
-            <p className={common.muted}>Nobody has every must-have yet. Try marking fewer skills as must-haves.</p>
+            <>
+              <p className={common.muted}>Nobody has every must-have yet. Try marking fewer skills as must-haves.</p>
+              <NearMisses shortlist={shortlist} />
+            </>
           ) : (
             <>
               <ul className={styles.legend} aria-label="Colour key">
@@ -299,30 +306,73 @@ export function DriveWorkspace({ initial }: { initial: Drive }) {
                 ))}
               </ul>
               <ol className={styles.cands}>
-                {shortlist.candidates.map((c, rank) => (
-                  <li key={c.userId} className={styles.cand}>
-                    <span className={styles.rank}>#{rank + 1}</span>
-                    <div className={styles.candBody}>
-                      <div className={styles.candName}>
-                        <Link href={`/u/${c.handle}`}>@{c.handle}</Link>
-                        {c.headline ? <span className={`${common.muted} ${common.small}`}>{c.headline}</span> : null}
+                {shortlist.candidates.map((c, rank) => {
+                  const below = shortlist.threshold != null && c.score < shortlist.threshold;
+                  return (
+                    <li
+                      key={c.userId}
+                      className={`${styles.cand} ${below ? styles.candBelow : ""} rise`}
+                      style={{ "--i": Math.min(rank, 12) } as CSSProperties}
+                    >
+                      <span className={styles.rank}>#{rank + 1}</span>
+                      <div className={styles.candBody}>
+                        <div className={styles.candName}>
+                          <Link href={`/u/${c.handle}`}>@{c.handle}</Link>
+                          {c.headline ? <span className={`${common.muted} ${common.small}`}>{c.headline}</span> : null}
+                        </div>
+                        <Breakdown terms={c.breakdown} order={role.requirements.map((q) => q.skill)} />
+                        <p className={`${common.muted} ${common.small} ${styles.why}`}>{why(c.breakdown)}</p>
+                        {below && c.fix ? (
+                          <p className={styles.fix}>
+                            Below the minimum of {Math.round(shortlist.threshold ?? 0)}. To qualify: <strong>{fixText(c.fix)}</strong>
+                          </p>
+                        ) : null}
                       </div>
-                      <Breakdown terms={c.breakdown} order={role.requirements.map((q) => q.skill)} />
-                      <p className={`${common.muted} ${common.small} ${styles.why}`}>{why(c.breakdown)}</p>
-                    </div>
-                    <div className={styles.candScore}>
-                      <span className={styles.scoreBig}>{Math.round(c.score)}</span>
-                      <span className={`${common.muted} ${common.small}`}>match</span>
-                    </div>
-                  </li>
-                ))}
+                      <div className={styles.candScore}>
+                        <span className={styles.scoreBig}>{Math.round(c.score)}</span>
+                        <span className={`${common.muted} ${common.small}`}>match</span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ol>
+              <NearMisses shortlist={shortlist} />
             </>
           )}
         </section>
       </div>
     </div>
   );
+}
+
+/** Candidates the shortlist leaves out for one missing must-have, with the one change that would bring each in. */
+function NearMisses({ shortlist }: { shortlist: Shortlist }) {
+  const near = shortlist.nearMisses ?? [];
+  if (near.length === 0) return null;
+  return (
+    <section className={styles.near} aria-labelledby="near">
+      <h3 id="near" className={styles.nearTitle}>
+        Almost there
+      </h3>
+      <p className={`${common.muted} ${common.small}`}>Missing one must-have. One piece of evidence would bring each of them in.</p>
+      <ul className={styles.nearList}>
+        {near.map((n, i) => (
+          <li key={n.userId} className={`${styles.nearItem} rise`} style={{ "--i": i } as CSSProperties}>
+            <Link href={`/u/${n.handle}`}>@{n.handle}</Link>
+            <span className={styles.nearFix}>{fixText(n.fix)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** "SQL 48 → 71", "SQL verified", or "Power BI evidence at 30+, verified". */
+function fixText(f: Fix): string {
+  const level = LEVEL_LABEL[f.level].toLowerCase();
+  if (f.from === 0) return `${f.skill} evidence at ${Math.ceil(f.to)}+, ${level}`;
+  if (f.to <= f.from) return `${f.skill} ${level} (now ${Math.round(f.from)}, counted at half)`;
+  return `${f.skill} ${Math.round(f.from)} → ${Math.ceil(f.to)}${f.levelUp ? `, ${level}` : ""}`;
 }
 
 function Breakdown({ terms, order }: { terms: Term[]; order: string[] }) {

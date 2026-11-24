@@ -27,14 +27,35 @@ public final class DriveView {
                        double contribution) {
     }
 
-    public record Candidate(UUID userId, String handle, String headline, double score, List<Term> breakdown) {
+    /**
+     * The smallest single change that would lift a candidate to the role's minimum match.
+     *
+     * @param level   the evidence level the role asks for on this skill
+     * @param levelUp whether the candidate's evidence on it is below that level now
+     */
+    public record Fix(String skill, double from, double to, String level, boolean levelUp) {
     }
 
-    /** @param poolSize public candidates searched; @param eligible those who meet every must-have */
-    public record Shortlist(UUID roleId, String role, int poolSize, int eligible, List<Candidate> candidates) {
+    /** @param fix what would lift a candidate below the role's minimum match over it; null when none is needed or possible */
+    public record Candidate(UUID userId, String handle, String headline, double score, List<Term> breakdown, Fix fix) {
     }
 
-    public record Placement(UUID userId, String handle, double score) {
+    /** A candidate missing one must-have whom one improvement would bring in. */
+    public record NearMiss(UUID userId, String handle, String headline, Fix fix) {
+    }
+
+    /**
+     * @param poolSize   public candidates searched
+     * @param eligible   those who meet every must-have
+     * @param threshold  the role's minimum match
+     * @param nearMisses up to five candidates missing one must-have, smallest fix first
+     */
+    public record Shortlist(UUID roleId, String role, int poolSize, int eligible, double threshold,
+                            List<Candidate> candidates, List<NearMiss> nearMisses) {
+    }
+
+    /** @param moved whether best-score-first greedy would have left this person out or put them in another role */
+    public record Placement(UUID userId, String handle, double score, boolean moved) {
     }
 
     /** @param eligible candidates at or above the role's threshold; null for a stored run */
@@ -46,8 +67,13 @@ public final class DriveView {
      *
      * @param greedyFilled    seats a best-score-first greedy pass would have filled, for comparison
      * @param augmentingPaths paths max-flow found beyond the greedy start
+     * @param greedyScore     total match of greedy's placements; null for runs stored before best fit
+     * @param maxFlowFilled   seats plain max-flow fills (the same as {@code filled}); null for older runs
+     * @param maxFlowScore    total match of max-flow's placements; null for older runs
+     * @param bestFitScore    total match of the placements shown (min-cost flow); null for older runs
      */
     public record Assignment(Instant runAt, int totalSeats, int filled, int greedyFilled, int augmentingPaths,
-                             double millis, List<RoleResult> roles) {
+                             double millis, List<RoleResult> roles, Double greedyScore, Integer maxFlowFilled,
+                             Double maxFlowScore, Double bestFitScore, Double bestFitMillis) {
     }
 }

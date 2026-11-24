@@ -10,7 +10,7 @@ const SNIPPET = 300;
 
 const SIGNALS: { key: keyof Why; label: string; explain: string }[] = [
   { key: "exact", label: "Exact words", explain: "the passage contains the words you typed (suffix-array search)" },
-  { key: "semantic", label: "Similar meaning", explain: "close in meaning to your query (vector search)" },
+  { key: "semantic", label: "Similar meaning", explain: "close in meaning to your query" },
   { key: "recency", label: "Recent", explain: "how recently it was said; halves every two weeks" },
   { key: "decision", label: "Decision", explain: "the passage records a decision in force" },
 ];
@@ -44,7 +44,6 @@ export function Results({ results, searching }: { results: SearchResponse; searc
       <div className={styles.resultsHead}>
         <p>
           <strong>{plural(results.hits.length, "result")}</strong>
-          <span className="muted"> in {results.tookMillis} ms</span>
         </p>
         {reading ? <p className={styles.reading}>{reading}</p> : null}
       </div>

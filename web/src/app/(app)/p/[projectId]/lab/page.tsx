@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import bench from "@/data/benchmarks.json";
 import { ApiError, api } from "@/lib/server-api";
 import { plural, relativeTime } from "@/lib/format";
@@ -18,8 +19,12 @@ function kb(bytes: number): string {
 /**
  * Under the hood: each thing Notch does for the person, the algorithm that makes it work, what
  * it's doing in this project right now, and how it compares with the simple approach.
+ *
+ * Internal: nothing links here, and it answers 404 unless the server runs with
+ * NOTCH_SHOW_LAB=1 (for a technical walkthrough). Users and recruiters never see it.
  */
 export default async function UnderTheHood({ params }: { params: Promise<{ projectId: string }> }) {
+  if (process.env.NOTCH_SHOW_LAB !== "1") notFound();
   const { projectId } = await params;
   const p = `/api/projects/${projectId}`;
   const [index, threads, imports, map] = await Promise.all([

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Seal } from "@/components/Seal";
 import { SkillPicker } from "@/components/portfolio/SkillPicker";
 import { call, ClientApiError, postJson } from "@/lib/client-api";
@@ -448,6 +448,40 @@ export function DefendSection({ profile }: { profile: ProfileView }) {
   );
 }
 
+/** What happens while a check is prepared (OwnershipService.create), with roughly when each stage starts. */
+const PREP_STEPS: { label: string; at: number }[] = [
+  { label: "Fetching your source files from GitHub", at: 0 },
+  { label: "Splitting them into functions, classes and queries", at: 3500 },
+  { label: "Choosing the parts that best cover your skills", at: 7000 },
+  { label: "Writing five questions about your code", at: 10000 },
+];
+
+/**
+ * The 10–30 seconds before a check starts. The server answers once, at the end, so stages
+ * advance on a timer that matches their usual timing; the last one stays active until the
+ * questions arrive.
+ */
+function PrepSteps() {
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const t = setInterval(() => setNow(Date.now() - start), 250);
+    return () => clearInterval(t);
+  }, []);
+  const current = PREP_STEPS.reduce((c, s, i) => (now >= s.at ? i : c), 0);
+  return (
+    <ol className={styles.prep} aria-live="polite">
+      {PREP_STEPS.map((s, i) => (
+        <li key={s.label} className={i < current ? styles.prepDone : i === current ? styles.prepNow : styles.prepNext}>
+          <span className={styles.prepDot} aria-hidden="true" />
+          {s.label}
+          {i === current ? <span className="sr-only"> (in progress)</span> : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function DefendRow({ repo }: { repo: EvidenceView }) {
   const router = useRouter();
   const [briefing, setBriefing] = useState(false);
@@ -509,6 +543,7 @@ function DefendRow({ repo }: { repo: EvidenceView }) {
               <strong>70 defends it.</strong> If you pass, the transcript appears on your public profile. If not, try again in 24 hours.
             </li>
           </ul>
+          {busy ? <PrepSteps /> : null}
           <div className={styles.briefActions}>
             <button type="button" className="btn btn-yellow" onClick={start} disabled={busy}>
               {busy ? "Reading your code\u2026" : "Start the clock"}

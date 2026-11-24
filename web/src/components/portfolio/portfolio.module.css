@@ -1,9 +1,7 @@
 /* Shared pieces of the portfolio and hiring screens. */
 
-/* A dark stage behind page headers, darker than the app's purple rail, as in the mockups. */
+/* A dark stage behind page headers, in Notch's deep purple (the theme's --brand). */
 .stage {
-  --brand: #2f253a;
-  --brand-raised: #43375a;
 }
 
 .topBar {
@@ -128,9 +126,9 @@
   color: var(--accent);
 }
 
-/* Defended wears the seal's colours: plum with a yellow ring. */
+/* Defended wears the seal's colours: deep purple with a yellow ring. */
 .levelDEFENDED {
-  background: #2f253a;
+  background: var(--brand);
   color: #fedc2a;
   box-shadow: 0 0 0 1.5px #fedc2a inset;
 }
@@ -269,9 +267,8 @@
   color: var(--ink-soft);
 }
 
-/* Joined to a plum hero underneath: no border, the stage's colour. */
+/* Joined to a purple hero underneath: no border, the stage's colour. */
 .topBarDark {
-  --brand: #2f253a;
   border-bottom-color: transparent;
   background: var(--brand);
 }

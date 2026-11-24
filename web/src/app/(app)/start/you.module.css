@@ -1,7 +1,6 @@
 /* ------------------------------------------------------------------ hero: the only dark surface */
 
 .hero {
-  --brand: #2f253a;
   padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 3rem) clamp(2.5rem, 5vw, 4rem);
   overflow: hidden;
 }
@@ -335,7 +334,7 @@
 }
 
 .v_both {
-  background: #2f253a;
+  background: var(--brand);
   color: #fff;
   box-shadow: none;
 }
@@ -345,7 +344,7 @@
 }
 
 .v_both.vChipOn {
-  box-shadow: 0 0 0 2px var(--mark), 0 0 0 4px #2f253a;
+  box-shadow: 0 0 0 2px var(--mark), 0 0 0 4px var(--brand);
 }
 
 .vennNone {
@@ -426,10 +425,27 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  position: relative;
+}
+
+.tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 1rem;
+  bottom: -3px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform var(--dur-quick) var(--ease-out);
+}
+
+.tab[aria-selected="true"]::after {
+  transform: scaleX(1);
 }
 
 .tab[aria-selected="true"] {
-  border-bottom-color: var(--ink);
   color: var(--ink);
 }
 
@@ -488,7 +504,7 @@
   width: 1.6rem;
   height: 1.6rem;
   border-radius: 50%;
-  background: #2f253a;
+  background: var(--brand);
   color: var(--mark);
   font-size: var(--t-xs);
   font-weight: 800;
@@ -582,7 +598,7 @@
     background: #f6f2fc;
   }
   .vennMid {
-    background: #2f253a0d;
+    background: rgb(144 42 254 / 0.06);
   }
   .vennRight {
     background: #fffae0;

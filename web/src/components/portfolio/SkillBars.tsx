@@ -31,7 +31,7 @@ export function SkillBars({ skills, linkToEvidence = false }: { skills: SkillVie
         <div key={domain} className={styles.group}>
           <h3 className={styles.eyebrow}>{domain}</h3>
           <ul className={styles.rows}>
-            {list.map((s) => (
+            {list.map((s, i) => (
               <li key={s.id} className={styles.row}>
                 <span className={styles.skillName}>
                   {linkToEvidence && s.evidenceIds.length > 0 ? <a href={`#evidence-${s.evidenceIds[0]}`}>{s.name}</a> : s.name}
@@ -42,8 +42,9 @@ export function SkillBars({ skills, linkToEvidence = false }: { skills: SkillVie
                   aria-label={`${s.name}: ${Math.round(s.score)} out of 100`}
                 >
                   <span
-                    className={styles.fill}
+                    className={`${styles.fill} grow-x`}
                     style={{
+                      ["--i" as string]: Math.min(i, 10),
                       width: `${Math.max(0, Math.min(100, s.score))}%`,
                       ["--cut" as string]: `${(UNDEFENDED_CAP / Math.max(s.score, 1)) * 100}%`,
                     }}

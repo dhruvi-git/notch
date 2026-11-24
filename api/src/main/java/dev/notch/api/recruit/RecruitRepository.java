@@ -26,10 +26,13 @@ public class RecruitRepository {
     public record Role(UUID id, String name, int seats, double threshold, List<Requirement> requirements) {
     }
 
-    public record Run(UUID id, int totalSeats, int greedyFilled, int augmentingPaths, double millis, Instant runAt) {
+    /** A seat-assignment run. The comparison fields are null for runs stored before best fit existed. */
+    public record Run(UUID id, int totalSeats, int greedyFilled, int augmentingPaths, double millis, Instant runAt,
+                      Double greedyScore, Integer maxFlowFilled, Double maxFlowScore, Double bestFitScore,
+                      Double bestFitMillis) {
     }
 
-    public record Placement(UUID roleId, UUID userId, String handle, double score) {
+    public record Placement(UUID roleId, UUID userId, String handle, double score, boolean moved) {
     }
 
     private static final RowMapper<Drive> DRIVE = (rs, n) -> new Drive(Db.uuid(rs, "id"), rs.getString("title"),
@@ -109,37 +112,45 @@ public class RecruitRepository {
 
     public void insertRun(Run run, UUID driveId, List<Placement> placements) {
         jdbc.sql("""
-                INSERT INTO assignment_runs (id, drive_id, total_seats, greedy_filled, augmenting_paths, millis, run_at)
-                VALUES (:id, :d, :seats, :greedy, :paths, :ms, :at)""")
+                INSERT INTO assignment_runs (id, drive_id, total_seats, greedy_filled, augmenting_paths, millis, run_at,
+                                             greedy_score, max_flow_filled, max_flow_score, best_fit_score, best_fit_millis)
+                VALUES (:id, :d, :seats, :greedy, :paths, :ms, :at, :gs, :mff, :mfs, :bfs, :bfm)""")
                 .param("id", run.id()).param("d", driveId).param("seats", run.totalSeats())
                 .param("greedy", run.greedyFilled()).param("paths", run.augmentingPaths()).param("ms", run.millis())
                 .param("at", Db.ts(run.runAt()))
+                .param("gs", run.greedyScore()).param("mff", run.maxFlowFilled()).param("mfs", run.maxFlowScore())
+                .param("bfs", run.bestFitScore()).param("bfm", run.bestFitMillis())
                 .update();
         for (Placement p : placements) {
-            jdbc.sql("INSERT INTO assignments (run_id, role_id, user_id, score) VALUES (:run, :role, :u, :s)")
+            jdbc.sql("INSERT INTO assignments (run_id, role_id, user_id, score, moved) VALUES (:run, :role, :u, :s, :m)")
                     .param("run", run.id()).param("role", p.roleId()).param("u", p.userId()).param("s", p.score())
+                    .param("m", p.moved())
                     .update();
         }
     }
 
     public Optional<Run> latestRun(UUID driveId) {
         return jdbc.sql("""
-                SELECT id, total_seats, greedy_filled, augmenting_paths, millis, run_at
+                SELECT id, total_seats, greedy_filled, augmenting_paths, millis, run_at,
+                       greedy_score, max_flow_filled, max_flow_score, best_fit_score, best_fit_millis
                 FROM assignment_runs WHERE drive_id = :d ORDER BY run_at DESC LIMIT 1""")
                 .param("d", driveId)
                 .query((rs, n) -> new Run(Db.uuid(rs, "id"), rs.getInt("total_seats"), rs.getInt("greedy_filled"),
-                        rs.getInt("augmenting_paths"), rs.getDouble("millis"), Db.instant(rs, "run_at")))
+                        rs.getInt("augmenting_paths"), rs.getDouble("millis"), Db.instant(rs, "run_at"),
+                        rs.getObject("greedy_score", Double.class), rs.getObject("max_flow_filled", Integer.class),
+                        rs.getObject("max_flow_score", Double.class), rs.getObject("best_fit_score", Double.class),
+                        rs.getObject("best_fit_millis", Double.class)))
                 .optional();
     }
 
     public List<Placement> placements(UUID runId) {
         return jdbc.sql("""
-                SELECT a.role_id, a.user_id, p.handle, a.score
+                SELECT a.role_id, a.user_id, p.handle, a.score, a.moved
                 FROM assignments a JOIN profiles p ON p.user_id = a.user_id
                 WHERE a.run_id = :run ORDER BY a.score DESC, p.handle""")
                 .param("run", runId)
                 .query((rs, n) -> new Placement(Db.uuid(rs, "role_id"), Db.uuid(rs, "user_id"), rs.getString("handle"),
-                        rs.getDouble("score")))
+                        rs.getDouble("score"), rs.getBoolean("moved")))
                 .list();
     }
 }

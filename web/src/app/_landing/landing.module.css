@@ -4,10 +4,8 @@
   min-height: 100vh;
 }
 
-/* The plum stage: navigation and the headline. The viva window then breaks out of it. */
+/* The purple stage: navigation and the headline. The viva window then breaks out of it. */
 .top {
-  --brand: #2f253a;
-  --brand-raised: #43375a;
   padding-bottom: 11rem;
 }
 
@@ -425,7 +423,7 @@
 .rungTop {
   --ink: #f3eefa;
   --ink-soft: #c9bfd9;
-  background: #2f253a;
+  background: var(--brand);
   color: var(--ink);
   border-bottom-color: var(--mark);
 }
@@ -588,7 +586,7 @@
 }
 
 .slDefended {
-  background: #2f253a;
+  background: var(--brand);
   color: var(--mark);
   box-shadow: 0 0 0 1.5px var(--mark) inset;
 }

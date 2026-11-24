@@ -22,7 +22,8 @@ import java.util.Set;
  *
  * <p>Each role's candidate edges are added highest score first, so among equally short
  * augmenting paths the search prefers better-matched candidates. That is a tie-break, not a
- * guarantee: the result maximizes seats filled, not total score (which would need min-cost flow).
+ * guarantee: the result maximizes seats filled, not total score. {@link #bestFit} adds that,
+ * with min-cost flow.
  */
 public final class SeatAssigner {
 
@@ -129,6 +130,63 @@ public final class SeatAssigner {
         }
 
         net.maxFlow(source, sink);
+
+        List<Assignment> out = new ArrayList<>();
+        Map<String, Integer> unfilled = new LinkedHashMap<>();
+        for (int j = 0; j < r; j++) {
+            int filled = 0;
+            for (int k = 0; k < edgeIds[j].length; k++) {
+                if (net.flowOn(edgeIds[j][k]) == 1) {
+                    int cand = edgeCands[j][k];
+                    out.add(new Assignment(roles.get(j).id(), candidateIds.get(cand), scores[cand][j]));
+                    filled++;
+                }
+            }
+            unfilled.put(roles.get(j).id(), roles.get(j).seats() - filled);
+        }
+        return new Result(Collections.unmodifiableList(out), Collections.unmodifiableMap(unfilled),
+                totalSeats, eligible, net.augmentations());
+    }
+
+    /**
+     * Best fit: as many seats as {@link #assign} fills, and among all assignments that fill that
+     * many, the one with the highest total match score.
+     *
+     * <p>Same network as {@link #assign}, with a cost on each role → candidate edge of minus the
+     * match score (in hundredths, so costs are integers). {@link MinCostFlow} finds the cheapest
+     * maximum flow, which is the highest-scoring assignment among those that fill the most seats.
+     * Max-flow alone only promises the seat count: it keeps whichever pairing it reaches first.
+     * {@code augmentations} is the number of shortest paths, one per seat filled.
+     */
+    public static Result bestFit(List<Role> roles, List<String> candidateIds, double[][] scores) {
+        validate(roles, candidateIds, scores);
+        int r = roles.size(), c = candidateIds.size();
+        int source = 0, sink = 1, roleBase = 2, candBase = 2 + r;
+        MinCostFlow net = new MinCostFlow(2 + r + c);
+
+        int totalSeats = 0, eligible = 0;
+        for (int j = 0; j < r; j++) {
+            net.addEdge(source, roleBase + j, roles.get(j).seats(), 0);
+            totalSeats += roles.get(j).seats();
+        }
+        int[][] edgeIds = new int[r][];
+        int[][] edgeCands = new int[r][];
+        for (int j = 0; j < r; j++) {
+            List<Integer> ok = eligibleFor(j, roles.get(j), scores);
+            int roleJ = j;
+            ok.sort((a, b) -> Double.compare(scores[b][roleJ], scores[a][roleJ]));
+            edgeIds[j] = new int[ok.size()];
+            edgeCands[j] = new int[ok.size()];
+            for (int k = 0; k < ok.size(); k++) {
+                int cand = ok.get(k);
+                edgeCands[j][k] = cand;
+                edgeIds[j][k] = net.addEdge(roleBase + j, candBase + cand, 1, -Math.round(scores[cand][j] * 100));
+            }
+            eligible += ok.size();
+        }
+        for (int i = 0; i < c; i++) net.addEdge(candBase + i, sink, 1, 0);
+
+        net.solve(source, sink);
 
         List<Assignment> out = new ArrayList<>();
         Map<String, Integer> unfilled = new LinkedHashMap<>();

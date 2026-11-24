@@ -13,6 +13,8 @@ type Draft = { answer: string; millis: number; pastes: number; focusLost: number
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const LOW_SECONDS = 120;
+/** A check's full length (OwnershipService.LENGTH, 12 minutes), for the time-left bar. */
+const CHECK_SECONDS = 12 * 60;
 
 function clock(s: number) {
   const m = Math.floor(s / 60);
@@ -201,6 +203,9 @@ function Session({ check, onFinished }: { check: CheckView; onFinished: (c: Chec
         <button type="button" className="btn btn-yellow" onClick={() => (answered < qs.length ? setConfirming(true) : finish())} disabled={finishing}>
           {finishing ? "Grading…" : "Finish"}
         </button>
+        <span className={`${styles.timeBar} ${low ? styles.timeBarLow : ""}`} aria-hidden="true">
+          <span style={{ transform: `scaleX(${Math.max(0, Math.min(1, left / CHECK_SECONDS))})` }} />
+        </span>
       </header>
 
       {confirming ? (

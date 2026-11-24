@@ -1,6 +1,8 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CountUp } from "@/components/CountUp";
 import { TopBar } from "@/components/portfolio/TopBar";
 import { api, ApiError } from "@/lib/server-api";
 import type { Assignment, Drive } from "@/lib/portfolio-types";
@@ -52,59 +54,101 @@ export default async function AssignmentPage({ params }: { params: Promise<Param
   );
 }
 
+/** A stagger index for the shared motion classes in globals.css. */
+const at = (i: number) => ({ "--i": i }) as CSSProperties;
+
+type Method = { key: string; name: string; detail: string; filled: number; score: number | null; best: boolean };
+
 function Result({ drive, result }: { drive: Drive; result: Assignment }) {
   const all = result.filled === result.totalSeats;
   const pct = (n: number) => (result.totalSeats === 0 ? 0 : (100 * n) / result.totalSeats);
-  const gained = result.filled - result.greedyFilled;
+  // What recruiters see is the outcome, not the method: Notch's assignment against the usual
+  // approach of handing each seat to the highest scorer still free.
+  const methods: Method[] = [
+    {
+      key: "simple",
+      name: "Top score first",
+      detail: "each seat to the highest scorer still free",
+      filled: result.greedyFilled,
+      score: result.greedyScore ?? null,
+      best: false,
+    },
+    {
+      key: "notch",
+      name: "Notch",
+      detail: "every seat it can fill, then the best overall match",
+      filled: result.filled,
+      score: result.bestFitScore ?? result.maxFlowScore ?? null,
+      best: true,
+    },
+  ];
+  const [simple, notch] = methods;
+  const gained = notch.filled - simple.filled;
+  const moved = result.roles.reduce((n, r) => n + r.placements.filter((p) => p.moved).length, 0);
+  const hasMoves = result.bestFitScore != null;
+  let chip = 6;
+
   return (
     <>
-      <h1 className={common.title}>
+      <h1 className={`${common.title} rise`}>
         {all ? `All ${result.totalSeats} seats filled` : `${result.filled} of ${result.totalSeats} seats filled`}
       </h1>
 
       <div className={styles.summary}>
-        <div className={styles.compare}>
-          <div className={styles.compareBars}>
-            <div className={styles.compareRow}>
-              <strong>Notch (max-flow)</strong>
-              <span className={styles.compareTrack} role="img" aria-label={`${result.filled} of ${result.totalSeats} seats`}>
-                <span className={styles.compareFill} style={{ width: `${pct(result.filled)}%` }} />
+        <div className={`${styles.compare} rise`} style={at(1)}>
+          <div className={styles.compareBars} role="table" aria-label="Notch's assignment compared with filling seats top score first">
+            <div className={`${styles.compareRow} ${styles.compareHead}`} role="row">
+              <span role="columnheader">Approach</span>
+              <span role="columnheader">Seats filled</span>
+              <span role="columnheader" className={styles.compareNum}>
+                Seats
               </span>
-              <span className={styles.compareNum}>
-                {result.filled}/{result.totalSeats}
-              </span>
-            </div>
-            <div className={styles.compareRow}>
-              <span>Best score first</span>
-              <span className={styles.compareTrack} role="img" aria-label={`${result.greedyFilled} of ${result.totalSeats} seats`}>
-                <span className={styles.compareFillGreedy} style={{ width: `${pct(result.greedyFilled)}%` }} />
-              </span>
-              <span className={styles.compareNum}>
-                {result.greedyFilled}/{result.totalSeats}
+              <span role="columnheader" className={styles.compareNum}>
+                Total match
               </span>
             </div>
+            {methods.map((m, i) => (
+              <div key={m.key} className={`${styles.compareRow} ${m.best ? styles.compareBest : ""}`} role="row">
+                <span role="cell" className={styles.compareName}>
+                  {m.best ? <strong>{m.name}</strong> : m.name}
+                  <span className={styles.compareDetail}>{m.detail}</span>
+                </span>
+                <span role="cell" className={styles.compareTrack} aria-label={`${m.filled} of ${result.totalSeats} seats`}>
+                  <span className={`${m.best ? styles.compareFill : styles.compareFillGreedy} grow-x`} style={{ ...at(i), width: `${pct(m.filled)}%` }} />
+                </span>
+                <span role="cell" className={styles.compareNum}>
+                  <CountUp value={m.filled} delay={150 + i * 180} />/{result.totalSeats}
+                </span>
+                <span role="cell" className={styles.compareNum}>
+                  {m.score === null ? "–" : <CountUp value={Math.round(m.score)} delay={150 + i * 180} />}
+                </span>
+              </div>
+            ))}
           </div>
           <p className={styles.compareText}>
             {gained > 0
-              ? `Giving each seat to the best free match in turn would have left ${gained} more seat${gained === 1 ? "" : "s"} empty. Notch moved strong all-rounders to roles only they could fill.`
-              : "Here, giving each seat to the best free match in turn fills as many seats, so no one needed moving."}
+              ? `Handing each seat to the top scorer still free would leave ${gained} more seat${gained === 1 ? "" : "s"} empty. Notch fills ${gained === 1 ? "it" : "them"} by placing versatile candidates in the roles only they can fill, then arranges everyone for the best overall match.`
+              : "Handing each seat to the top scorer still free fills as many seats here. Notch then arranges everyone for the best overall match."}
             {!all ? " Some seats stay empty because not enough candidates meet those roles' minimum match." : ""}
           </p>
         </div>
-        <div className={`${common.card} ${styles.facts}`}>
+        <div className={`${common.card} ${styles.facts} rise`} style={at(2)}>
+          {hasMoves ? (
+            <span className={common.muted}>
+              <strong>{moved}</strong> {moved === 1 ? "person" : "people"} placed differently than top score first would
+            </span>
+          ) : null}
           <span className={common.muted}>
-            <strong>{result.augmentingPaths}</strong> re-routing{result.augmentingPaths === 1 ? "" : "s"} beyond the best-score-first start
-          </span>
-          <span className={common.muted}>
-            Computed in <strong>{result.millis < 1 ? "under 1" : Math.round(result.millis)} ms</strong>
+            <strong>{result.roles.length}</strong> role{result.roles.length === 1 ? "" : "s"}, <strong>{result.totalSeats}</strong> seat
+            {result.totalSeats === 1 ? "" : "s"}
           </span>
           <span className={common.muted}>Assigned {new Date(result.runAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</span>
         </div>
       </div>
 
       <div className={styles.roleGrid}>
-        {result.roles.map((r) => (
-          <section key={r.roleId} className={common.card} aria-labelledby={`role-${r.roleId}`}>
+        {result.roles.map((r, ri) => (
+          <section key={r.roleId} className={`${common.card} rise`} style={at(3 + ri)} aria-labelledby={`role-${r.roleId}`}>
             <div className={styles.roleHead}>
               <h2 id={`role-${r.roleId}`} className={common.cardTitle}>
                 {r.name}
@@ -120,13 +164,18 @@ function Result({ drive, result }: { drive: Drive; result: Assignment }) {
             ) : null}
             <ul className={styles.people}>
               {r.placements.map((p) => (
-                <li key={p.userId} className={styles.person}>
+                <li key={p.userId} className={`${styles.person} ${p.moved ? styles.personMoved : ""} pop-in`} style={at(chip++)}>
                   <Link href={`/u/${p.handle}`}>@{p.handle}</Link>
+                  {p.moved ? (
+                    <span className={styles.movedTag} title="Filling seats top score first would have left this person out or put them in another role">
+                      moved by Notch
+                    </span>
+                  ) : null}
                   <span className={styles.personScore}>{Math.round(p.score)}</span>
                 </li>
               ))}
               {Array.from({ length: Math.max(0, r.seats - r.filled) }, (_, i) => (
-                <li key={`empty-${i}`} className={styles.empty}>
+                <li key={`empty-${i}`} className={`${styles.empty} pop-in`} style={at(chip++)}>
                   Empty seat
                 </li>
               ))}

@@ -18,8 +18,8 @@ import java.util.UUID;
 /**
  * The recruiter side's two computations over a pool of candidate profiles: a ranked shortlist
  * for one role (match scores, then the engine's randomized top-k) and a seat assignment for a
- * whole drive (match scores for every role, then max-flow, with greedy run alongside for the
- * comparison shown to the recruiter).
+ * whole drive (match scores for every role, then min-cost flow for the best fit, with max-flow
+ * and best-score-first greedy run alongside for the comparison shown to the recruiter).
  */
 public final class Matching {
 
@@ -37,15 +37,23 @@ public final class Matching {
     public record RoleSpec(UUID roleId, String name, int seats, double threshold, List<Requirement> requirements) {
     }
 
-    public record Placement(UUID roleId, UUID userId, String handle, double score) {
+    /** @param moved whether best-score-first greedy would have left this person out or put them in another role */
+    public record Placement(UUID roleId, UUID userId, String handle, double score, boolean moved) {
     }
 
     public record RoleOutcome(UUID roleId, String name, int seats, int filled, int eligible) {
     }
 
-    /** A drive's assignment plus what greedy would have done and how long max-flow took. */
+    /**
+     * A drive's best-fit assignment, plus what max-flow and greedy would have done.
+     *
+     * @param augmentingPaths paths max-flow found beyond the greedy start
+     * @param millis          max-flow's running time
+     * @param bestFitMillis   min-cost flow's running time
+     */
     public record DriveResult(List<Placement> placements, List<RoleOutcome> roles, int totalSeats,
-                              int greedyFilled, int augmentingPaths, double millis) {
+                              int greedyFilled, double greedyScore, int maxFlowFilled, double maxFlowScore,
+                              double bestFitScore, int augmentingPaths, double millis, double bestFitMillis) {
         public int filled() {
             return placements.size();
         }
@@ -89,13 +97,19 @@ public final class Matching {
         long start = System.nanoTime();
         SeatAssigner.Result flow = SeatAssigner.assign(seatRoles, ids, scores);
         double millis = (System.nanoTime() - start) / 1e6;
+        start = System.nanoTime();
+        SeatAssigner.Result best = SeatAssigner.bestFit(seatRoles, ids, scores);
+        double bestMillis = (System.nanoTime() - start) / 1e6;
         SeatAssigner.Result greedy = SeatAssigner.greedy(seatRoles, ids, scores);
 
+        Map<String, String> greedyRole = new HashMap<>();
+        for (SeatAssigner.Assignment a : greedy.assignments()) greedyRole.put(a.candidateId(), a.roleId());
         List<Placement> placements = new ArrayList<>();
         Map<String, Integer> filled = new HashMap<>();
-        for (SeatAssigner.Assignment a : flow.assignments()) {
+        for (SeatAssigner.Assignment a : best.assignments()) {
             Candidate c = byId.get(a.candidateId());
-            placements.add(new Placement(UUID.fromString(a.roleId()), c.userId(), c.handle(), a.score()));
+            boolean moved = !a.roleId().equals(greedyRole.get(a.candidateId()));
+            placements.add(new Placement(UUID.fromString(a.roleId()), c.userId(), c.handle(), a.score(), moved));
             filled.merge(a.roleId(), 1, Integer::sum);
         }
         List<RoleOutcome> outcomes = new ArrayList<>();
@@ -106,7 +120,8 @@ public final class Matching {
             outcomes.add(new RoleOutcome(r.roleId(), r.name(), r.seats(),
                     filled.getOrDefault(r.roleId().toString(), 0), eligible));
         }
-        return new DriveResult(List.copyOf(placements), List.copyOf(outcomes), flow.totalSeats(),
-                greedy.seatsFilled(), flow.augmentations(), millis);
+        return new DriveResult(List.copyOf(placements), List.copyOf(outcomes), best.totalSeats(),
+                greedy.seatsFilled(), greedy.totalScore(), flow.seatsFilled(), flow.totalScore(), best.totalScore(),
+                flow.augmentations(), millis, bestMillis);
     }
 }

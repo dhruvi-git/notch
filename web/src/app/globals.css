@@ -359,6 +359,50 @@ mark {
   color: var(--ink-soft);
 }
 
+/* Motion. One easing and two speeds keep it calm; every animation ends in the element's resting
+   state, so with reduced motion (below) pages simply appear. Stagger with style={{ "--i": n }}. */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-quick: 260ms;
+  --dur-calm: 620ms;
+}
+
+.rise {
+  animation: rise var(--dur-calm) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.grow-x {
+  transform-origin: left center;
+  animation: grow-x 900ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 180ms + 150ms);
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.pop-in {
+  animation: pop-in 420ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

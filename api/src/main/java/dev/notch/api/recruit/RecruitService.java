@@ -34,6 +34,7 @@ public class RecruitService {
 
     static final int MAX_ROLES = 10;
     static final int MAX_SHORTLIST = 100;
+    static final int MAX_NEAR_MISSES = 5;
     static final double DEFAULT_THRESHOLD = 50;
 
     /** A role as the recruiter submits it. */
@@ -146,10 +147,25 @@ public class RecruitService {
                     .map(t -> new DriveView.Term(t.skill(), t.weight(), t.skillScore(),
                             t.level() == null ? null : t.level().name(), t.levelFactor(), round2(t.contribution())))
                     .toList();
+            DriveView.Fix fix = r.match().score() < role.threshold()
+                    ? MatchScoring.closestFix(reqs, skillsOf(candidates, r.userId()), role.threshold()).map(RecruitService::fix).orElse(null)
+                    : null;
             out.add(new DriveView.Candidate(r.userId(), r.handle(), byId.get(r.userId()).headline(),
-                    round2(r.match().score()), terms));
+                    round2(r.match().score()), terms, fix));
         }
-        return new DriveView.Shortlist(role.id(), role.name(), snap.members().size(), eligible, out);
+
+        // Near misses: missing exactly one must-have, and one improvement on it would reach the minimum.
+        List<DriveView.NearMiss> near = new ArrayList<>();
+        for (Matching.Candidate c : candidates) {
+            MatchScoring.Match m = MatchScoring.match(reqs, c.skills());
+            if (m.missingMustHaves().size() != 1) continue;
+            MatchScoring.closestFix(reqs, c.skills(), role.threshold()).ifPresent(f ->
+                    near.add(new DriveView.NearMiss(c.userId(), c.handle(), byId.get(c.userId()).headline(), fix(f))));
+        }
+        near.sort(java.util.Comparator.comparingDouble((DriveView.NearMiss n) -> n.fix().to() - n.fix().from())
+                .thenComparing(DriveView.NearMiss::handle));
+        return new DriveView.Shortlist(role.id(), role.name(), snap.members().size(), eligible, role.threshold(), out,
+                List.copyOf(near.subList(0, Math.min(MAX_NEAR_MISSES, near.size()))));
     }
 
     @Transactional
@@ -167,9 +183,10 @@ public class RecruitService {
         Matching.DriveResult result = Matching.assign(specs, candidates(pool.snapshot()));
 
         RecruitRepository.Run run = new RecruitRepository.Run(UUID.randomUUID(), result.totalSeats(), result.greedyFilled(),
-                result.augmentingPaths(), result.millis(), Instant.now());
+                result.augmentingPaths(), result.millis(), Instant.now(), result.greedyScore(), result.maxFlowFilled(),
+                result.maxFlowScore(), result.bestFitScore(), result.bestFitMillis());
         List<RecruitRepository.Placement> placements = result.placements().stream()
-                .map(p -> new RecruitRepository.Placement(p.roleId(), p.userId(), p.handle(), p.score())).toList();
+                .map(p -> new RecruitRepository.Placement(p.roleId(), p.userId(), p.handle(), p.score(), p.moved())).toList();
         repo.insertRun(run, driveId, placements);
 
         Map<UUID, Integer> eligible = new HashMap<>();
@@ -192,11 +209,12 @@ public class RecruitService {
         for (RecruitRepository.Role r : roles) {
             List<DriveView.Placement> in = placements.stream().filter(p -> p.roleId().equals(r.id()))
                     .sorted((a, b) -> Double.compare(b.score(), a.score()))
-                    .map(p -> new DriveView.Placement(p.userId(), p.handle(), round2(p.score()))).toList();
+                    .map(p -> new DriveView.Placement(p.userId(), p.handle(), round2(p.score()), p.moved())).toList();
             results.add(new DriveView.RoleResult(r.id(), r.name(), r.seats(), in.size(), eligible.get(r.id()), in));
         }
         return new DriveView.Assignment(run.runAt(), run.totalSeats(), placements.size(), run.greedyFilled(),
-                run.augmentingPaths(), round2(run.millis()), results);
+                run.augmentingPaths(), round2(run.millis()), results, round2(run.greedyScore()), run.maxFlowFilled(),
+                round2(run.maxFlowScore()), round2(run.bestFitScore()), round2(run.bestFitMillis()));
     }
 
     private List<Matching.Candidate> candidates(CandidatePool.Snapshot snap) {
@@ -242,6 +260,19 @@ public class RecruitService {
         } catch (IllegalArgumentException e) {
             throw ApiException.badRequest("invalid_level", "Evidence level must be claimed, shown or verified.");
         }
+    }
+
+    private static Double round2(Double v) {
+        return v == null ? null : round2(v.doubleValue());
+    }
+
+    private static DriveView.Fix fix(MatchScoring.Fix f) {
+        return new DriveView.Fix(f.skill(), round2(f.from()), round2(f.to()), f.minLevel().name(), f.levelUp());
+    }
+
+    private static Map<String, MatchScoring.CandidateSkill> skillsOf(List<Matching.Candidate> pool, UUID userId) {
+        for (Matching.Candidate c : pool) if (c.userId().equals(userId)) return c.skills();
+        return Map.of();
     }
 
     private static double round2(double v) {

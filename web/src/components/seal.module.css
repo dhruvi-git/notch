@@ -5,7 +5,7 @@
 }
 
 .plum {
-  --seal-bg: #2f253a;
+  --seal-bg: var(--brand);
   --seal-ink: #fedc2a;
 }
 
@@ -88,7 +88,7 @@
 }
 
 .dot circle:first-child {
-  fill: #2f253a;
+  fill: var(--brand);
 }
 
 .dot circle:last-child {

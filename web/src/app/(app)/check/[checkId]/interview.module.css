@@ -14,7 +14,28 @@
   align-items: center;
   gap: 1rem 1.5rem;
   padding: 0.75rem clamp(1rem, 3vw, 2rem);
-  --brand: #2f253a;
+}
+
+/* Time left, draining along the bottom of the bar; yellow, like the clock, in the last two minutes. */
+.timeBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.timeBar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-soft);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+
+.timeBarLow > span {
+  background: var(--mark);
 }
 
 .leave {
@@ -249,7 +270,6 @@
 }
 
 .resultHead {
-  --brand: #2f253a;
   padding: 1.25rem clamp(1rem, 4vw, 3rem) clamp(2.5rem, 5vw, 4rem);
 }
 

@@ -68,7 +68,11 @@ class MatchingTest {
         assertEquals(2, r.filled());
         assertEquals(1, r.greedyFilled());
         assertEquals(2, r.totalSeats());
-        assertTrue(r.placements().contains(new Matching.Placement(backend, allRounder.userId(), "ria", 60)));
+        assertTrue(r.placements().contains(new Matching.Placement(backend, allRounder.userId(), "ria", 60, true)),
+                "greedy gave ria the data seat, so moving her to backend is marked: " + r.placements());
+        assertTrue(r.placements().stream().anyMatch(p -> p.userId().equals(analyst.userId()) && p.roleId().equals(data) && p.moved()),
+                "greedy left sam out, so his data seat is marked as a move: " + r.placements());
+        assertEquals(2, r.maxFlowFilled());
         assertEquals(List.of(2, 1), r.roles().stream().map(Matching.RoleOutcome::eligible).toList());
     }
 
@@ -96,5 +100,8 @@ class MatchingTest {
         assertTrue(r.filled() >= r.greedyFilled());
         assertEquals(r.filled(), r.placements().stream().map(Matching.Placement::userId).distinct().count());
         assertTrue(r.placements().stream().allMatch(p -> p.score() >= 60));
+        assertEquals(r.maxFlowFilled(), r.filled(), "best fit fills as many seats as max-flow");
+        assertTrue(r.bestFitScore() >= r.maxFlowScore() - 1e-9, "best fit never scores lower than max-flow");
+        assertEquals(r.bestFitScore(), r.placements().stream().mapToDouble(Matching.Placement::score).sum(), 1e-6);
     }
 }

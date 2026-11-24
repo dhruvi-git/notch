@@ -181,7 +181,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
       </main>
 
       <footer className={styles.footer}>
-        <span>Notch, built for CIA 3, Advanced Algorithm</span>
+        <span>© {new Date().getFullYear()} Notch</span>
         <span>Your raw chats are never stored or shown.</span>
       </footer>
     </div>

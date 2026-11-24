@@ -39,7 +39,6 @@ export function Shell({ project, projects, user, usage, theme, driftCount, child
   ];
   const more: NavItem[] = [
     { href: `${base}/compare`, label: "Compare options" },
-    { href: `${base}/lab`, label: "Under the hood" },
   ];
   return (
     <div className={styles.shell}>

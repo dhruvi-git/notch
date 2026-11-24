@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { CountUp } from "@/components/CountUp";
 import { Constellation, ConstellationKey } from "@/components/read/Constellation";
 import { postJson } from "@/lib/client-api";
 import type { ProfileView } from "@/lib/portfolio-types";
@@ -138,17 +139,23 @@ function Hero({ read, goal, profile, empty, onAdd }: { read: Read; goal: string 
             {s.repositories > 0 ? (
               <div>
                 <dt>repositories</dt>
-                <dd>{s.repositories}</dd>
+                <dd>
+                  <CountUp value={s.repositories} />
+                </dd>
               </div>
             ) : null}
             <div>
               <dt>skills with proof</dt>
-              <dd>{s.skills}</dd>
+              <dd>
+                <CountUp value={s.skills} delay={120} />
+              </dd>
             </div>
             {s.activeWeeks > 0 ? (
               <div>
                 <dt>weeks you shipped</dt>
-                <dd>{s.activeWeeks}</dd>
+                <dd>
+                  <CountUp value={s.activeWeeks} delay={240} />
+                </dd>
               </div>
             ) : null}
             {s.since ? (
@@ -378,7 +385,7 @@ function Sources({
           </button>
         ))}
       </div>
-      <div className={styles.panel} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+      <div key={tab} className={`${styles.panel} rise`} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "github" ? <GitHubSection user={user} hasRepos={hasRepos} onDone={onDone} /> : null}
         {tab === "memory" ? <MemoryPane prompt={prompt} onDone={onDone} /> : null}
         {tab === "export" ? <ChatSection onDone={onDone} /> : null}
