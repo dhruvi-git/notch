@@ -91,7 +91,11 @@ function Result({ drive, result }: { drive: Drive; result: Assignment }) {
   return (
     <>
       <h1 className={`${common.title} rise`}>
-        {all ? `All ${result.totalSeats} seats filled` : `${result.filled} of ${result.totalSeats} seats filled`}
+        {all
+          ? result.totalSeats === 1
+            ? "The seat is filled"
+            : `All ${result.totalSeats} seats filled`
+          : `${result.filled} of ${result.totalSeats} seat${result.totalSeats === 1 ? "" : "s"} filled`}
       </h1>
 
       <div className={styles.summary}>
