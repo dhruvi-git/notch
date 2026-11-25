@@ -73,6 +73,15 @@ public final class MemoryImport {
     /** Markdown that assistants add around lines: bold, code, headings and quotes. "C#" and snake_case survive. */
     private static final Pattern NOISE = Pattern.compile("\\*\\*|__|`+|^\\s*(?:#{1,6}|>)\\s*");
     private static final Pattern EMPTY = Pattern.compile("(?i)^(none|n/?a|nothing|-|unknown|not sure|\\(empty\\)|empty)\\.?$");
+    /**
+     * Markdown escapes that come along when a reply is copied from a chat app: "\-" for a list
+     * dash, "\|" for a table pipe, "\." after a number, and a lone "\" ending a line (a hard
+     * line break). Only a backslash before Markdown punctuation is removed, so paths keep theirs.
+     */
+    private static final Pattern ESCAPED = Pattern.compile("\\\\([\\\\`*_{}\\[\\]()#+\\-.!|>~<=])");
+    private static final Pattern HARD_BREAK = Pattern.compile("(?m)[ \\t]*\\\\[ \\t]*$");
+    /** Characters that look like a pipe or a space but aren't, from rich-text copies and other keyboards. */
+    private static final Pattern PIPE_LIKE = Pattern.compile("[│｜¦∣]");
 
     private enum Section { NONE, SKILLS, PROJECTS, GOAL }
 
@@ -95,7 +104,7 @@ public final class MemoryImport {
         Set<String> projectTitles = new LinkedHashSet<>();
         String goal = null;
 
-        for (String raw : text.replace("\r", "").split("\n")) {
+        for (String raw : normalize(text).split("\n")) {
             String line = clean(raw);
             if (line.isEmpty() || line.startsWith("```")) continue;
             String upper = line.toUpperCase(Locale.ROOT).replaceAll("[:.]+$", "").strip();
@@ -194,6 +203,14 @@ public final class MemoryImport {
         String[] parts = body.split("\\s*\\|\\s*");
         for (int i = 0; i < parts.length; i++) parts[i] = parts[i].strip();
         return parts;
+    }
+
+    /** Undoes what copying from a chat app adds: escapes, hard breaks, odd pipes and spaces. */
+    static String normalize(String text) {
+        String t = text.replace("\r", "").replace(' ', ' ').replace(' ', ' ').replace("​", "");
+        t = HARD_BREAK.matcher(t).replaceAll("");
+        t = ESCAPED.matcher(t).replaceAll("$1");
+        return PIPE_LIKE.matcher(t).replaceAll("|");
     }
 
     private static String clean(String raw) {

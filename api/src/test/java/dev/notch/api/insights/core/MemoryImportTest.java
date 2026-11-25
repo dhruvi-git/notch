@@ -137,4 +137,37 @@ class MemoryImportTest {
                 .replace("- skill name | USED or LEARNING or ASKED | what you remember, in one line", "- SQL | USED | dashboards");
         assertEquals("SQL", MemoryImport.parse(template, CATALOG).skills().get(0).skill().name());
     }
+
+    /** Copied out of ChatGPT: Markdown escapes before every dash and a hard-break backslash ending every line. */
+    @Test
+    void readsAReplyCopiedWithMarkdownEscapes() {
+        String copied = """
+                NOTCH PROFILE\\
+                SKILLS\\
+                \\- Python | USED | Used for AI/ML projects, backend development, and machine learning experimentation.\\
+                \\- Docker | ASKED | Worked through containers for a project.\\
+                \\- SQL | USED | Worked with SQL databases and backend applications.\\
+                PROJECTS\\
+                \\- Fest ticket dashboard \\| Live ticket sales \\| SQL, Power BI\\
+                GOAL\\
+                \\- Data analyst\\
+                END""";
+        MemoryImport.Parsed p = MemoryImport.parse(copied, CATALOG);
+        assertEquals(List.of("Python", "Docker", "SQL"), p.skills().stream().map(s -> s.skill().name()).toList());
+        assertEquals(MemoryImport.Mode.USED, p.skills().get(0).mode());
+        assertEquals("Used for AI/ML projects, backend development, and machine learning experimentation.", p.skills().get(0).note());
+        assertEquals("Fest ticket dashboard", p.projects().get(0).title());
+        assertEquals(List.of("SQL", "Power BI"), p.projects().get(0).skills().stream().map(Skill::name).toList());
+        assertEquals("Data analyst", p.goal());
+    }
+
+    @Test
+    void readsNonBreakingSpacesAndLookAlikePipes() {
+        String copied = "NOTCH\u00A0PROFILE\nSKILLS\n- Python\u00A0｜ USED │ scripts\n- C\\# | LEARNING | games\nEND";
+        MemoryImport.Parsed p = MemoryImport.parse(copied.replace("NOTCH\u00A0PROFILE", "NOTCH PROFILE"), CATALOG);
+        assertEquals(List.of("Python", "C#"), p.skills().stream().map(s -> s.skill().name()).toList());
+        assertEquals("scripts", p.skills().get(0).note());
+        assertTrue(MemoryImport.normalize("NOTCH\u00A0PROFILE").equals("NOTCH PROFILE"));
+        assertEquals("C:\\Users\\me", MemoryImport.normalize("C:\\Users\\me"), "a backslash before a letter stays");
+    }
 }
