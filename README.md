@@ -502,6 +502,73 @@ in-memory stand-in with sample candidates.
 First time? [`RUNNING.md`](RUNNING.md) walks through setup, the full demo flow and what to do if a
 step fails.
 
+### Environment variables
+
+Nothing is required for a local run: the `local` profile has development defaults for every
+value. Copy [`.env.example`](.env.example) to `.env` (gitignored) only for real credentials, and
+never commit it. The values below are placeholders.
+
+| Variable | Needed for | Example / default |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | Choose `local` (default for dev) or `cloud` | `cloud` |
+| `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` | PostgreSQL | `jdbc:postgresql://localhost:5433/notch` · `notch` · `notch` |
+| `NOTCH_CRYPTO_KEY` | AES-256-GCM content key, 32 random bytes in base64 (`openssl rand -base64 32`) | `<base64-key>` |
+| `NOTCH_AUTH_SECRET` | Signs OAuth state | `<random-secret>` |
+| `NOTCH_CORS_ORIGINS` | Web origins allowed to call the API | `http://localhost:3000` |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` | "Continue with GitHub" | `<client-id>` · `<client-secret>` · `http://localhost:8090/auth/github/callback` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` | "Continue with Google" | same pattern |
+| `GITHUB_TOKEN` | Optional: 5,000 GitHub calls an hour and 30 repositories per sync instead of 12 | any personal token, no scopes |
+| `ANTHROPIC_API_KEY`, `NOTCH_LLM_MODEL` | Optional: Claude writes and grades questions, drafts outreach | `<key>` · `claude-haiku-5-5` |
+| `VOYAGE_API_KEY`, `NOTCH_EMBEDDING_MODEL` | Optional: semantic search embeddings | `<key>` · `voyage-4-lite` |
+| `NOTCH_MAIL_USER`, `NOTCH_MAIL_PASSWORD` | Optional: email outreach (SMTP, default `smtp.gmail.com:587`) | `<address>` · `<app-password>` |
+| `NOTCH_API_URL` (web, [`web/.env.example`](web/.env.example)) | Where the web app's server finds the API | `http://localhost:8090` |
+
+Without the optional keys, Notch runs fully offline: template questions, a rubric grader and
+word-hashing embeddings.
+
+### API examples
+
+With the API running in the `local` profile (real responses for each of these, including the
+error cases, are in [docs/submission/evidence/api-transcript.md](docs/submission/evidence/api-transcript.md)):
+
+```bash
+API=localhost:8090
+TOKEN=$(curl -s -X POST $API/auth/dev-login -H 'Content-Type: application/json' \
+  -d '{"handle":"recruiter"}' | jq -r .token)            # local profile only
+AUTH="Authorization: Bearer $TOKEN"
+
+curl -s -X POST "$API/api/dev/demo-pool?size=300"        # 300 seeded candidates
+curl -s "$API/api/skills/autocomplete?q=py" -H "$AUTH"   # radix-tree autocomplete
+
+# A drive from a job description: requirements are read from the text
+D=$(curl -s -X POST $API/api/drives -H "$AUTH" -H 'Content-Type: application/json' -d '{
+  "title": "Data analyst",
+  "description": "Must have strong SQL and Python. Dashboards in Power BI. Statistics is a plus."}' | jq -r .id)
+R=$(curl -s $API/api/drives/$D -H "$AUTH" | jq -r '.roles[0].id')
+
+curl -s "$API/api/drives/$D/roles/$R/shortlist?k=5" -H "$AUTH" | jq '.candidates[] | {handle, score}'
+curl -s -X POST $API/api/drives/$D/assign -H "$AUTH" \
+  | jq '{totalSeats, filled, totalMatch, baselineFilled, baselineMatch}'
+curl -s $API/public/profiles/demo-0154 | jq '.skills[] | {name, score, level, topPercent}'
+
+# Errors are RFC 7807 problem details with a stable code
+curl -s -X PUT $API/api/drives/$D/roles -H "$AUTH" -H 'Content-Type: application/json' \
+  -d '{"roles":[{"name":"Bad","seats":1,"threshold":150,"requirements":[{"skillId":17,"weight":3,"mustHave":true,"minLevel":"VERIFIED"}]}]}'
+# → 400 {"code":"invalid_threshold","detail":"Bad: the minimum match must be between 0 and 100.", ...}
+```
+
+### Representative test dataset
+
+| Data | Where | Used by |
+|---|---|---|
+| 300 synthetic public candidates, identical on every machine | `POST /api/dev/demo-pool?size=300` | Shortlists, percentile bands, seat assignment |
+| ChatGPT and Claude exports | [`samples/chatgpt-conversations.json`](samples/chatgpt-conversations.json), [`samples/claude-conversations.json`](samples/claude-conversations.json) | Chat-export import, skill suggestions |
+| Notes and pasted chats | [`samples/`](samples/) (`billing-notes.md`, `pasted-billing-chat.txt`, …) | Import, Bloom-filter de-duplication, drift alerts |
+| A sample codebase | [`samples/billing-service/`](samples/billing-service/) (also zipped) | Code map and review |
+| 50 labelled search questions over 89 messages | `api/src/test/resources/eval/` | Search evaluation ([docs/evaluation.md](docs/evaluation.md)) |
+| Seeded synthetic generators (seed 2026) | `engine/src/main/java/dev/notch/engine/bench/` | Benchmarks at 10³–10⁶ items |
+| Mock API with sample candidates | [`web/scripts/mock-api.mjs`](web/scripts/mock-api.mjs) | Running the whole UI without Java |
+
 ### Tests and benchmarks
 
 ```bash
@@ -511,6 +578,18 @@ cd web && npm test && npm run typecheck && npm run build
 mvn -q -pl engine compile                      # benchmarks
 java -Xmx2500m -cp engine/target/classes dev.notch.engine.bench.BenchmarkRunner
 ```
+
+---
+
+## Submission documents (CIA 3)
+
+| Deliverable | Document |
+|---|---|
+| A · Project proposal | [A-proposal.md](docs/submission/A-proposal.md) · [PDF](docs/submission/pdf/A-proposal.pdf) |
+| B · Source code repository | This repository (Java backend `api/` + `engine/`, frontend `web/`, tests, `samples/`, `pom.xml`, `web/package.json`) |
+| C · Technical report | [C-technical-report.md](docs/submission/C-technical-report.md) · [PDF](docs/submission/pdf/C-technical-report.pdf) |
+| D · Demonstration evidence | [D-demo-evidence.md](docs/submission/D-demo-evidence.md) · [PDF](docs/submission/pdf/D-demo-evidence.pdf) · [API transcript](docs/submission/evidence/api-transcript.md) |
+| E · README and reproducibility | This README |
 
 ---
 

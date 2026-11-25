@@ -18,30 +18,47 @@ in the rest of the project provide infrastructure and never replace these classe
 | `graph.DisjointSetUnion` | Union by rank + path halving | 2 | Thread stitching | O(α(n)) amortized | O(n) |
 | `graph.ThreadStitcher` | Union-find over shared link keys | 2 | Grouping sessions about the same work ("related sessions" on review issues) | O(keys · α(n)) per conversation | O(n + keys) |
 | `rank.HybridRanker` | Weighted signal fusion + Quickselect | 6 | Final ranking with per-signal explanations | Expected O(n + k log k) | O(n) |
+| `flow.MaxFlow` | Edmonds–Karp max-flow (BFS augmenting paths, paired reverse edges) | 5 (CO4) | Seats filled in a hiring drive; the comparison shown to recruiters | O(V·E²); O(F·E) for small flow F | O(V + E) |
+| `flow.MinCostFlow` | Successive shortest paths: Bellman–Ford once, then Dijkstra on Johnson-reduced costs | 5 (CO4) | The saved seat assignment: most seats, then best total match | O(V·E) + O(F·E log V) | O(V + E) |
+| `flow.SeatAssigner` | Builds the source → role → candidate → sink network; greedy baseline and warm start | 5 (CO4) | Assigning every seat across several roles | As above | O(V + E) |
+| `cover.GreedySetCover` | Greedy weighted set cover, H(d)-approximate, bit sets | 5 (CO4) | Which code regions an Ownership Check asks about | O(k · m · u / 64) | O(m · u / 64) |
+| `score.PercentileBands` | Four nested randomized selections | 6 (CO5) | "Top 1/5/10/25%" badges per skill | Expected O(n) | O(n) |
+| `score.SkillScoring` | Noisy-OR over evidence with a 12-month half-life | | Skill score 0–100 and evidence level | O(e) for e pieces | O(1) |
+| `score.MatchScoring` | Weighted match with must-have gate; closest one-skill fix | | Shortlist scores and near misses | O(r) for r requirements | O(r) |
 
 `baseline.Baselines` holds the straightforward versions (naive scan, linear prefix scan, full
-sort, BFS components). They are the comparison points in benchmarks and the oracles in
+sort, BFS components, greedy seat assignment, exact set cover by branch-and-bound). They are the comparison points in benchmarks and the oracles in
 randomized tests.
 
 ## Correctness tests
 
-81 JUnit tests, at least six per algorithm. Each class includes a boundary case (empty input,
+134 JUnit tests, at least four per class. Each class includes a boundary case (empty input,
 single element, match at the very end, capacity growth) and invalid-input checks. Randomized
 tests compare the suffix array, KMP, radix tree, Quickselect and union-find against the
-baselines on hundreds of seeded random inputs.
+baselines on hundreds of seeded random inputs. Max-flow is checked against brute-force minimum
+cuts on random small graphs, seat assignment against brute force on random drives, and set
+cover's H(d) bound against the exact optimum on 300 random instances.
 
 | Test class | Tests |
 |---|---:|
 | `SuffixArrayTest` | 9 |
 | `CorpusIndexTest` | 8 |
 | `KmpTest` | 8 |
-| `SecretScannerTest` | 9 |
+| `SecretScannerTest` | 11 |
 | `RadixTreeTest` | 9 |
 | `BloomFilterTest` | 8 |
 | `RandomizedSelectTest` | 9 |
 | `DisjointSetUnionTest` | 7 |
 | `ThreadStitcherTest` | 6 |
 | `HybridRankerTest` | 8 |
+| `MaxFlowTest` | 6 |
+| `MinCostFlowTest` | 4 |
+| `SeatAssignerTest` | 11 |
+| `GreedySetCoverTest` | 6 |
+| `PercentileBandsTest` | 6 |
+| `SkillScoringTest` | 8 |
+| `MatchScoringTest` | 10 |
+| **Total** | **134** |
 
 ## Benchmarks
 
