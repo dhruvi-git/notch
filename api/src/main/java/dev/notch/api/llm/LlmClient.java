@@ -54,6 +54,15 @@ public interface LlmClient {
         return null;
     }
 
+    /**
+     * Writes a recruiter's first message to a candidate, as JSON: {@code {"subject": "...", "body": "..."}}.
+     * Null when this client can't (offline); throws {@link IllegalStateException} when a model was
+     * asked and didn't deliver.
+     */
+    default java.util.Map<String, Object> outreachEmail(OutreachPrompt prompt) {
+        return null;
+    }
+
     /** A short name for logs and the UI, such as "offline" or a provider name. */
     String name();
 }

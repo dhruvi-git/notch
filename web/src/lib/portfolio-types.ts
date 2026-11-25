@@ -171,3 +171,38 @@ export const LEVEL_LABEL: Record<Level, string> = { CLAIMED: "Claimed", SHOWN: "
 
 /** Without a defended repository, a skill tops out here (engine SkillScoring: one repository caps at 0.85). */
 export const UNDEFENDED_CAP = 85;
+
+/** A recruiter's draft message to a candidate; `written` is true when the AI wrote it. */
+export type OutreachDraft = { subject: string; body: string; written: boolean };
+
+/** How a message was delivered: in Notch only, also by email, or the email didn't go through. */
+export type OutreachDelivery = "IN_APP" | "EMAILED" | "EMAIL_FAILED";
+
+export type OutreachAnswer = "SENT" | "INTERESTED" | "DECLINED";
+
+export type OutreachSent = { id: string; candidateId: string; handle: string; delivery: OutreachDelivery; mailEnabled: boolean };
+
+/** The recruiter's view of one message they sent. */
+export type OutreachStatus = {
+  id: string;
+  candidateId: string;
+  handle: string;
+  role: string | null;
+  status: OutreachAnswer;
+  delivery: OutreachDelivery;
+  sentAt: string;
+  respondedAt: string | null;
+};
+
+/** The candidate's view of one message they received. */
+export type OutreachMessage = {
+  id: string;
+  drive: string;
+  role: string | null;
+  recruiter: string;
+  subject: string;
+  body: string;
+  status: OutreachAnswer;
+  sentAt: string;
+  respondedAt: string | null;
+};

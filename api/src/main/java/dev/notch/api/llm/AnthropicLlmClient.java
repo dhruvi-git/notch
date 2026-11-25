@@ -425,6 +425,35 @@ public final class AnthropicLlmClient implements LlmClient {
         }
     }
 
+    private static final String OUTREACH_SYSTEM = """
+            You write a recruiter's first message to a student candidate found on Notch, a portfolio where skills
+            are backed by the student's own code. Use only the facts given: the role, the drive, and the
+            candidate's evidence. Never invent companies, salaries, dates, links or achievements.
+
+            Write like a real recruiter: warm, specific and brief. Mention one or two of the candidate's strongest
+            pieces of evidence for this role in plain words, say why they fit, and ask whether they'd be interested
+            in talking. Describe evidence in words ("backed by your own commits", "you defended it in an Ownership
+            Check"); never quote numeric scores. The candidate answers with an "I'm interested" button on Notch,
+            so don't ask them to reply with times or send anything. 80 to 120 words in the body. No placeholders,
+            no markdown, no emoji. End with "Best," and then exactly the recruiter's name as given, on its own line.
+            The subject is under 70 characters and names the role.
+
+            Reply with JSON only: {"subject": "...", "body": "..."}""";
+
+    @Override
+    public Map<String, Object> outreachEmail(OutreachPrompt p) {
+        String user = "Recruiter: " + p.recruiterName() + "\nHiring drive: " + p.driveTitle() + "\nRole: " + p.roleName()
+                + "\nCandidate: @" + p.candidateHandle()
+                + (p.candidateHeadline() == null || p.candidateHeadline().isBlank() ? "" : " (" + p.candidateHeadline() + ")")
+                + "\nTheir evidence for this role:\n- " + String.join("\n- ", p.strengths());
+        try {
+            return jsonReply(complete(OUTREACH_SYSTEM, user, 900));
+        } catch (ModelHttp.ModelException | RuntimeException e) {
+            LOG.log(System.Logger.Level.WARNING, "Outreach draft fell back to the template: {0}", e.getMessage());
+            throw new IllegalStateException(e.getMessage(), e);
+        }
+    }
+
     @Override
     public Map<String, Object> gradeOwnership(OwnershipGradeRequest r) {
         String user = "File: " + r.path() + "\n<code>\n" + clip(r.code(), 6000) + "\n</code>\n\n"

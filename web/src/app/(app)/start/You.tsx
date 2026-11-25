@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CountUp } from "@/components/CountUp";
+import { Inbox } from "@/components/outreach/Inbox";
 import { Constellation, ConstellationKey } from "@/components/read/Constellation";
 import { postJson } from "@/lib/client-api";
 import type { ProfileView } from "@/lib/portfolio-types";
@@ -33,6 +34,7 @@ export function You({ user, profile, mine, prompt }: { user: User; profile: Prof
     <>
       <Hero read={read} goal={mine.goal} profile={profile} empty={empty} onAdd={() => openSource(hasRepos ? "memory" : "github")} />
       <main className={styles.main}>
+        <Inbox />
         {!empty && read.insights.length > 0 ? <InsightList read={read} /> : null}
         {!empty ? <SaidVsDone saidDone={read.saidDone} onImport={() => openSource("memory")} /> : null}
         <div id="review-anchor">

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { ContactButton, ContactStatus, loadContacts } from "@/components/outreach/Contact";
 import { SkillPicker } from "@/components/portfolio/SkillPicker";
 import { call, ClientApiError, postJson } from "@/lib/client-api";
-import { LEVEL_LABEL, type Drive, type Fix, type Level, type Requirement, type Role, type Shortlist, type Term } from "@/lib/portfolio-types";
+import { LEVEL_LABEL, type Drive, type Fix, type Level, type OutreachStatus, type Requirement, type Role, type Shortlist, type Term } from "@/lib/portfolio-types";
 import common from "@/components/portfolio/portfolio.module.css";
 import styles from "../hire.module.css";
 
@@ -39,6 +40,12 @@ export function DriveWorkspace({ initial }: { initial: Drive }) {
   const [shortlist, setShortlist] = useState<Shortlist | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(false);
+  const [contacts, setContacts] = useState<Record<string, OutreachStatus>>({});
+
+  // Who this drive has already contacted, and how they answered.
+  useEffect(() => {
+    loadContacts(initial.id).then(setContacts).catch(() => setContacts({}));
+  }, [initial.id]);
 
   const role = roles[Math.min(selected, roles.length - 1)];
   const totalSeats = roles.reduce((n, r) => n + r.seats, 0);
@@ -327,6 +334,19 @@ export function DriveWorkspace({ initial }: { initial: Drive }) {
                             Below the minimum of {Math.round(shortlist.threshold ?? 0)}. To qualify: <strong>{fixText(c.fix)}</strong>
                           </p>
                         ) : null}
+                        <div className={styles.candActions}>
+                          {contacts[c.userId] ? (
+                            <ContactStatus status={contacts[c.userId]} />
+                          ) : (
+                            <ContactButton
+                              driveId={drive.id}
+                              roleId={shortlist.roleId}
+                              candidateId={c.userId}
+                              handle={c.handle}
+                              onSent={(s) => setContacts((cur) => ({ ...cur, [c.userId]: s }))}
+                            />
+                          )}
+                        </div>
                       </div>
                       <div className={styles.candScore}>
                         <span className={styles.scoreBig}>{Math.round(c.score)}</span>

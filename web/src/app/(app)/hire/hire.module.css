@@ -316,6 +316,10 @@
   margin: 0.5rem 0 0;
 }
 
+.candActions {
+  margin-top: 0.7rem;
+}
+
 .candBelow {
   border-style: dashed;
   background: var(--surface);
