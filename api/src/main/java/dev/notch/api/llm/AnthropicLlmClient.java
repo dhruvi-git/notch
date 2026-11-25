@@ -434,7 +434,8 @@ public final class AnthropicLlmClient implements LlmClient {
             pieces of evidence for this role in plain words, say why they fit, and ask whether they'd be interested
             in talking. Describe evidence in words ("backed by your own commits", "you defended it in an Ownership
             Check"); never quote numeric scores. The candidate answers with an "I'm interested" button on Notch,
-            so don't ask them to reply with times or send anything. 80 to 120 words in the body. No placeholders,
+            so don't ask them to reply with times or send anything. Open with "Hi @<their handle>," on its own line.
+            80 to 120 words in the body. No placeholders,
             no markdown, no emoji. End with "Best," and then exactly the recruiter's name as given, on its own line.
             The subject is under 70 characters and names the role.
 
