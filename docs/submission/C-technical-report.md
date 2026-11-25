@@ -338,6 +338,5 @@ test passes.
 This is a **solo project**. Dhruvi Jain (2400297) is responsible for all of it: problem framing,
 choice and implementation of the algorithms in `engine/`, the Spring Boot API, the Next.js web
 app, the CLI, tests and benchmarks, and this report. Development used **Claude Code** (an AI
-coding assistant) as a pair programmer. The 20 commits it co-wrote carry a
-`Co-Authored-By: Claude` trailer in the Git history, and earlier commits made under the local
-identity `Notch <dev@notch.local>` are mapped to the author by `.mailmap`.
+coding assistant) as a pair programmer. Earlier commits made under the local identity
+`Notch <dev@notch.local>` are mapped to the author by `.mailmap`.
