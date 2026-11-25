@@ -63,17 +63,13 @@ public final class DriveView {
     }
 
     /**
-     * A seat-assignment run.
+     * A seat-assignment run, as recruiters see it: the outcome, not the method.
      *
-     * @param greedyFilled    seats a best-score-first greedy pass would have filled, for comparison
-     * @param augmentingPaths paths max-flow found beyond the greedy start
-     * @param greedyScore     total match of greedy's placements; null for runs stored before best fit
-     * @param maxFlowFilled   seats plain max-flow fills (the same as {@code filled}); null for older runs
-     * @param maxFlowScore    total match of max-flow's placements; null for older runs
-     * @param bestFitScore    total match of the placements shown (min-cost flow); null for older runs
+     * @param totalMatch     sum of the placed candidates' match scores; null for runs stored before it was kept
+     * @param baselineFilled seats that handing each one to the top scorer still free would fill, for comparison
+     * @param baselineMatch  total match of that baseline; null for older runs
      */
-    public record Assignment(Instant runAt, int totalSeats, int filled, int greedyFilled, int augmentingPaths,
-                             double millis, List<RoleResult> roles, Double greedyScore, Integer maxFlowFilled,
-                             Double maxFlowScore, Double bestFitScore, Double bestFitMillis) {
+    public record Assignment(Instant runAt, int totalSeats, int filled, Double totalMatch, int baselineFilled,
+                             Double baselineMatch, List<RoleResult> roles) {
     }
 }

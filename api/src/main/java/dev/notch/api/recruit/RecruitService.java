@@ -212,9 +212,8 @@ public class RecruitService {
                     .map(p -> new DriveView.Placement(p.userId(), p.handle(), round2(p.score()), p.moved())).toList();
             results.add(new DriveView.RoleResult(r.id(), r.name(), r.seats(), in.size(), eligible.get(r.id()), in));
         }
-        return new DriveView.Assignment(run.runAt(), run.totalSeats(), placements.size(), run.greedyFilled(),
-                run.augmentingPaths(), round2(run.millis()), results, round2(run.greedyScore()), run.maxFlowFilled(),
-                round2(run.maxFlowScore()), round2(run.bestFitScore()), round2(run.bestFitMillis()));
+        return new DriveView.Assignment(run.runAt(), run.totalSeats(), placements.size(), round2(run.bestFitScore()),
+                run.greedyFilled(), round2(run.greedyScore()), results);
     }
 
     private List<Matching.Candidate> candidates(CandidatePool.Snapshot snap) {

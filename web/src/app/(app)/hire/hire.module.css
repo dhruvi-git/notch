@@ -446,13 +446,6 @@
   color: var(--ink-soft);
 }
 
-.compareFillFlow {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  opacity: 0.45;
-}
-
 @media (max-width: 34rem) {
   .compareRow {
     grid-template-columns: minmax(0, 1fr) 3rem 3.75rem;

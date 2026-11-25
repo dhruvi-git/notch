@@ -158,16 +158,13 @@ export type Assignment = {
   runAt: string;
   totalSeats: number;
   filled: number;
-  greedyFilled: number;
-  augmentingPaths: number;
+  /** Sum of the placed candidates' match scores; null on runs stored before it was kept. */
+  totalMatch: number | null;
+  /** Seats that handing each one to the top scorer still free would fill, and that baseline's total match. */
+  baselineFilled: number;
+  baselineMatch: number | null;
   millis: number;
   roles: RoleResult[];
-  /** Totals for the three methods; null on runs stored before best fit. */
-  greedyScore?: number | null;
-  maxFlowFilled?: number | null;
-  maxFlowScore?: number | null;
-  bestFitScore?: number | null;
-  bestFitMillis?: number | null;
 };
 
 export const LEVEL_LABEL: Record<Level, string> = { CLAIMED: "Claimed", SHOWN: "Shown", VERIFIED: "Verified", DEFENDED: "Defended" };

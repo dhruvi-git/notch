@@ -222,12 +222,6 @@
   }
 }
 
-.hood {
-  margin-top: 1.5rem;
-  font-size: var(--t-sm);
-  color: var(--ink-soft);
-}
-
 /* Where things stand: done, to do, forgotten */
 .recap {
   margin-top: 1.25rem;

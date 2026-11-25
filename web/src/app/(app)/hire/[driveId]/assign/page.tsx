@@ -69,8 +69,8 @@ function Result({ drive, result }: { drive: Drive; result: Assignment }) {
       key: "simple",
       name: "Top score first",
       detail: "each seat to the highest scorer still free",
-      filled: result.greedyFilled,
-      score: result.greedyScore ?? null,
+      filled: result.baselineFilled,
+      score: result.baselineMatch,
       best: false,
     },
     {
@@ -78,14 +78,14 @@ function Result({ drive, result }: { drive: Drive; result: Assignment }) {
       name: "Notch",
       detail: "every seat it can fill, then the best overall match",
       filled: result.filled,
-      score: result.bestFitScore ?? result.maxFlowScore ?? null,
+      score: result.totalMatch,
       best: true,
     },
   ];
   const [simple, notch] = methods;
   const gained = notch.filled - simple.filled;
   const moved = result.roles.reduce((n, r) => n + r.placements.filter((p) => p.moved).length, 0);
-  const hasMoves = result.bestFitScore != null;
+  const hasMoves = result.totalMatch != null;
   let chip = 6;
 
   return (
@@ -133,7 +133,7 @@ function Result({ drive, result }: { drive: Drive; result: Assignment }) {
           </p>
         </div>
         <div className={`${common.card} ${styles.facts} rise`} style={at(2)}>
-          {hasMoves ? (
+          {hasMoves && moved > 0 ? (
             <span className={common.muted}>
               <strong>{moved}</strong> {moved === 1 ? "person" : "people"} placed differently than top score first would
             </span>

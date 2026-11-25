@@ -124,9 +124,9 @@ function assign(roles) {
     runAt: new Date().toISOString(),
     totalSeats: seats.length,
     filled: seatOf.filter((x) => x !== -1).length,
-    greedyFilled: greedy,
-    augmentingPaths: Math.max(0, seatOf.filter((x) => x !== -1).length - greedy),
-    millis: 0.4,
+    totalMatch: seats.reduce((t, j, s) => (seatOf[s] === -1 ? t : t + scores[seatOf[s]][j].score), 0),
+    baselineFilled: greedy,
+    baselineMatch: null,
     roles: roles.map((r, j) => {
       const placements = seats.map((jj, s) => (jj === j && seatOf[s] !== -1 ? seatOf[s] : -1)).filter((i) => i !== -1)
         .map((i) => ({ userId: POOL[i].userId, handle: POOL[i].handle, score: scores[i][j].score }))
