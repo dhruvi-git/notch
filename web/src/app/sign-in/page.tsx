@@ -48,16 +48,16 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
           <span>notch</span>
         </Link>
         <h1 id="sign-in-title" className={styles.title}>
-          Understand your code, and remember why it&rsquo;s built that way.
+          You wrote it. Now prove it.
         </h1>
         <p className={styles.lede}>
-          Drop in a project and Notch reviews it, maps how it works, and keeps the decisions behind it, on the web and inside
-          Claude Code.
+          Notch reads your real work and shows who you are as a builder, then lets you defend your own code, so recruiters
+          hire on proof, not on claims.
         </p>
         <ul className={styles.points}>
-          <li>A full code review with issues by file and line</li>
-          <li>A map of how the code fits together</li>
-          <li>Decisions and open tasks every coding agent follows</li>
+          <li>Your skills, drawn from your own commits and projects</li>
+          <li>An Ownership Check: explain your code, earn Defended</li>
+          <li>For recruiters: a ranked shortlist with the proof attached</li>
         </ul>
         <Link href="/" className={styles.back}>
           &larr; What is Notch?
@@ -76,8 +76,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
 
           {config === null ? (
             <p className={styles.notice} role="alert">
-              Notch&rsquo;s server isn&rsquo;t reachable, so sign-in is unavailable. If you&rsquo;re running locally, start
-              the API with <code>mvn -pl api spring-boot:run</code>.
+              Sign-in is unavailable for a moment. Please try again shortly.
             </p>
           ) : (
             <div className={styles.actions}>
@@ -96,18 +95,15 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
                 </a>
               ) : null}
               {config.devLogin ? (
-                <form action="/auth/dev" method="post" className={styles.devForm}>
-                  {anyProvider ? <p className={styles.divider}><span>or, on this computer</span></p> : null}
-                  <label htmlFor="handle" className={styles.devLabel}>
-                    Local development: sign in as a test user
-                  </label>
-                  <div className={styles.devRow}>
-                    <input id="handle" name="handle" className="field" defaultValue="dev" autoComplete="off" />
-                    <button type="submit" className={anyProvider ? "btn btn-quiet" : "btn btn-primary"}>
-                      Sign in
-                    </button>
-                  </div>
-                </form>
+                anyProvider ? (
+                  // Only on a locally run server: kept out of the way behind a quiet link.
+                  <details className={styles.guest}>
+                    <summary>Continue with a guest account</summary>
+                    <GuestForm primary={false} />
+                  </details>
+                ) : (
+                  <GuestForm primary />
+                )
               ) : null}
               {!config.google && !config.github && !config.devLogin ? (
                 <p className={styles.notice}>No sign-in method is set up on this server yet.</p>
@@ -125,6 +121,32 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
 }
 
 /** Google's "G", as its sign-in guidelines ask buttons to show. */
+/** A named account on a locally run server (the API's local profile); nothing to set up. */
+function GuestForm({ primary }: { primary: boolean }) {
+  return (
+    <form action="/auth/dev" method="post" className={styles.devForm}>
+      <label htmlFor="handle" className={styles.devLabel}>
+        Pick a name for this account
+      </label>
+      <div className={styles.devRow}>
+        <input
+          id="handle"
+          name="handle"
+          className="field"
+          placeholder="e.g. recruiter"
+          required
+          pattern="[A-Za-z0-9_\-]+"
+          title="Letters, digits, - or _"
+          autoComplete="off"
+        />
+        <button type="submit" className={primary ? "btn btn-primary" : "btn btn-quiet"}>
+          Continue
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

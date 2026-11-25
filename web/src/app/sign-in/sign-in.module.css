@@ -209,6 +209,23 @@ a.wordmark {
   text-decoration: none;
 }
 
+.guest {
+  margin-top: 0.75rem;
+}
+
+.guest summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.guest summary:hover {
+  color: var(--accent);
+}
+
 .devLabel {
   font-size: var(--t-sm);
   color: var(--ink-soft);

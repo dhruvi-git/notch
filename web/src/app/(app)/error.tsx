@@ -10,7 +10,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
       <h1>{unreachable ? "Notch can't reach its server" : "This page didn't load"}</h1>
       <p className="muted">
         {unreachable
-          ? "The API isn't responding. If you're running Notch locally, start it with mvn -pl api spring-boot:run, then try again."
+          ? "We couldn't connect just now. Please try again in a moment."
           : "Something went wrong while loading. Try again; if it keeps happening, reload the page."}
       </p>
       <button type="button" className="btn btn-primary" onClick={reset}>
